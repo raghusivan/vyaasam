@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://java.sun.com/xml/ns/persistence" version="1.0">
+
+    <persistence-unit name="notes" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <!--<shared-cache-mode>NONE</shared-cache-mode>
+        <non-jta-data-source>java:jboss/datasources/booktopiaJndi</non-jta-data-source>-->
+        <jar-file>C:\Users\raghus\Documents\NetBeansProjects\NoteProject\NoteModel\build\libs\NoteModel-1.0.0.jar</jar-file>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+        <properties>
+            
+            <property name="javax.persistence.jdbc.driver" value="com.mysql.jdbc.Driver"/>
+            <property name="javax.persistence.jdbc.url" value="jdbc:mysql://localhost:3306"/>
+            <property name="javax.persistence.jdbc.user" value="booktopia"/>
+            <property name="javax.persistence.jdbc.password" value="booktopia"/>
+
+            <!--Hibernate properties-->
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="false"/>
+            <!--<property name="hibernate.hbm2ddl.auto" value="create"/>-->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+
+            <!--
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect" />
+            <property name="hibernate.cache.use_second_level_cache" value="false"/>
+            <property name="hibernate.cache.use_query_cache" value="false" />
+            <property name="hibernate.show_sql" value="false" />
+            <property name="hibernate.format_sql" value="false" />
+            <property name="hibernate.use_sql_comments" value="false" />
+            -->
+            <property name="hibernate.ejb.naming_strategy" value="org.hibernate.cfg.DefaultComponentSafeNamingStrategy"/>
+            <!--<property name="connection.provider_class">org.hibernate.connection.C3P0ConnectionProvider</property>-->
+            <property name="persistenceXmlLocation" value="classpath*:persistence.xml" />
+            
+        </properties>
+    </persistence-unit>
+
+</persistence>

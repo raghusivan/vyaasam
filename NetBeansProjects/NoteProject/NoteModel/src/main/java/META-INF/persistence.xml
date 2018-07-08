@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="1.0" xmlns="http://java.sun.com/xml/ns/persistence">
+  <persistence-unit name="notes">
+    <provider>org.hibernate.ejb.HibernatePersistence</provider>
+    <!-- <class>au.com.booktopia.model.Author</class>
+	<class>au.com.booktopia.model.ListEntity</class> -->
+    <properties>
+      <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+      <!-- other hibernate properties -->
+      <property name="hibernate.hbm2ddl.auto" value="update"/>
+      <property name="hibernate.ejb.event.post-insert" value="org.hibernate.ejb.event.EJB3PostInsertEventListener"/>
+      <property name="hibernate.ejb.event.post-update" value="org.hibernate.ejb.event.EJB3PostUpdateEventListener"/>
+      <property name="hibernate.ejb.event.post-delete" value="org.hibernate.ejb.event.EJB3PostDeleteEventListener"/>
+      <!-- <property name="hibernate.ejb.event.pre-collection-update" value="org.hibernate.envers.event.AuditEventListener" />
+	   <property name="hibernate.ejb.event.pre-collection-remove" value="org.hibernate.envers.event.AuditEventListener" />
+	   <property name="hibernate.ejb.event.post-collection-recreate" value="org.hibernate.envers.event.AuditEventListener" /> -->
+      <!-- <property name="hibernate.ejb.use_class_enhancer" value="true" /> -->
+    </properties>
+  </persistence-unit>
+</persistence>
