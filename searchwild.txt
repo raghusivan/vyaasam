@@ -1,1 +1,154 @@
 
+Here’s a shell script that allows you to perform different types of wildcard searches in Elasticsearch based on the input parameters you provide. The script includes queries to:
+
+1. **Search by Message ID Ending With a Certain Pattern.**
+2. **Sort Results by Date in Descending Order.**
+3. **Any Additional Query as Needed.**
+
+### Shell Script: `wildcard_search.sh`
+
+```bash
+#!/bin/bash
+
+# Check if the query type is provided as an argument
+if [ -z "$1" ]; then
+  echo "Usage: $0 <query_type> [search_value]"
+  echo "Query Types:"
+  echo "  1 - Search by Message ID ending with a pattern"
+  echo "  2 - Search and Sort by Date in Descending Order"
+  echo "  3 - Additional Query (customize as needed)"
+  exit 1
+fi
+
+# Assign the query type and optional search value from arguments
+QUERY_TYPE="$1"
+SEARCH_VALUE="$2"
+
+# Replace these with your actual credentials
+USERNAME="your_username"
+PASSWORD="your_password"
+
+# Replace with your Elasticsearch host
+ES_HOST="https://your_elasticsearch_host:9200"
+INDEX_NAME="messages"
+
+# Function to perform the curl request
+perform_curl_request() {
+  local curl_command=$1
+  echo "Executing query: $curl_command"
+  eval $curl_command
+}
+
+# Define different query types
+case $QUERY_TYPE in
+  1)
+    # Search by Message ID ending with a pattern
+    if [ -z "$SEARCH_VALUE" ]; then
+      echo "Please provide a pattern to match the end of the Message ID."
+      exit 1
+    fi
+
+    QUERY='{
+      "query": {
+        "wildcard": {
+          "message_id": {
+            "value": "*'"$SEARCH_VALUE"'",
+            "boost": 1.0,
+            "rewrite": "constant_score"
+          }
+        }
+      }
+    }'
+
+    CURL_COMMAND="curl -u \"$USERNAME:$PASSWORD\" --header \"Content-Type: application/json\" --location --request GET \"$ES_HOST/$INDEX_NAME/_search\" --data-raw '$QUERY'"
+    ;;
+
+  2)
+    # Search and Sort by Date in Descending Order
+    QUERY='{
+      "query": {
+        "match_all": {}
+      },
+      "sort": [
+        {
+          "timestamp": {
+            "order": "desc"
+          }
+        }
+      ]
+    }'
+
+    CURL_COMMAND="curl -u \"$USERNAME:$PASSWORD\" --header \"Content-Type: application/json\" --location --request GET \"$ES_HOST/$INDEX_NAME/_search\" --data-raw '$QUERY'"
+    ;;
+
+  3)
+    # Additional Custom Query
+    QUERY='{
+      "query": {
+        "query_string": {
+          "default_field": "content",
+          "query": "Hel*"
+        }
+      }
+    }'
+
+    CURL_COMMAND="curl -u \"$USERNAME:$PASSWORD\" --header \"Content-Type: application/json\" --location --request GET \"$ES_HOST/$INDEX_NAME/_search\" --data-raw '$QUERY'"
+    ;;
+
+  *)
+    echo "Invalid query type. Please choose from the following:"
+    echo "  1 - Search by Message ID ending with a pattern"
+    echo "  2 - Search and Sort by Date in Descending Order"
+    echo "  3 - Additional Query (customize as needed)"
+    exit 1
+    ;;
+esac
+
+# Run the selected curl command
+perform_curl_request "$CURL_COMMAND"
+```
+
+### Explanation:
+
+1. **Script Parameters:**
+   - **`$1`**: The first argument specifies the query type (1, 2, or 3).
+   - **`$2`**: The second argument (optional) provides the search value (e.g., the pattern to match the end of the Message ID).
+
+2. **Query Types:**
+   - **Query Type 1:** Uses a `wildcard` query to search for documents where the `message_id` ends with a specified pattern.
+   - **Query Type 2:** Uses a `match_all` query and sorts the results by the `timestamp` field in descending order.
+   - **Query Type 3:** Uses a `query_string` query for advanced search with a pattern matching the field `content`.
+
+3. **Function `perform_curl_request`:**
+   - Executes the constructed `curl` command for the selected query type.
+
+### Instructions to Run the Script:
+
+1. **Replace** `your_username`, `your_password`, and `your_elasticsearch_host` with your actual Elasticsearch credentials and host.
+2. **Save** the script to a file, e.g., `wildcard_search.sh`.
+3. **Make the script executable** by running:
+
+   ```bash
+   chmod +x wildcard_search.sh
+   ```
+
+4. **Run** the script with different parameters to execute various queries:
+
+   - **Search by Message ID Ending with Pattern:**
+     ```bash
+     ./wildcard_search.sh 1 "4bdad613948a126c"
+     ```
+
+   - **Search and Sort by Date in Descending Order:**
+     ```bash
+     ./wildcard_search.sh 2
+     ```
+
+   - **Run Additional Custom Query:**
+     ```bash
+     ./wildcard_search.sh 3
+     ```
+
+### Customizing the Script:
+
+- You can add more query types or modify existing queries as needed. This script is designed to be flexible and easily extendable for different use cases.
