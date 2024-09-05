@@ -1,1 +1,61 @@
 test the file contents 
+
+To list all indices in Elasticsearch sorted in descending order based on their creation date, you can use the Elasticsearch **Cat API** (`_cat/indices`) combined with sorting capabilities in a shell script. The **Cat API** provides a way to retrieve metadata about the indices, including their creation dates.
+
+### Shell Script: `list_indices_sorted.sh`
+
+Here is the shell script to list indices sorted by their creation date in descending order:
+
+```bash
+#!/bin/bash
+
+# Replace these with your actual credentials
+USERNAME="your_username"
+PASSWORD="your_password"
+
+# Replace with your Elasticsearch host
+ES_HOST="https://your_elasticsearch_host:9200"
+
+# Use the Cat API to get the list of all indices with their creation dates
+curl -s -u "$USERNAME:$PASSWORD" \
+  --header "Content-Type: application/json" \
+  --location --request GET "$ES_HOST/_cat/indices?h=index,creation.date.string&s=creation.date:desc" | awk '{print $1, $2}' 
+```
+
+### Explanation:
+
+1. **`_cat/indices` Endpoint:**
+   - This is an Elasticsearch Cat API endpoint that returns information about all indices, including their creation dates.
+   - The **`?h=index,creation.date.string`** parameter specifies that we want to retrieve the index names and their creation dates.
+   - The **`&s=creation.date:desc`** parameter sorts the indices by their creation date in descending order.
+
+2. **`curl` Command:**
+   - **`-s`**: Runs `curl` in silent mode to suppress progress information and only show the output.
+   - **`-u`**: Supplies the username and password for authentication.
+
+3. **`awk` Command:**
+   - Used to format the output to display only the index name and its creation date.
+
+### Instructions to Run the Script:
+
+1. **Replace** `your_username`, `your_password`, and `your_elasticsearch_host` with your actual Elasticsearch credentials and host.
+2. **Save** the script to a file, e.g., `list_indices_sorted.sh`.
+3. **Make the script executable** by running:
+
+   ```bash
+   chmod +x list_indices_sorted.sh
+   ```
+
+4. **Run** the script:
+
+   ```bash
+   ./list_indices_sorted.sh
+   ```
+
+### Expected Output:
+
+The output will list all the indices sorted by their creation date in descending order, displaying the index name and its creation date:
+
+```plaintext
+index_name_3 2023-09-01T15:30:00Z
+index_name_2 202
