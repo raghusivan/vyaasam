@@ -1,3 +1,96 @@
+
+To find duplicate `_id` values in an Elasticsearch index, you typically cannot directly query Elasticsearch to identify duplicates since each document in an index is required to have a unique `_id`. However, in some situations, multiple Elasticsearch documents may have the same `_id` value in different indices, or there might be multiple documents with duplicate values in a different field that you want to identify.
+
+If you are looking for duplicates based on the `_id` field or another field within the same index, we would need to:
+
+1. Fetch all documents in the index or a subset of documents.
+2. Identify duplicates by comparing these documents.
+
+Here is a **shell script** to retrieve documents from an Elasticsearch index and identify duplicates based on the `_id` field or any other field.
+
+### Shell Script: `find_duplicates.sh`
+
+```bash
+#!/bin/bash
+
+# Check if the Elasticsearch host is provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <es_host> <index_name>"
+  echo "Example: $0 https://your_elasticsearch_host:9200 ecomm_production_20200929_message_types_2023-11-19"
+  exit 1
+fi
+
+# Assign the Elasticsearch host and index name from the arguments
+ES_HOST="$1"
+INDEX_NAME="$2"
+
+# Replace these with your actual credentials
+USERNAME="your_username"
+PASSWORD="your_password"
+
+# Fetch all documents from the Elasticsearch index (limited by the "size" parameter)
+QUERY='{
+  "size": 10000,
+  "_source": ["_id"], 
+  "query": {
+    "match_all": {}
+  }
+}'
+
+# Execute the curl request to Elasticsearch
+RESPONSE=$(curl -u "$USERNAME:$PASSWORD" --header "Content-Type: application/json" --location --request GET "$ES_HOST/$INDEX_NAME/_search" --data-raw "$QUERY")
+
+# Parse the _id field from the response and count duplicates using awk
+echo "$RESPONSE" | grep -o '"_id":"[^"]*"' | awk -F':' '{print $2}' | sort | uniq -cd
+```
+
+### Explanation:
+
+1. **Script Parameters:**
+   - The script accepts two arguments:
+     - `$1`: Elasticsearch host URL.
+     - `$2`: Elasticsearch index name.
+
+2. **Fetch Documents:**
+   - A query is constructed to fetch all documents from the specified index, limited by the `"size": 10000` parameter.
+   - The script uses `match_all` to fetch all documents. This could be adjusted to apply any additional filters if needed.
+
+3. **Parsing `_id` Field:**
+   - The script uses `grep` to extract all occurrences of `_id` fields from the JSON response.
+   - `awk` processes the extracted `_id` values and identifies duplicates.
+
+4. **Display Duplicates:**
+   - `sort` sorts the extracted IDs, and `uniq -cd` finds and displays only the duplicate IDs with their count.
+
+### Running the Script:
+
+1. **Save** the script as `find_duplicates.sh`.
+2. **Make the script executable** by running:
+   ```bash
+   chmod +x find_duplicates.sh
+   ```
+3. **Run** the script with your Elasticsearch host and index name:
+   ```bash
+   ./find_duplicates.sh https://your_elasticsearch_host:9200 ecomm_production_20200929_message_types_2023-11-19
+   ```
+
+### Example Output:
+
+```plaintext
+  2 "MES-4bdad613948a126c-27d719800000"
+  3 "MES-4bdad613948a126c-27d719800001"
+  ...
+```
+
+- The output shows the count of each duplicate `_id` found in the index.
+
+### Note:
+
+- **Important Considerations**: Elasticsearch enforces unique `_id` values within an index, so if there are truly duplicate `_id` values within the same index, it might suggest that there were errors in indexing or that you are looking for duplicates across multiple indices or fields.
+- **Adjust Query Size**: The size of the fetched documents (`10000` in the script) should be adjusted based on the total number of documents in your index. Be mindful of Elasticsearch's limits and performance considerations when fetching large numbers of documents.
+
+
+-‐-------------------
 test the file contents 
 
 To list all indices in Elasticsearch sorted in descending order based on their creation date, you can use the Elasticsearch **Cat API** (`_cat/indices`) combined with sorting capabilities in a shell script. The **Cat API** provides a way to retrieve metadata about the indices, including their creation dates.
