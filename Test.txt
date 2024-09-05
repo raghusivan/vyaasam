@@ -115,6 +115,22 @@ curl -s -u "$USERNAME:$PASSWORD" \
    ./list_indices_sorted.sh
    ```
 
+--------
+
+#!/bin/bash
+
+# Replace these with your actual credentials
+USERNAME="your_username"
+PASSWORD="your_password"
+
+# Replace with your Elasticsearch host
+ES_HOST="https://your_elasticsearch_host:9200"
+
+# Use the Cat API to get the list of all indices with their creation dates and total size
+curl -s -u "$USERNAME:$PASSWORD" \
+  --header "Content-Type: application/json" \
+  --location --request GET "$ES_HOST/_cat/indices?h=index,creation.date.string,store.size&s=creation.date:desc" | awk '{printf "%-40s %-30s %-10s\n", $1, $2, $3}'
+
 ### Expected Output:
 
 The output will list all the indices sorted by their creation date in descending order, displaying the index name and its creation date:
