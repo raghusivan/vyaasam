@@ -139,3 +139,53 @@ The output will list all the indices sorted by their creation date in descending
 index_name_3 2023-09-01T15:30:00Z
 index_name_2 202
 
+‐------------'
+If the Finder window always appears behind the Terminal when you run the shell script, you can use the `osascript` command with AppleScript to bring the Finder to the front explicitly. This script will force the Finder to become the active application, bringing the **Documents** folder to the foreground.
+
+### **Step 1: Create or Edit the Shell Script**
+1. Open the **Terminal** application.
+2. Create a new shell script or edit an existing one:
+   ```bash
+   nano open_documents.sh
+   ```
+
+3. Add the following content to the script:
+
+   ```bash
+   #!/bin/bash
+   # Shell script to open the Documents folder and bring Finder to the foreground
+
+   # Open the Documents folder using Finder
+   open ~/Documents
+
+   # Use AppleScript to activate Finder and bring it to the front
+   osascript -e 'tell application "Finder" to activate'
+   ```
+
+4. Save the file:
+   - Press `Ctrl + O` to save.
+   - Press `Enter` to confirm the file name.
+   - Press `Ctrl + X` to exit the editor.
+
+### **Step 2: Make the Script Executable**
+1. Run the following command to make your script executable:
+   ```bash
+   chmod +x open_documents.sh
+   ```
+
+### **Step 3: Run the Script**
+1. Run the script by typing:
+   ```bash
+   ./open_documents.sh
+   ```
+
+### **Explanation:**
+- The `open ~/Documents` command opens the **Documents** folder in Finder.
+- The `osascript` command runs a small AppleScript snippet that tells the Finder to **activate**, which brings it to the front of all open windows.
+
+### **Result:**
+This approach will ensure that the **Finder** window displaying the **Documents** folder comes to the foreground, above the Terminal window.
+
+
+
+
