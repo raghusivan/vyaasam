@@ -1,4 +1,9 @@
 
+  indices_filtered)
+    # Filter indices: exclude those starting with ".", sort by creation date and docs.count, limit to 20
+    URL="$BASE_URL/_cat/indices?h=index,creation.date.string,docs.count,store.size&s=creation.date:desc,docs.count:desc&format=json"
+    ;;
+-------------------------------------
 
 
   indices_docs_count)
