@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Check if the Elasticsearch host, index name, and count are provided
+if [ -z "$1" ] || [ -z "$2" ]; then
+  echo "Usage: $0 <index_name> <count>"
+  echo "Example: $0 ecomm_production_20220929_message_types 5"
+  exit 1
+fi
+
+# Assign the Elasticsearch host, index name, and count from the arguments
+INDEX_NAME="$1"
+TARGET_COUNT="$2"
+
+ES_HOST="https://master.uat.digitalreasoningelasticsearch.forriskdigitalreasoning.syd.non.c1.macquarie.com:9200"
+
+USERNAME="rmg_dr_elastic_au_ua"
+PASSWORD="qQNr1p_HJKLbz!U"
+
+# Query to fetch all documents from the Elasticsearch index (limited by the "size" parameter)
+QUERY='
+{
+  "size": 10000,
+  "_source": ["message_id"],
+  "query": {
+    "match_all": {}
+  }
+}
+'
+
+# Execute the curl request to Elasticsearch
+RESPONSE=$(curl -u "$USERNAME:$PASSWORD" --header "Content-Type: application/json" --location --request GET "$ES_HOST/$INDEX_NAME/_search" --data-raw "$QUERY")
+
+# Parse the message_id field from the response and count occurrences using awk
+# Filter to only list those with the specified count
+echo "$RESPONSE" | grep -o '"message_id":"[^"]*"' | awk -F':' '{print $2}' | sort | uniq -c | awk -v count="$TARGET_COUNT" '$1 == count {print $2}'
