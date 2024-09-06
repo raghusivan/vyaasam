@@ -1,3 +1,73 @@
+It seems like you're trying to extract an IP address from HTML content retrieved from a URL, but you're not getting the full HTML content in your shell script.
+
+To address this issue, we need to make sure that:
+1. We retrieve the complete HTML content.
+2. We properly parse the content to extract the IP address.
+
+### **Improving the Shell Script:**
+
+Here’s how to update your script to ensure it captures the full HTML and extracts the desired IP address.
+
+#### **Step 1: Modify the Shell Script to Use `curl` Properly**
+
+Let's modify the script to handle these cases:
+
+1. **Create or Edit the Shell Script:**
+    ```bash
+    nano readip.sh
+    ```
+
+2. **Update the Script with Correct `curl` Usage and Better Parsing:**
+
+    ```bash
+    #!/bin/bash
+    # Shell script to fetch HTML content from a URL and extract the IP address of the latest build number
+
+    # URL of the webpage to resources/branches/pipeline:branch/commsurv:jobs:uat"
+
+    # Fetch the full HTML content from the URL using curl
+    html_content=$(curl -s "$URL")
+
+    # Check if HTML content is fetched correctly
+    if [[ -z "$html_content" ]]; then
+      echo "Error: Could not retrieve HTML content."
+      exit 1
+    fi
+
+    # Extract the latest build number's IP address using grep and regex
+    # Adjust the regex pattern according to the structure of the HTML
+    ip_address=$(echo "$html_content" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n 1)
+
+    # Check if any IP address was found
+    if [[ -z "$ip_address" ]]; then
+      echo "No IP address found in the content."
+    else
+      # Print the extracted IP address
+      echo "Extracted IP Address: $ip_address"
+    fi
+    ```
+
+3. **Save and Close the File:**
+    - Press `Ctrl + O` to save.
+    - Press `Enter` to confirm the file name.
+    - Press `Ctrl + X` to exit the editor.
+
+4. **Make the Script Executable:**
+    ```bash
+    chmod +x readip.sh
+    ```
+
+5. **Run the Script:**
+    ```bash
+    ./readip.sh
+    ```
+
+### **Explanation of the Improvements:**
+
+- **`curl -s`**: The `-s` flag ensures that `curl` runs silently, which prevents it from showing progress or errors directly in the output.
+- **Check HTML
+-----------
+
 To create a shell script that reads the HTML content of a given URL, extracts the IP address of the latest build number from it, and then prints it, you can use tools like `curl` to fetch the content and `grep`, `sed`, or `awk` to parse the HTML.
 
 Here is a step-by-step guide to achieve this:
