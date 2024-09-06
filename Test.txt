@@ -1,4 +1,89 @@
 
+To modify the script to check for duplicates using the `message_id` field (instead of `_id`) and to count all occurrences, including those that appear only once, we'll need to adjust the script to extract the `message_id` field from the response and count all instances, whether duplicated or not.
+
+### Modified Shell Script: `find_duplicates_by_message_id.sh`
+
+```bash
+#!/bin/bash
+
+# Check if the Elasticsearch host and index name are provided
+if [ -z "$1" ] || [ -z "$2" ]; then
+  echo "Usage: $0 <es_host> <index_name>"
+  echo "Example: $0 https://your_elasticsearch_host:9200 ecomm_production_20200929_message_types_2023-11-19"
+  exit 1
+fi
+
+# Assign the Elasticsearch host and index name from the arguments
+ES_HOST="$1"
+INDEX_NAME="$2"
+
+# Replace these with your actual credentials
+USERNAME="your_username"
+PASSWORD="your_password"
+
+# Fetch all documents from the Elasticsearch index (limited by the "size" parameter)
+QUERY='{
+  "size": 10000,
+  "_source": ["message_id"], 
+  "query": {
+    "match_all": {}
+  }
+}'
+
+# Execute the curl request to Elasticsearch
+RESPONSE=$(curl -u "$USERNAME:$PASSWORD" --header "Content-Type: application/json" --location --request GET "$ES_HOST/$INDEX_NAME/_search" --data-raw "$QUERY")
+
+# Parse the message_id field from the response and count occurrences using awk
+echo "$RESPONSE" | grep -o '"message_id":"[^"]*"' | awk -F':' '{print $2}' | sort | uniq -c
+```
+
+### Explanation:
+
+1. **Script Parameters:**
+   - The script still accepts two arguments:
+     - `$1`: Elasticsearch host URL.
+     - `$2`: Elasticsearch index name.
+
+2. **Fetch Documents:**
+   - The query is adjusted to fetch only the `message_id` field for each document in the index, limited by the `"size": 10000` parameter.
+   - The query uses `match_all` to fetch all documents, but you can adjust it to add specific filters if needed.
+
+3. **Parsing `message_id` Field:**
+   - The script uses `grep` to extract all occurrences of the `message_id` field from the JSON response.
+   - `awk` processes the extracted `message_id` values and counts the number of occurrences.
+
+4. **Display Counts:**
+   - `sort` sorts the extracted IDs, and `uniq -c` finds and displays the count of each `message_id`, including those that appear only once.
+
+### Running the Script:
+
+1. **Save** the script as `find_duplicates_by_message_id.sh`.
+2. **Make the script executable** by running:
+   ```bash
+   chmod +x find_duplicates_by_message_id.sh
+   ```
+3. **Run** the script with your Elasticsearch host and index name:
+   ```bash
+   ./find_duplicates_by_message_id.sh https://your_elasticsearch_host:9200 ecomm_production_20200929_message_types_2023-11-19
+   ```
+
+### Example Output:
+
+```plaintext
+  1 "MES-4bdad613948a126c-27d719800000"
+  2 "MES-4bdad613948a126c-27d719800001"
+  3 "MES-4bdad613948a126c-27d719800002"
+  ...
+```
+
+- The output shows the count of each `message_id` found in the index, including those that only appear once.
+
+### Note:
+
+- **Query Size**: Adjust the size parameter (`10000` in the script) according to the number of documents you expect in your index. Be mindful of Elasticsearch's memory and performance limits when handling large datasets.
+- **Message IDs Across Indices**: If you have multiple indices and want to check for duplicate `message_id`s across them, you will need to adjust the script to query multiple indices or use the `_all` index in Elasticsearch to search across all indices.
+-----------------
+
 To find duplicate `_id` values in an Elasticsearch index, you typically cannot directly query Elasticsearch to identify duplicates since each document in an index is required to have a unique `_id`. However, in some situations, multiple Elasticsearch documents may have the same `_id` value in different indices, or there might be multiple documents with duplicate values in a different field that you want to identify.
 
 If you are looking for duplicates based on the `_id` field or another field within the same index, we would need to:
