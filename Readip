@@ -1,0 +1,73 @@
+To create a shell script that reads the HTML content of a given URL, extracts the IP address of the latest build number from it, and then prints it, you can use tools like `curl` to fetch the content and `grep`, `sed`, or `awk` to parse the HTML.
+
+Here is a step-by-step guide to achieve this:
+
+### **Step 1: Create the Shell Script**
+
+1. **Open Terminal**:
+   Open your Terminal application on your Mac.
+
+2. **Create a New Shell Script**:
+   Create a new shell script file named `extract_ip.sh`:
+
+   ```bash
+   nano extract_ip.sh
+   ```
+
+3. **Write the Script**:
+   Add the following content to the file:
+
+   ```bash
+   #!/bin/bash
+   # Shell script to fetch HTML content from a URL and extract the IP address of the latest build number
+
+   # URL of the 
+/resources/branches/pipeline:branch/commsurv:jobs:uat"
+
+   # Fetch the HTML content of the URL
+   html_content=$(curl -s "$URL")
+
+   # Extract the latest build number's IP address using grep and regex
+   # This example assumes that the IP address format is like '10.xxx.xxx.xxx'
+   ip_address=$(echo "$html_content" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n 1)
+
+   # Print the extracted IP address
+   echo "Extracted IP Address: $ip_address"
+   ```
+
+4. **Save and Close the File**:
+   - Press `Ctrl + O` to save.
+   - Press `Enter` to confirm the file name.
+   - Press `Ctrl + X` to exit the editor.
+
+### **Step 2: Make the Script Executable**
+
+Make the script executable by running the following command:
+
+```bash
+chmod +x extract_ip.sh
+```
+
+### **Step 3: Run the Script**
+
+Run the script by typing:
+
+```bash
+./extract_ip.sh
+```
+
+### **Explanation of the Script:**
+
+- **`curl`**: Fetches the HTML content from the provided URL silently (`-s`).
+- **`grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}'`**: Searches for an IP address pattern in the HTML content. The `-o` option prints only the matching part (IP addresses), and `-E` enables extended regex.
+- **`head -n 1`**: Prints the first occurrence of the matched IP address, which is assumed to be the latest build number’s IP.
+
+### **Note:**
+- The script assumes that the IP addresses are in the format `xxx.xxx.xxx.xxx`.
+- The script grabs the first IP address it finds (`head -n 1`), assuming it is the latest build number's IP. You may need to adjust the script depending on the HTML structure of your webpage.
+  
+### **Additional Considerations:**
+- Ensure that the server hosting the webpage allows access via `curl`.
+- If the URL is protected with authentication, you might need to include authentication options in the `curl` command.
+
+Let me know if you need further adjustments or explanations!
