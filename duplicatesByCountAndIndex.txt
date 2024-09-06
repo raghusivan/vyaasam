@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Check if the Elasticsearch host, index name, and count are provided
+# Check if the Elasticsearch index name and count are provided
 if [ -z "$1" ] || [ -z "$2" ]; then
   echo "Usage: $0 <index_name> <count>"
   echo "Example: $0 ecomm_production_20220929_message_types 5"
@@ -11,12 +11,12 @@ fi
 INDEX_NAME="$1"
 TARGET_COUNT="$2"
 
-ES_HOST=""
+ES_HOST="host"
 
 USERNAME="user"
 PASSWORD="pass"
 
-# Query to fetch all documents from the Elasticsearch index (limited by the "size" parameter)
+# Fetch all documents from the Elasticsearch index (limited by the "size" parameter)
 QUERY='
 {
   "size": 10000,
@@ -27,9 +27,13 @@ QUERY='
 }
 '
 
-# Execute the curl request to Elasticsearch
-RESPONSE=$(curl -u "$USERNAME:$PASSWORD" --header "Content-Type: application/json" --location --request GET "$ES_HOST/$INDEX_NAME/_search" --data-raw "$QUERY")
+# Execute the curl request to Elasticsearch and store the response
+RESPONSE=$(curl -s -u "$USERNAME:$PASSWORD" --header "Content-Type: application/json" --location --request GET "$ES_HOST/$INDEX_NAME/_search" --data-raw "$QUERY")
 
-# Parse the message_id field from the response and count occurrences using awk
-# Filter to only list those with the specified count
-echo "$RESPONSE" | grep -o '"message_id":"[^"]*"' | awk -F':' '{print $2}' | sort | uniq -c | awk -v count="$TARGET_COUNT" '$1 == count {print $2}'
+# Print the raw response for debugging
+echo "Raw Response:"
+echo "$RESPONSE"
+
+# Parse the message_id field from the response, count occurrences using awk, and filter by the specified count
+echo "Filtered Results:"
+echo "$RESPONSE" | grep -o '"message_id":"[^"]*"' | awk -F':' '{print $2}' | tr -d '"' | sort | uniq -c | awk -v count="$TARGET_COUNT" '$1 == count {print $2}'
