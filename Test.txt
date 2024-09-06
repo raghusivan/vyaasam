@@ -1,4 +1,11 @@
+  indices_modified_date)
+    # Sort indices by the last modified date
+    URL="$BASE_URL/_cat/indices?h=index,creation.date.string,store.size&s=indexing.index_time_in_millis:desc"
+    ;;
 
+
+
+-----------------------------------------------------------------
 To modify the script to check for duplicates using the `message_id` field (instead of `_id`) and to count all occurrences, including those that appear only once, we'll need to adjust the script to extract the `message_id` field from the response and count all instances, whether duplicated or not.
 
 ### Modified Shell Script: `find_duplicates_by_message_id.sh`
