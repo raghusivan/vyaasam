@@ -11,10 +11,10 @@ fi
 INDEX_NAME="$1"
 TARGET_COUNT="$2"
 
-ES_HOST="https://master.uat.digitalreasoningelasticsearch.forriskdigitalreasoning.syd.non.c1.macquarie.com:9200"
+ES_HOST=""
 
-USERNAME="rmg_dr_elastic_au_ua"
-PASSWORD="qQNr1p_HJKLbz!U"
+USERNAME="user"
+PASSWORD="pass"
 
 # Query to fetch all documents from the Elasticsearch index (limited by the "size" parameter)
 QUERY='
