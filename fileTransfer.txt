@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Check if an IP address was provided as an argument
+if [ -z "$1" ]; then
+  echo "Usage: $0 <remote_server_ip>"
+  exit 1
+fi
+
+# Variables
+REMOTE_HOST="$1"                          # Remote server IP address provided as an argument
+LOCAL_FOLDER="~/raghu"                    # Local folder path
+REMOTE_FOLDER="/tmp/raghu"                # Destination folder on the remote server
+
+# Transfer files using SCP
+scp -r "$LOCAL_FOLDER"/* "$REMOTE_HOST:$REMOTE_FOLDER"
+
+# Check if the transfer was successful
+if [ $? -eq 0 ]; then
+  echo "Files successfully transferred to $REMOTE_HOST:$REMOTE_FOLDER"
+  
+  # Change the permissions of the transferred files to full access (777)
+  ssh "$REMOTE_HOST" "chmod -R 777 $REMOTE_FOLDER"
+  
+  if [ $? -eq 0 ]; then
+    echo "Permissions changed to full access (777) for files in $REMOTE_FOLDER"
+  else
+    echo "Error occurred while changing file permissions."
+  fi
+else
+  echo "Error occurred during file transfer."
+fi
