@@ -1,8 +1,10 @@
-  indices_modified_date)
-    # Sort indices by the last modified date
-    URL="$BASE_URL/_cat/indices?h=index,creation.date.string,store.size&s=indexing.index_time_in_millis:desc"
-    ;;
 
+
+
+  indices_docs_count)
+    # Sort indices by the number of documents as a proxy for recent activity
+    URL="$BASE_URL/_cat/indices?h=index,docs.count,store.size&s=docs.count:desc"
+    ;;
 
 
 -----------------------------------------------------------------
