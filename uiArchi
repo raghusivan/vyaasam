@@ -1,50 +1,57 @@
 <mxfile host="app.diagrams.net">
-  <diagram name="AWS Architecture" id="b0SzSaYsO1A3ksG5Te9W">
+  <diagram name="AWS Enhanced Architecture" id="b0SzSaYsO1A3ksG5Te9W">
     <mxGraphModel dx="1111" dy="689" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <!-- Front-End Application (UI) -->
         <mxCell id="2" value="Front-End Application (UI)" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#8dd3c7;strokeColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="40" y="180" width="140" height="60" as="geometry" />
+          <mxGeometry x="40" y="180" width="160" height="60" as="geometry" />
         </mxCell>
         <!-- API Gateway -->
         <mxCell id="3" value="AWS API Gateway" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#ffffb3;strokeColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="240" y="180" width="140" height="60" as="geometry" />
+          <mxGeometry x="260" y="180" width="140" height="60" as="geometry" />
         </mxCell>
         <!-- Lambda Function -->
-        <mxCell id="4" value="AWS Lambda Function (Python)" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#bebada;strokeColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="440" y="180" width="160" height="60" as="geometry" />
+        <mxCell id="4" value="AWS Lambda Function (Python)\n- Data Generation\n- Batch Handling" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#bebada;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="460" y="180" width="160" height="80" as="geometry" />
         </mxCell>
         <!-- Amazon S3 -->
-        <mxCell id="5" value="Amazon S3 Bucket" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#fb8072;strokeColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="660" y="180" width="140" height="60" as="geometry" />
+        <mxCell id="5" value="Amazon S3 Bucket\n- .eml Files Storage\n- status.txt File" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#fb8072;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="700" y="180" width="160" height="80" as="geometry" />
         </mxCell>
         <!-- S3 Event Notification -->
         <mxCell id="6" value="S3 Event Notification" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#80b1d3;strokeColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="660" y="300" width="140" height="60" as="geometry" />
+          <mxGeometry x="700" y="320" width="160" height="60" as="geometry" />
         </mxCell>
         <!-- AWS SNS or Lambda -->
-        <mxCell id="7" value="AWS SNS / Lambda for Notification" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#fdb462;strokeColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="440" y="300" width="160" height="60" as="geometry" />
+        <mxCell id="7" value="AWS SNS / Lambda for Notification\n- Notify Front-End on Completion" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#fdb462;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="460" y="320" width="160" height="80" as="geometry" />
         </mxCell>
-        <!-- Connection Lines -->
-        <mxCell id="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" edge="1" parent="1" source="2" target="3">
+        <!-- AWS Step Functions (Optional) -->
+        <mxCell id="8" value="AWS Step Functions (Optional)\n- Workflow Orchestration" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#ccebc5;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="460" y="80" width="160" height="60" as="geometry" />
+        </mxCell>
+        <!-- Connection Lines with Bright Green Color -->
+        <mxCell id="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;" edge="1" parent="1" source="2" target="3">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" edge="1" parent="1" source="3" target="4">
+        <mxCell id="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;" edge="1" parent="1" source="3" target="4">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" edge="1" parent="1" source="4" target="5">
+        <mxCell id="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;" edge="1" parent="1" source="4" target="5">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" edge="1" parent="1" source="5" target="6">
+        <mxCell id="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;" edge="1" parent="1" source="5" target="6">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" edge="1" parent="1" source="6" target="7">
+        <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;" edge="1" parent="1" source="6" target="7">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" edge="1" parent="1" source="7" target="2">
+        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;" edge="1" parent="1" source="7" target="2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;" edge="1" parent="1" source="8" target="4">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
