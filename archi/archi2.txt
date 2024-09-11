@@ -1,0 +1,152 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="AWS Enhanced Architecture with UI Polling" id="b0SzSaYsO1A3ksG5Te9W">
+    <mxGraphModel dx="1111" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Front-End Application (UI) -->
+        <mxCell id="2" value="Front-End Application (UI)\n- Polls S3 for status.txt" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#8dd3c7;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="180" height="80" as="geometry" />
+        </mxCell>
+        <!-- AWS API Gateway -->
+        <mxCell id="3" value="AWS API Gateway" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#ffffb3;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="260" y="240" width="140" height="60" as="geometry" />
+        </mxCell>
+        <!-- AWS Lambda Function -->
+        <mxCell id="4" value="AWS Lambda Function (Python)\n- Data Generation\n- Batch Handling\n- Updates status.txt" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#bebada;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="460" y="240" width="180" height="100" as="geometry" />
+        </mxCell>
+        <!-- Amazon S3 -->
+        <mxCell id="5" value="Amazon S3 Bucket\n- Stores .eml Files\n- Holds status.txt File" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#fb8072;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="700" y="240" width="180" height="80" as="geometry" />
+        </mxCell>
+        <!-- S3 Polling for Status -->
+        <mxCell id="6" value="UI Polls S3 for status.txt\n- Checks File for Updates" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#80b1d3;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="700" y="400" width="180" height="60" as="geometry" />
+        </mxCell>
+        <!-- Connection Lines with Bright Green Color and Descriptions -->
+        <mxCell id="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="2" target="3" value="User Request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="3" target="4" value="API Call">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="4" target="5" value="Data Processed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="2" target="6" value="Polls for Status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="6" target="5" value="Check status.txt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+
+=============================
+
+<mxfile host="app.diagrams.net">
+  <diagram name="AWS Enhanced Architecture with Approaches" id="b0SzSaYsO1A3ksG5Te9W">
+    <mxGraphModel dx="1111" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Front-End Application (UI) -->
+        <mxCell id="2" value="Front-End Application (UI)" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#8dd3c7;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="160" height="60" as="geometry" />
+        </mxCell>
+        <!-- API Gateway -->
+        <mxCell id="3" value="AWS API Gateway" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#ffffb3;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="260" y="240" width="140" height="60" as="geometry" />
+        </mxCell>
+        <!-- Lambda Function -->
+        <mxCell id="4" value="AWS Lambda Function (Python)\n- Data Generation\n- Batch Handling" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#bebada;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="460" y="240" width="160" height="80" as="geometry" />
+        </mxCell>
+        <!-- Amazon S3 -->
+        <mxCell id="5" value="Amazon S3 Bucket\n- .eml Files Storage\n- status.txt File" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#fb8072;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="700" y="240" width="160" height="80" as="geometry" />
+        </mxCell>
+        <!-- S3 Event Notification -->
+        <mxCell id="6" value="S3 Event Notification\n- Trigger on File Upload" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#80b1d3;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="700" y="400" width="160" height="60" as="geometry" />
+        </mxCell>
+        <!-- AWS SNS or Lambda -->
+        <mxCell id="7" value="AWS SNS / Lambda for Notification\n- Notify Front-End on Completion" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#fdb462;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="460" y="400" width="160" height="80" as="geometry" />
+        </mxCell>
+        <!-- AWS Step Functions (Optional) -->
+        <mxCell id="8" value="AWS Step Functions (Optional)\n- Workflow Orchestration" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#ccebc5;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="460" y="120" width="160" height="60" as="geometry" />
+        </mxCell>
+        <!-- UI Polling to status.txt Approach -->
+        <mxCell id="9" value="Approach: S3 Status File with Polling\nPros: Simple to implement, minimal AWS resources.\nCons: Potential delay due to polling frequency.\nCost: Low (S3 storage and read requests).\nReal-Time: Low (Polling adds delay).\nRecommendation: Recommended for non-real-time requirements." style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffcc;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="380" height="120" as="geometry" />
+        </mxCell>
+        <!-- Direct Lambda to API Gateway Approach -->
+        <mxCell id="10" value="Approach: Direct Lambda to API Gateway\nPros: Minimal setup, direct communication.\nCons: Suitable for short-running Lambda or simple tasks.\nCost: Low (API Gateway and Lambda executions).\nReal-Time: High (Direct response).\nRecommendation: Not recommended for non-time-critical needs." style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffe4e1;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="500" y="500" width="380" height="120" as="geometry" />
+        </mxCell>
+        <!-- SQS-Based Notifications Approach -->
+        <mxCell id="11" value="Approach: SQS-Based Notifications\nPros: Reliable for longer tasks, more real-time than S3 polling.\nCons: Slightly more complex setup.\nCost: Moderate (SQS operations and API calls).\nReal-Time: Medium (Delayed polling, less than S3).\nRecommendation: Not recommended for simplicity and cost efficiency." style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e6e6fa;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="40" y="640" width="380" height="120" as="geometry" />
+        </mxCell>
+        <!-- S3 Event Trigger to SNS Approach -->
+        <mxCell id="12" value="Approach: S3 Event Trigger → Lambda → SNS → UI Listener\nPros: Real-time notifications without frequent polling.\nCons: Requires SNS, Lambda, and API Gateway/WebSocket setup.\nCost: Moderate (SNS, Lambda invocations).\nReal-Time: High (Near real-time notifications).\nRecommendation: Not recommended for non-real-time use cases." style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#f0e68c;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="500" y="640" width="380" height="120" as="geometry" />
+        </mxCell>
+        <!-- Connection Lines with Bright Green Color and Descriptions -->
+        <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="2" target="3" value="User Request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="3" target="4" value="API Call">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="4" target="5" value="Data Processed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="5" target="6" value="File Updated">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="6" target="7" value="Trigger Notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="7" target="2" value="Completion Notified">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00FF00;labelBackgroundColor=#ffffff;fontColor=#000000;" edge="1" parent="1" source="8" target="4" value="Orchestrates Process">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+
+
+======================
+
+### **Alternative AWS Solution Analysis and Comparison**
+
+| **AWS Solution**                              | **Approach Description**                                                                 | **Pros**                                                                                     | **Cons**                                                        | **Cost Implications**                               | **Real-Time Capability**                | **Recommendation** |
+|--------------------------------------------|----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|-------------------------------------------------------------|-----------------------------------------------|-------------------------------------|----------------|
+| **S3 Status File with Polling**            | Lambda updates a status file in S3; front-end polls the file for status.                | Simple to implement, minimal AWS resources required.                                      | Potential delay due to polling frequency, increased S3 read costs. | Low cost (S3 storage and read requests).      | Low (Polling adds delay).           | **Recommended**: Best for non-real-time requirements. |
+| **Direct Lambda to API Gateway**           | Lambda sends a direct response to API Gateway; UI reads status from the API.            | Minimal setup, direct communication, cost-effective.                                       | Suitable only for short-running Lambda functions or simple tasks. | Low cost (API Gateway and Lambda executions). | High (Direct response, synchronous). | Not recommended for non-time-critical needs. |
+| **SQS-Based Notifications**                | Lambda sends a message to an SQS queue; front-end periodically polls API Gateway to check the queue. | Reliable for longer tasks, more real-time than S3 polling.                                 | Slightly more complex setup than direct Lambda response.     | Moderate cost (SQS operations and API calls). | Medium (Delayed polling, but less than S3). | Not recommended for simplicity and cost efficiency. |
+| **S3 Event Trigger → Lambda Function → SNS Topic → UI Listener** | S3 triggers a Lambda function on file update, which sends a notification to an SNS topic. UI listens for SNS messages via WebSocket or HTTP endpoint. | Real-time notifications without frequent polling, cost-effective, easy integration.       | Requires setup of SNS, Lambda, and API Gateway/WebSocket; slightly more complex. | Moderate cost (SNS, Lambda invocations).     | High (Near real-time notifications). | Not recommended due to setup complexity for non-real-time use cases. |
+
+---
+
+### **Final Recommendation: S3 Status File with Polling**
+
+#### **Recommended Solution: S3 Status File with Polling**
+
+- **Why?** This approach is the best choice because it meets the requirement for a non-real-time status update in a simple, cost-effective manner. It involves minimal AWS resources, is easy to implement, and offers sufficient performance for scenarios where slight delays are acceptable.
+  
+- **Cost-Effectiveness:** Very low cost, with charges limited to occasional S3 read requests and storage.
+
+- **Simplicity:** Requires only basic setup in AWS S3 and minimal code changes in the front end to periodically check for updates.
+
+By using the **S3 Status File with Polling** method, you achieve the desired functionality with the least complexity and cost, ensuring a lightweight and maintainable solution suitable for your needs.
+
