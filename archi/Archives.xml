@@ -16,7 +16,7 @@
         </mxCell>
 
         <!-- Initial Lambda Function -->
-        <mxCell id="InitialLambda" value="Lambda: Batch & Dispatch" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#6C8EBF;" vertex="1" parent="1">
+        <mxCell id="InitialLambda" value="Lambda: Batch  Dispatch" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#6C8EBF;" vertex="1" parent="1">
           <mxGeometry x="150" y="160" width="160" height="60" as="geometry" />
         </mxCell>
 
