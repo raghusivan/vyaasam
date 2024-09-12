@@ -1,73 +1,73 @@
-<mxfile host="app.diagrams.net">
+ <mxfile host="app.diagrams.net">
   <diagram name="Email Generation Architecture">
-    <mxGraphModel dx="1531" dy="752" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
         <!-- UI Box -->
         <mxCell id="UI" value="UI (Vue.js)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
-          <mxGeometry x="40" y="160" width="120" height="60" as="geometry" />
+          <mxGeometry x="20" y="160" width="100" height="60" as="geometry" />
         </mxCell>
 
         <!-- Arrow from UI to Lambda -->
-        <mxCell id="arrow1" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" source="UI" target="InitialLambda">
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" source="UI" target="InitialLambda">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- Initial Lambda Function -->
         <mxCell id="InitialLambda" value="Lambda: Batch & Dispatch" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#6C8EBF;" vertex="1" parent="1">
-          <mxGeometry x="200" y="160" width="160" height="60" as="geometry" />
+          <mxGeometry x="150" y="160" width="160" height="60" as="geometry" />
         </mxCell>
 
         <!-- Arrow from Initial Lambda to SQS -->
-        <mxCell id="arrow2" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" source="InitialLambda" target="SQSQueue">
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" source="InitialLambda" target="SQSQueue">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- SQS Queue -->
         <mxCell id="SQSQueue" value="SQS Queue" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.sqs;strokeColor=#6C8EBF;" vertex="1" parent="1">
-          <mxGeometry x="400" y="160" width="130" height="80" as="geometry" />
+          <mxGeometry x="350" y="160" width="130" height="80" as="geometry" />
         </mxCell>
 
         <!-- Arrow from SQS to Batch Processing Lambda -->
-        <mxCell id="arrow3" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" source="SQSQueue" target="BatchLambda">
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" source="SQSQueue" target="BatchLambda">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- Batch Processing Lambda Instances -->
         <mxCell id="BatchLambda" value="Lambda: Process Batch" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#6C8EBF;" vertex="1" parent="1">
-          <mxGeometry x="600" y="160" width="160" height="60" as="geometry" />
+          <mxGeometry x="550" y="160" width="160" height="60" as="geometry" />
         </mxCell>
 
         <!-- Dead Letter Queue -->
         <mxCell id="DLQ" value="SQS Dead Letter Queue" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.sqs;strokeColor=#FF0000;" vertex="1" parent="1">
-          <mxGeometry x="800" y="320" width="150" height="80" as="geometry" />
+          <mxGeometry x="750" y="320" width="150" height="80" as="geometry" />
         </mxCell>
 
         <!-- Error Arrow from Batch Lambda to DLQ -->
-        <mxCell id="errorArrow" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#FF0000;dashed=1;" edge="1" parent="1" source="BatchLambda" target="DLQ">
+        <mxCell id="errorArrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#FF0000;dashed=1;" edge="1" parent="1" source="BatchLambda" target="DLQ">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- S3 Bucket for Status and EML Files -->
         <mxCell id="S3Bucket" value="S3 Bucket" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.s3;strokeColor=#6C8EBF;" vertex="1" parent="1">
-          <mxGeometry x="600" y="320" width="120" height="80" as="geometry" />
+          <mxGeometry x="550" y="320" width="120" height="80" as="geometry" />
         </mxCell>
 
         <!-- Arrow from Batch Processing Lambda to S3 -->
-        <mxCell id="arrow4" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" source="BatchLambda" target="S3Bucket">
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" source="BatchLambda" target="S3Bucket">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- Arrow from S3 to UI -->
-        <mxCell id="arrow5" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;dashed=1;" edge="1" parent="1" source="S3Bucket" target="UI">
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;dashed=1;" edge="1" parent="1" source="S3Bucket" target="UI">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- Label for UI Polling -->
         <mxCell id="pollingLabel" value="UI Polls Status File in S3" style="text;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="350" y="400" width="160" height="30" as="geometry" />
+          <mxGeometry x="300" y="400" width="160" height="30" as="geometry" />
         </mxCell>
         
       </root>
