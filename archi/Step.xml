@@ -1,0 +1,95 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Step Functions Approach">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- UI Box -->
+        <mxCell id="UI" value="UI (Vue.js)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFC300;strokeColor=#FF5733;" vertex="1" parent="1">
+          <mxGeometry x="20" y="160" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway -->
+        <mxCell id="APIGateway" value="API Gateway" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.api_gateway;strokeColor=#F39C12;fillColor=#FFCC80;" vertex="1" parent="1">
+          <mxGeometry x="150" y="160" width="100" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from UI to API Gateway -->
+        <mxCell id="arrow0" value="Invoke API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="UI" target="APIGateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Step Functions -->
+        <mxCell id="StepFunctions" value="Step Functions" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.step_functions;strokeColor=#FF5733;fillColor=#FFCC80;" vertex="1" parent="1">
+          <mxGeometry x="300" y="160" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from API Gateway to Step Functions -->
+        <mxCell id="arrow1" value="Start Workflow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="APIGateway" target="StepFunctions">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Batch Processing Lambda Instances -->
+        <mxCell id="BatchLambda1" value="Lambda: Process Batch 1" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="BatchLambda2" value="Lambda: Process Batch 2" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="500" y="160" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="BatchLambdaN" value="Lambda: Process Batch N" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="500" y="240" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrows from Step Functions to Lambda -->
+        <mxCell id="arrow2" value="Trigger Batch 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="StepFunctions" target="BatchLambda1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow3" value="Trigger Batch 2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="StepFunctions" target="BatchLambda2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow4" value="Trigger Batch N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="StepFunctions" target="BatchLambdaN">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Step Functions to Notification -->
+        <mxCell id="arrow5" value="Notify Completion" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="StepFunctions" target="APIGateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Bucket for Status and EML Files -->
+        <mxCell id="S3Bucket" value="S3 Bucket" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.s3;strokeColor=#6C8EBF;fillColor=#FFCC80;" vertex="1" parent="1">
+          <mxGeometry x="700" y="160" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Processing Lambdas to S3 -->
+        <mxCell id="arrow6" value="Save Results" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda1" target="S3Bucket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow7" value="Save Results" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda2" target="S3Bucket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow8" value="Save Results" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambdaN" target="S3Bucket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Notification to UI -->
+        <mxCell id="Notification" value="Notification (SNS/WebSocket)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="900" y="160" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Notification to UI -->
+        <mxCell id="arrow9" value="Notify Frontend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;dashed=1;" edge="1" parent="1" source="Notification" target="UI">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
