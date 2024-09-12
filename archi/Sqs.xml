@@ -1,0 +1,125 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Email Generation Architecture">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- UI Box -->
+        <mxCell id="UI" value="UI (Vue.js)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="20" y="160" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway -->
+        <mxCell id="APIGateway" value="API Gateway" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.api_gateway;strokeColor=#F39C12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="160" width="100" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from UI to API Gateway -->
+        <mxCell id="arrow0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="UI" target="APIGateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Initial Lambda Function -->
+        <mxCell id="InitialLambda" value="Lambda: Batch and Dispatch" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="300" y="160" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from API Gateway to Lambda -->
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="APIGateway" target="InitialLambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Initial Lambda to SQS -->
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="InitialLambda" target="SQSQueue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- SQS Queue -->
+        <mxCell id="SQSQueue" value="SQS Queue" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.sqs;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="500" y="160" width="130" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from SQS to Batch Processing Lambda -->
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="SQSQueue" target="BatchLambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Batch Processing Lambda Instances -->
+        <mxCell id="BatchLambda" value="Lambda: Process Batch" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="700" y="160" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Dead Letter Queue -->
+        <mxCell id="DLQ" value="SQS Dead Letter Queue" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.sqs;strokeColor=#FF0000;" vertex="1" parent="1">
+          <mxGeometry x="900" y="320" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Error Arrow from Batch Lambda to DLQ -->
+        <mxCell id="errorArrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF0000;strokeWidth=2;dashed=1;" edge="1" parent="1" source="BatchLambda" target="DLQ">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Error Handling Lambda for DLQ -->
+        <mxCell id="DLQHandlerLambda" value="Lambda: Handle DLQ Messages" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#FF0000;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="320" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from DLQ to Error Handling Lambda -->
+        <mxCell id="arrow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF0000;strokeWidth=2;" edge="1" parent="1" source="DLQ" target="DLQHandlerLambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Bucket for Status and EML Files -->
+        <mxCell id="S3Bucket" value="S3 Bucket" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.s3;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="700" y="320" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Processing Lambda to S3 -->
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda" target="S3Bucket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from S3 to UI -->
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;dashed=1;" edge="1" parent="1" source="S3Bucket" target="UI">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- CloudWatch Logs for Monitoring -->
+        <mxCell id="CloudWatchLogs" value="CloudWatch Logs" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.cloudwatch;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="900" y="100" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Lambda to CloudWatch Logs -->
+        <mxCell id="arrow7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda" target="CloudWatchLogs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Label for UI Polling -->
+        <mxCell id="pollingLabel" value="UI Polls Status File in S3" style="text;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="300" y="400" width="160" height="30" as="geometry" />
+        </mxCell>
+        <!-- Continuation of Text Box for Explanation -->
+        <mxCell id="textBox1-cont" value="3. Lambda batches tasks, sets 'isLastBatch' flag for the last batch, and sends messages to SQS.\n4. Each SQS message triggers a Batch Processing Lambda function to process a batch.\n5. If a batch fails, the message is sent to the Dead Letter Queue (DLQ) after retries.\n6. The DLQ triggers an error handling Lambda function to manage failed messages.\n7. For successful batches, Lambda stores .eml files and updates status in S3.\n8. UI periodically polls the status file in S3 to know when all tasks are completed." style="rounded=0;whiteSpace=wrap;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="520" width="700" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Text Box for Lambda Limitations and Concurrency -->
+        <mxCell id="textBox2" value="Lambda Limitations:\n- Max execution time: 15 minutes per function.\n- Memory: 128 MB to 10 GB.\n- Concurrency: Configured limit per account, default is 1000 concurrent executions.\nConcurrency Handling:\n- SQS triggers multiple Lambdas concurrently based on message volume and concurrency limit.\n- Using 'isLastBatch' flag, the last Lambda instance processing can update the status file to 'Completed' in S3." style="rounded=0;whiteSpace=wrap;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="660" width="700" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow from Batch Lambda to Status Update in S3 -->
+        <mxCell id="arrow8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda" target="S3Bucket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Additional Text Box for Error Handling -->
+        <mxCell id="textBox3" value="Error Handling:\n1. Each SQS message has a retry policy configured. After maximum retries, messages go to the DLQ.\n2. DLQ Lambda processes failed messages and logs the errors or takes further actions.\n3. CloudWatch logs all Lambda executions and errors for monitoring and alerts." style="rounded=0;whiteSpace=wrap;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="820" width="700" height="100" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
