@@ -1,0 +1,130 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="SQS and SNS with Status Collection">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- UI Box -->
+        <mxCell id="UI" value="UI (Vue.js)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFC300;strokeColor=#FF5733;" vertex="1" parent="1">
+          <mxGeometry x="20" y="160" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway -->
+        <mxCell id="APIGateway" value="API Gateway" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.api_gateway;strokeColor=#F39C12;fillColor=#FFCC80;" vertex="1" parent="1">
+          <mxGeometry x="150" y="160" width="100" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from UI to API Gateway -->
+        <mxCell id="arrow0" value="Invoke API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="UI" target="APIGateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Initial Lambda Function -->
+        <mxCell id="InitialLambda" value="Lambda: Batch and Dispatch" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="300" y="160" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from API Gateway to Lambda -->
+        <mxCell id="arrow1" value="Trigger Lambda" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="APIGateway" target="InitialLambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Initial Lambda to SQS -->
+        <mxCell id="arrow2" value="Send Batch Tasks" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="InitialLambda" target="SQSQueue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- SQS Queue -->
+        <mxCell id="SQSQueue" value="SQS Queue" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.sqs;strokeColor=#FF5733;fillColor=#FFCC80;" vertex="1" parent="1">
+          <mxGeometry x="500" y="160" width="130" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from SQS to Batch Processing Lambda 1 -->
+        <mxCell id="arrow3" value="Trigger Lambda for Batch 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="SQSQueue" target="BatchLambda1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Batch Processing Lambda Instance 1 -->
+        <mxCell id="BatchLambda1" value="Lambda: Process Batch 1" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="700" y="100" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Lambda 1 to DynamoDB -->
+        <mxCell id="arrow4" value="Update Status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda1" target="DynamoDB">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- DynamoDB Table -->
+        <mxCell id="DynamoDB" value="DynamoDB Table" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.dynamodb;strokeColor=#FF5733;fillColor=#FFCC80;" vertex="1" parent="1">
+          <mxGeometry x="900" y="160" width="130" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from DynamoDB to Monitoring Lambda -->
+        <mxCell id="arrow5" value="Check Statuses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="DynamoDB" target="StatusMonitorLambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Monitoring Lambda Function -->
+        <mxCell id="StatusMonitorLambda" value="Lambda: Monitor Status" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="160" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Monitoring Lambda to SNS -->
+        <mxCell id="arrow6" value="Notify Completion" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="StatusMonitorLambda" target="SNSTopic">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- SNS Topic -->
+        <mxCell id="SNSTopic" value="SNS Topic" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.sns;strokeColor=#FF5733;fillColor=#FFCC80;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="160" width="130" height="80" as="geometry" />
+        </mxCell>
+        <!-- Arrow from SNS Topic to UI -->
+        <mxCell id="arrow7" value="Notify Frontend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;dashed=1;" edge="1" parent="1" source="SNSTopic" target="UI">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Processing Lambda 2 to DynamoDB -->
+        <mxCell id="arrow8" value="Update Status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda2" target="DynamoDB">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Batch Processing Lambda Instance 2 -->
+        <mxCell id="BatchLambda2" value="Lambda: Process Batch 2" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="700" y="200" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Processing Lambda N to DynamoDB -->
+        <mxCell id="arrow9" value="Update Status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambdaN" target="DynamoDB">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Batch Processing Lambda Instance N -->
+        <mxCell id="BatchLambdaN" value="Lambda: Process Batch N" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#FFCC80;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="700" y="300" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- CloudWatch Logs for Monitoring -->
+        <mxCell id="CloudWatchLogs" value="CloudWatch Logs" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.cloudwatch;strokeColor=#6C8EBF;fillColor=#FFCC80;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="300" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Lambda 1 to CloudWatch Logs -->
+        <mxCell id="arrow10" value="Log Execution of Batch 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda1" target="CloudWatchLogs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Lambda 2 to CloudWatch Logs -->
+        <mxCell id="arrow11" value="Log Execution of Batch 2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambda2" target="CloudWatchLogs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Batch Lambda N to CloudWatch Logs -->
+        <mxCell id="arrow12" value="Log Execution of Batch N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;strokeColor=#FF5733;strokeWidth=2;" edge="1" parent="1" source="BatchLambdaN" target="CloudWatchLogs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
