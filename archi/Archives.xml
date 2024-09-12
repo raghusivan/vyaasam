@@ -39,7 +39,7 @@
         <mxCell id="BatchLambda" value="Lambda: Process Batch" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#D5E8D4;strokeColor=#6C8EBF;" vertex="1" parent="1">
           <mxGeometry x="600" y="160" width="160" height="60" as="geometry" />
         </mxCell>
-        
+
         <!-- Dead Letter Queue -->
         <mxCell id="DLQ" value="SQS Dead Letter Queue" style="shape=mxgraph.aws4.resource;whiteSpace=wrap;html=1;align=center;image=mxgraph.aws4.sqs;strokeColor=#FF0000;" vertex="1" parent="1">
           <mxGeometry x="800" y="320" width="150" height="80" as="geometry" />
@@ -67,7 +67,7 @@
 
         <!-- Label for UI Polling -->
         <mxCell id="pollingLabel" value="UI Polls Status File in S3" style="text;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="300" y="280" width="160" height="30" as="geometry" />
+          <mxGeometry x="350" y="400" width="160" height="30" as="geometry" />
         </mxCell>
         
       </root>
