@@ -1,0 +1,9 @@
+Hi [Manager's Name],
+
+I wanted to clarify the capabilities of AWS Lambda concerning the batching of tasks.
+
+After reviewing AWS Lambda's documentation and best practices, I've confirmed that Lambda cannot automatically split a single invocation into multiple concurrent executions or batches. Lambda handles each invocation as a single event in its isolated environment. Therefore, if we have a single request triggering the Lambda function (e.g., from an ALB), Lambda will not automatically batch the tasks internally.
+
+However, Lambda does support concurrent processing if there are multiple requests or events triggering the function. In that case, it can scale horizontally to handle multiple invocations simultaneously, but this is different from handling multiple batches within a single invocation.
+
+To achieve batching or concurrent processing within a single Lambda invocation, we will need to implement custom logic in the Lambda function itself or use additional AWS services like SQS or AWS Step Functions to manage the batching externally.
