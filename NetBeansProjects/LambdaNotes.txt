@@ -1,3 +1,74 @@
+Subject: Proposal for Improved Method to Handle Email Configuration
+
+Hi Ankush and Tulika,
+
+Thank you for your feedback on our recent session. Based on our discussion, I have outlined some amendments to the design, along with additional suggestions for your consideration.
+
+### **Current Design Amendments:**
+
+- **Invocation Method:** Use Postman to invoke the Lambda function via the ALB.
+- **Request Handling:** The ALB will forward the HTTP request to Lambda and receive the response.
+
+However, considering the number of parameters we need to handle — such as multiple recipient addresses (To, CC, BCC), file attachments, and other custom fields — I suggest that we explore using a simple JavaScript page hosted on an S3 bucket instead of relying on Postman. Here's why:
+
+### **Advantages of Using a Simple JavaScript Page:**
+
+1. **Ease of Input Handling:**
+   - A JavaScript page offers a more user-friendly interface, making it easier to input multiple fields and manage file attachments. This approach also allows for input validation and error handling that Postman does not support.
+
+2. **Dynamic Behavior:**
+   - JavaScript can dynamically adapt the form based on user input, providing better interactivity (such as enabling/disabling fields or giving warnings for invalid input) that is not feasible with Postman.
+
+3. **Efficient Attachment Handling:**
+   - The JavaScript solution would make it straightforward to handle multiple file attachments, including previewing files and validating their size and type before submission. This is more efficient compared to manually attaching files in Postman.
+
+4. **Automated Polling for Results:**
+   - A JavaScript page can implement automatic polling to check the completion status of the Lambda function, a feature that is not available in Postman. This would enable real-time updates and a more streamlined workflow.
+
+### **Parameters to Handle:**
+
+To provide more context, here is the full list of parameters we need to manage for the email configuration:
+
+- **To:** Recipient email addresses (comma-separated)
+- **CC:** CC email addresses (comma-separated)
+- **BCC:** BCC email addresses (comma-separated)
+- **Attachments:** Multiple files of various sizes and formats
+- **Sentence Injected in Subject:** Custom text to be inserted in the subject line
+- **Sentence Injected in Body:** Custom text to be inserted in the email body
+- **Direction:** Email direction (In/Out)
+- **Emoji:** Emoji to be included in the email
+- **Disclaimer:** Custom disclaimer text
+- **Email Format:** Format of the email (Text/HTML)
+- **Foreign Characters:** Text containing foreign characters to be included in the email
+- **Advertisement Content:** Content for advertisement to be embedded in the email
+- **Password Protected Attachments:** Checkbox to indicate if attachments are password protected
+- **Reply Chain:** Checkbox to indicate changes in the reply chain (change in participants)
+
+### **Findings So Far:**
+
+1. **Concurrency Limitations:**
+   - Lambda functions only scale concurrently with a high volume of incoming requests. Since we're handling a single HTTP request, Lambda will not batch tasks internally.
+
+2. **Batching Process:**
+   - To enable batching, the request should go through an initial Lambda function that will handle batching with SQS, as shown in the provided diagram.
+
+3. **Notification and Response Aggregation:**
+   - Sending a response after Lambda processing completes is challenging, as multiple Lambda instances may run concurrently. We might need a mechanism to aggregate these responses or consider developing a separate API endpoint to check the status.
+
+### **Next Steps:**
+
+Given the complexity of the parameters and the need for a more flexible solution, I recommend we develop a simple JavaScript page hosted on S3. This will make the process more efficient and user-friendly, with better options for configuration, submission, and monitoring.
+
+Would you be open to scheduling a session to discuss this approach in more detail? We could also use this time to start working on a prototype.
+
+Looking forward to your thoughts.
+
+Best regards,  
+[Your Name]  
+
+===========================================
+
+
 Here’s how the email with the formatted table would look in Microsoft Outlook:
 
 ---
