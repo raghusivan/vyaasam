@@ -1,0 +1,322 @@
+
+ npm install bootstrap bootstrap-vue-3
+
+
+=====================
+
+To create a compact form where both the input fields and the submitted data are displayed simultaneously without the need for scrolling, we will:
+
+1. **Use a Smaller Font Size and Compact Layout**: We'll use Bootstrap's utility classes to make the form elements smaller and more compact.
+2. **Display Form and Submitted Data Side by Side**: Use a grid layout to display the input fields on the left and the submitted data on the right, ensuring both are visible without scrolling.
+3. **Optimize for Minimal Space**: Ensure the layout is compact and fits within the typical viewport size.
+
+Here's the updated code:
+
+### Updated Vue Component
+
+#### `src/components/FormComponent.vue`
+
+```vue
+<template>
+  <b-form @submit.prevent="validateForm">
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">To:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.to"
+          type="text"
+          placeholder="Enter To email(s)"
+          :state="validation.to"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+        <b-form-invalid-feedback :state="validation.to" class="small">Please enter a valid To address.</b-form-invalid-feedback>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">CC:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.cc"
+          type="text"
+          placeholder="Enter CC email(s)"
+          :state="validation.cc"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+        <b-form-invalid-feedback :state="validation.cc" class="small">Please enter a valid CC address.</b-form-invalid-feedback>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">BCC:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.bcc"
+          type="text"
+          placeholder="Enter BCC email(s)"
+          :state="validation.bcc"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+        <b-form-invalid-feedback :state="validation.bcc" class="small">Please enter a valid BCC address.</b-form-invalid-feedback>
+      </div>
+    </div>
+
+    <!-- Additional fields -->
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Direction:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.direction"
+          type="text"
+          placeholder="Enter Direction"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Emoji:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.emoji"
+          type="text"
+          placeholder="Enter Emoji"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Disclaimer:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.disclaimer"
+          type="text"
+          placeholder="Enter Disclaimer"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Email Body:</div>
+      <div class="col-8">
+        <b-form-textarea
+          v-model="form.emailBody"
+          placeholder="Enter Email text or HTML body"
+          rows="1"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-textarea>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Foreign Characters:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.foreignChars"
+          type="text"
+          placeholder="Enter Foreign Characters"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Advertisement Content:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.adContent"
+          type="text"
+          placeholder="Enter Advertisement Content"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Protected Attachments:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.protectedAttachments"
+          type="text"
+          placeholder="Enter Attachment Info"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Reply Chain:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.replyChain"
+          type="text"
+          placeholder="Enter Reply Chain Info"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+      </div>
+    </div>
+
+    <div class="form-row align-items-center mb-1">
+      <div class="col-4 text-right pr-1 small font-weight-bold">Format:</div>
+      <div class="col-8">
+        <b-form-input
+          v-model="form.format"
+          type="text"
+          placeholder="Enter Format"
+          size="sm"
+          class="form-control-sm"
+        ></b-form-input>
+      </div>
+    </div>
+
+    <!-- Submit Button -->
+    <b-button type="submit" variant="primary" size="sm" class="mt-2 btn-block">Submit</b-button>
+  </b-form>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      // Prepopulate with sample data
+      form: {
+        to: 'example@domain.com',
+        cc: 'cc@domain.com',
+        bcc: 'bcc@domain.com',
+        direction: 'In',
+        emoji: '😊',
+        disclaimer: 'Confidential',
+        emailBody: 'This is a sample email body.',
+        foreignChars: '你好, Bonjour',
+        adContent: 'Sample Advertisement Content',
+        protectedAttachments: 'Attachment1.pdf',
+        replyChain: 'No change in participants',
+        format: 'Email',
+      },
+      validation: {
+        to: null,
+        cc: null,
+        bcc: null,
+      },
+    };
+  },
+  methods: {
+    validateForm() {
+      // Simple email validation
+      this.validation.to = this.validateEmail(this.form.to);
+      this.validation.cc = this.validateEmail(this.form.cc);
+      this.validation.bcc = this.validateEmail(this.form.bcc);
+
+      if (this.validation.to && this.validation.cc && this.validation.bcc) {
+        this.$emit('submitForm', { ...this.form });
+      }
+    },
+    validateEmail(email) {
+      if (!email) return false;
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return regex.test(email);
+    },
+  },
+};
+</script>
+```
+
+### Updated Main Component to Show Form and Submitted Data Side by Side
+
+#### `src/App.vue`
+
+```vue
+<template>
+  <div id="app" class="container mt-4">
+    <div class="row">
+      <!-- Form on the left -->
+      <div class="col-md-6">
+        <b-card header="Email Configuration" class="mb-4" style="max-height: 70vh; overflow-y: auto;">
+          <FormComponent @submitForm="handleFormSubmit" />
+        </b-card>
+      </div>
+
+      <!-- Submitted data on the right -->
+      <div class="col-md-6">
+        <b-card header="Submitted Data" class="mb-4" style="max-height: 70vh; overflow-y: auto;">
+          <div v-if="submitted">
+            <h6 class="mb-2">Submitted Data:</h6>
+            <pre class="small">{{ formattedData }}</pre>
+
+            <h6 class="mt-3 mb-2">Postman Input Arguments:</h6>
+            <pre class="small">{{ getPostmanInput() }}</pre>
+          </div>
+          <div v-else>
+            <p class="small">No data submitted yet.</p>
+          </div>
+        </b-card>
+      </div>
+    </
+
+div>
+  </div>
+</template>
+
+<script>
+import FormComponent from './components/FormComponent.vue';
+
+export default {
+  name: 'App',
+  components: {
+    FormComponent,
+  },
+  data() {
+    return {
+      submitted: false,
+      submittedData: {},
+    };
+  },
+  computed: {
+    formattedData() {
+      return JSON.stringify(this.submittedData, null, 2);
+    },
+  },
+  methods: {
+    handleFormSubmit(data) {
+      this.submittedData = data;
+      this.submitted = true;
+    },
+    getPostmanInput() {
+      return JSON.stringify(this.submittedData, null, 2);
+    },
+  },
+};
+</script>
+```
+
+### Explanation of Changes
+
+1. **Compact Layout**: The use of smaller form sizes (`size="sm"`), minimal margins (`mb-1`), and `form-control-sm` classes make the input fields and labels compact.
+2. **Side-by-Side Display**: The main component uses a Bootstrap grid layout (`col-md-6`) to show the form and submitted data side by side.
+3. **Scroll Control**: The cards have a maximum height (`max-height: 70vh`) with overflow enabled (`overflow-y: auto`) to prevent overflow and maintain a compact view.
+4. **Formatted Submitted Data**: Both the submitted data and the formatted Postman input arguments are displayed in a preformatted (`<pre>`) block to keep the text compact and easy to read.
+
+### Run the Application
+
+1. **Start the Development Server:**
+
+   ```bash
+   npm run serve
+   ```
+
+2. **Open your browser** and navigate to `http://localhost:8080` to view your updated application.
+
+With these changes, the form and the submitted data will be displayed side by side in a compact layout, minimizing scrolling and providing a better user experience.
