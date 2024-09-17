@@ -1,0 +1,210 @@
+Here's the modified Linux shell script that allows you to specify the number of records to retrieve from the Elasticsearch index as an additional input from the command line. This script uses SSH to connect to the specified server and runs a curl command to get the desired number of records.
+
+Modified Linux Shell Script: SSH to Server and Retrieve Specified Number of Records
+
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 5 ]; then
+  echo "Usage: $0 <IP_ADDRESS> <INDEX_NAME> <USERNAME> <PASSWORD> <NUMBER_OF_RECORDS>"
+  exit 1
+fi
+
+# Assign command-line arguments to variables
+IP_ADDRESS="$1"
+INDEX_NAME="$2"
+USERNAME="$3"
+PASSWORD="$4"
+NUMBER_OF_RECORDS="$5"
+
+# Get current timestamp for the file name
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+# Define the output file name with the current timestamp
+OUTPUT_FILE="latest_${NUMBER_OF_RECORDS}_records_${TIMESTAMP}.json"
+
+# Elasticsearch query to retrieve the specified number of records
+ES_QUERY="{
+  \"size\": $NUMBER_OF_RECORDS,
+  \"sort\": [
+    {
+      \"@timestamp\": {
+        \"order\": \"desc\"
+      }
+    }
+  ]
+}"
+
+# Define the remote curl command
+REMOTE_CURL_COMMAND="curl -s -u $USERNAME:$PASSWORD -X GET 'http://localhost:9200/$INDEX_NAME/_search' -H 'Content-Type: application/json' -d '$ES_QUERY' -o '$OUTPUT_FILE'"
+
+# SSH to the server and execute the curl command
+ssh $IP_ADDRESS "$REMOTE_CURL_COMMAND"
+
+# Check if the SSH and curl commands were successful
+if [ $? -eq 0 ]; then
+  echo "Latest $NUMBER_OF_RECORDS records successfully retrieved and saved to $OUTPUT_FILE on server $IP_ADDRESS"
+else
+  echo "Error: Failed to retrieve records from Elasticsearch on server $IP_ADDRESS"
+fi
+
+How to Use the Script:
+
+1. Save the Script:
+
+Save the script to a file, e.g., ssh_get_records.sh.
+
+
+
+2. Make the Script Executable:
+
+chmod +x ssh_get_records.sh
+
+
+3. Run the Script with Command-Line Arguments:
+
+./ssh_get_records.sh <IP_ADDRESS> <INDEX_NAME> <USERNAME> <PASSWORD> <NUMBER_OF_RECORDS>
+
+Replace <IP_ADDRESS>, <INDEX_NAME>, <USERNAME>, <PASSWORD>, and <NUMBER_OF_RECORDS> with the actual values. For example:
+
+
+./ssh_get_records.sh 192.168.1.100 alerts_index es_user es_password 200
+
+
+
+Explanation of the Script:
+
+Command-Line Arguments:
+
+The script takes five command-line arguments:
+
+IP_ADDRESS: The IP address of the server to SSH into.
+
+INDEX_NAME: The name of the Elasticsearch index.
+
+USERNAME and PASSWORD: Credentials for accessing Elasticsearch.
+
+NUMBER_OF_RECORDS: The number of records you want to retrieve.
+
+
+
+SSH Connection:
+
+The ssh command connects to the server at IP_ADDRESS without specifying a user, assuming default SSH settings or key-based authentication.
+
+
+Remote Execution:
+
+The curl command is executed remotely via SSH to retrieve the specified number of records from Elasticsearch running on the remote server (localhost).
+
+
+Error Handling:
+
+The script checks the exit status of the SSH and curl commands to determine if the operation was successful.
+
+
+
+Notes:
+
+SSH Key Authentication:
+
+Make sure SSH key-based authentication is correctly set up to avoid needing to enter a password each time.
+
+
+Dynamic Record Retrieval:
+
+This script allows for dynamic retrieval of any number of records based on user input, making it flexible and easy to use for various needs.
+
+=================$$$$/=========
+
+Here's the modified Linux shell script that takes all necessary inputs (IP address, index name, username, and password) from the command line.
+
+Modified Linux Shell Script: Retrieve Alerts with Unique Statuses
+
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 4 ]; then
+  echo "Usage: $0 <IP_ADDRESS> <INDEX_NAME> <USERNAME> <PASSWORD>"
+  exit 1
+fi
+
+# Assign command-line arguments to variables
+IP_ADDRESS="$1"
+INDEX_NAME="$2"
+USERNAME="$3"
+PASSWORD="$4"
+
+# Get current timestamp for the file name
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+# Define the output file name with the current timestamp
+OUTPUT_FILE="alerts_unique_statuses_${TIMESTAMP}.json"
+
+# Elasticsearch query to retrieve alerts with unique statuses
+ES_QUERY='{
+  "size": 0,
+  "aggs": {
+    "unique_statuses": {
+      "terms": {
+        "field": "status.keyword"
+      }
+    }
+  }
+}'
+
+# Execute curl command to retrieve alerts from Elasticsearch
+curl -s -u $USERNAME:$PASSWORD -X GET "http://$IP_ADDRESS:9200/$INDEX_NAME/_search" \
+-H "Content-Type: application/json" -d "$ES_QUERY" -o "$OUTPUT_FILE"
+
+# Check if the curl command was successful
+if [ $? -eq 0 ]; then
+  echo "Alerts with unique statuses successfully retrieved and saved to $OUTPUT_FILE"
+else
+  echo "Error: Failed to retrieve alerts from Elasticsearch"
+fi
+
+How to Use the Script:
+
+1. Save the Script:
+
+Save the script to a file, e.g., get_unique_alerts.sh.
+
+
+
+2. Make the Script Executable:
+
+chmod +x get_unique_alerts.sh
+
+
+3. Run the Script with Command-Line Arguments:
+
+./get_unique_alerts.sh <IP_ADDRESS> <INDEX_NAME> <USERNAME> <PASSWORD>
+
+Replace <IP_ADDRESS>, <INDEX_NAME>, <USERNAME>, and <PASSWORD> with the actual values. For example:
+
+
+./get_unique_alerts.sh 192.168.1.100 alerts_index admin password123
+
+
+
+Explanation of the Changes:
+
+Command-Line Arguments:
+
+The script now takes all required inputs as command-line arguments.
+
+The if statement checks if the correct number of arguments (4) is provided. If not, it prints the usage information and exits.
+
+
+Variables:
+
+The script assigns the command-line arguments to the appropriate variables (IP_ADDRESS, INDEX_NAME, USERNAME, PASSWORD).
+
+
+
+This modification makes the script more flexible and reusable by allowing different input parameters to be provided dynamically at runtime.
+
+
+
+
