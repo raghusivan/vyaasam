@@ -1,0 +1,242 @@
+Here's the modified Linux shell script that is designed to be executed directly on the remote machine (where Elasticsearch is running). This script uses curl to perform a search for specific text in a given Elasticsearch index and saves the results in a file with the current timestamp.
+
+Linux Shell Script: Search for Specific Text in Elasticsearch Index
+
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 4 ]; then
+  echo "Usage: $0 <INDEX_NAME> <USERNAME> <PASSWORD> <SEARCH_TEXT>"
+  exit 1
+fi
+
+# Assign command-line arguments to variables
+INDEX_NAME="$1"
+USERNAME="$2"
+PASSWORD="$3"
+SEARCH_TEXT="$4"
+
+# Get current timestamp for the file name
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+# Define the output file name with the current timestamp
+OUTPUT_FILE="search_results_${TIMESTAMP}.json"
+
+# Elasticsearch query to search for specific text
+ES_QUERY="{
+  \"query\": {
+    \"match\": {
+      \"_all\": \"$SEARCH_TEXT\"
+    }
+  }
+}"
+
+# Execute the curl command to perform the search
+curl -s -u $USERNAME:$PASSWORD -X GET "http://localhost:9200/$INDEX_NAME/_search" \
+-H "Content-Type: application/json" -d "$ES_QUERY" -o "$OUTPUT_FILE"
+
+# Check if the curl command was successful
+if [ $? -eq 0 ]; then
+  echo "Search for '$SEARCH_TEXT' completed successfully, and results are saved to $OUTPUT_FILE"
+else
+  echo "Error: Failed to perform the search on Elasticsearch"
+fi
+
+How to Use the Script:
+
+1. Save the Script:
+
+Save the script to a file, e.g., search_text.sh.
+
+
+
+2. Make the Script Executable:
+
+chmod +x search_text.sh
+
+
+3. Run the Script with Command-Line Arguments:
+
+./search_text.sh <INDEX_NAME> <USERNAME> <PASSWORD> <SEARCH_TEXT>
+
+Replace <INDEX_NAME>, <USERNAME>, <PASSWORD>, and <SEARCH_TEXT> with the actual values. For example:
+
+
+./search_text.sh my_index es_user es_password "error log"
+
+
+
+Explanation of the Script:
+
+Command-Line Arguments:
+
+The script takes four command-line arguments:
+
+INDEX_NAME: The name of the Elasticsearch index to search.
+
+USERNAME and PASSWORD: Credentials for accessing Elasticsearch.
+
+SEARCH_TEXT: The text to search for in the Elasticsearch index.
+
+
+
+Elasticsearch Query:
+
+The match query searches all fields (_all) in the specified index for the provided SEARCH_TEXT.
+
+
+Curl Execution:
+
+The curl command is executed locally on the machine where Elasticsearch is running. It performs the search and saves the results to a file with a name that includes the current timestamp.
+
+
+Error Handling:
+
+The script checks if the curl command executed successfully and provides appropriate feedback.
+
+
+
+Notes:
+
+Execute on Remote Machine:
+
+This script should be executed directly on the machine where Elasticsearch is running. Ensure that the environment has access to the curl utility and the necessary network permissions to connect to the Elasticsearch server.
+
+
+Output File Location:
+
+The output file (search_results_<timestamp>.json) will be saved in the current working directory. Ensure you have the appropriate permissions to write to this directory.
+
+===============
+Here is the complete version of the Linux shell script that allows the Elasticsearch query to be passed as a file reference:
+
+Linux Shell Script: Execute Elasticsearch Query from a File
+
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 4 ]; then
+  echo "Usage: $0 <INDEX_NAME> <USERNAME> <PASSWORD> <QUERY_FILE>"
+  exit 1
+fi
+
+# Assign command-line arguments to variables
+INDEX_NAME="$1"
+USERNAME="$2"
+PASSWORD="$3"
+QUERY_FILE="$4"
+
+# Check if the query file exists
+if [ ! -f "$QUERY_FILE" ]; then
+  echo "Error: Query file '$QUERY_FILE' not found!"
+  exit 1
+fi
+
+# Get current timestamp for the file name
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+# Define the output file name with the current timestamp
+OUTPUT_FILE="search_results_${TIMESTAMP}.json"
+
+# Read the query from the file
+ES_QUERY=$(<"$QUERY_FILE")
+
+# Execute the curl command to perform the search
+curl -s -u $USERNAME:$PASSWORD -X GET "http://localhost:9200/$INDEX_NAME/_search" \
+-H "Content-Type: application/json" -d "$ES_QUERY" -o "$OUTPUT_FILE"
+
+# Check if the curl command was successful
+if [ $? -eq 0 ]; then
+  echo "Search completed successfully, and results are saved to $OUTPUT_FILE"
+else
+  echo "Error: Failed to perform the search on Elasticsearch"
+fi
+
+How to Use the Script:
+
+1. Save the Script:
+
+Save the script to a file, e.g., search_query_file.sh.
+
+
+
+2. Make the Script Executable:
+
+chmod +x search_query_file.sh
+
+
+3. Prepare the Query File:
+
+Create a query file (e.g., query.json) containing your Elasticsearch query in JSON format. For example:
+
+
+{
+  "query": {
+    "match": {
+      "_all": "error log"
+    }
+  }
+}
+
+
+4. Run the Script with Command-Line Arguments:
+
+./search_query_file.sh <INDEX_NAME> <USERNAME> <PASSWORD> <QUERY_FILE>
+
+Replace <INDEX_NAME>, <USERNAME>, <PASSWORD>, and <QUERY_FILE> with the actual values. For example:
+
+
+./search_query_file.sh my_index es_user es_password query.json
+
+
+
+Explanation of the Script:
+
+Command-Line Arguments:
+
+The script takes four command-line arguments:
+
+INDEX_NAME: The name of the Elasticsearch index to search.
+
+USERNAME and PASSWORD: Credentials for accessing Elasticsearch.
+
+QUERY_FILE: The file containing the Elasticsearch query in JSON format.
+
+
+
+Check for Query File:
+
+The script checks if the provided query file exists. If not, it displays an error message and exits.
+
+
+Read Query from File:
+
+The script reads the contents of the query file into the ES_QUERY variable using the $(<"$QUERY_FILE") syntax.
+
+
+Curl Execution:
+
+The curl command is executed locally to perform the search using the query read from the file. The results are saved to a file with a name that includes the current timestamp.
+
+
+Error Handling:
+
+The script checks if the curl command executed successfully and provides appropriate feedback.
+
+
+
+Notes:
+
+Execute on Remote Machine:
+
+This script is designed to be run directly on the machine where Elasticsearch is hosted.
+
+
+Flexible Query Input:
+
+By using a file to input the Elasticsearch query, the script allows for flexibility and easy modification of the search criteria without changing the script itself.
+
+
+
+
+
