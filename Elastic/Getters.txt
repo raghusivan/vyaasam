@@ -1,3 +1,135 @@
+To modify the script so that it downloads the results to your local Mac machine under the current folder, we can use scp (Secure Copy Protocol) to securely copy the result file from the remote server back to your local machine after executing the curl command via SSH.
+
+Here's the updated script:
+
+Modified Linux Shell Script: SSH to Server, Retrieve Specified Number of Records, and Download to Local Machine
+
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 5 ]; then
+  echo "Usage: $0 <IP_ADDRESS> <INDEX_NAME> <USERNAME> <PASSWORD> <NUMBER_OF_RECORDS>"
+  exit 1
+fi
+
+# Assign command-line arguments to variables
+IP_ADDRESS="$1"
+INDEX_NAME="$2"
+USERNAME="$3"
+PASSWORD="$4"
+NUMBER_OF_RECORDS="$5"
+
+# Get current timestamp for the file name
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+# Define the output file name with the current timestamp
+OUTPUT_FILE="latest_${NUMBER_OF_RECORDS}_records_${TIMESTAMP}.json"
+
+# Elasticsearch query to retrieve the specified number of records
+ES_QUERY="{
+  \\\"size\\\": $NUMBER_OF_RECORDS,
+  \\\"sort\\\": [
+    {
+      \\\"@timestamp\\\": {
+        \\\"order\\\": \\\"desc\\\"
+      }
+    }
+  ]
+}"
+
+# Define the remote curl command to be executed on the remote server
+REMOTE_CURL_COMMAND="curl -s -u $USERNAME:$PASSWORD -X GET 'http://localhost:9200/$INDEX_NAME/_search' -H 'Content-Type: application/json' -d \"$ES_QUERY\" -o '$OUTPUT_FILE'"
+
+# SSH to the server and execute the curl command to generate the output file
+ssh $IP_ADDRESS "$REMOTE_CURL_COMMAND"
+
+# Check if the SSH and curl commands were successful
+if [ $? -eq 0 ]; then
+  echo "Latest $NUMBER_OF_RECORDS records successfully retrieved and saved to $OUTPUT_FILE on server $IP_ADDRESS"
+
+  # Download the file from the remote server to the local machine
+  scp "$IP_ADDRESS:$OUTPUT_FILE" .
+
+  # Check if the scp command was successful
+  if [ $? -eq 0 ]; then
+    echo "File $OUTPUT_FILE downloaded successfully to the local machine."
+  else
+    echo "Error: Failed to download the file from the remote server."
+  fi
+else
+  echo "Error: Failed to retrieve records from Elasticsearch on server $IP_ADDRESS"
+fi
+
+How to Use the Script:
+
+1. Save the Script:
+
+Save the script to a file, e.g., ssh_get_records_download.sh.
+
+
+
+2. Make the Script Executable:
+
+chmod +x ssh_get_records_download.sh
+
+
+3. Run the Script with Command-Line Arguments:
+
+./ssh_get_records_download.sh <IP_ADDRESS> <INDEX_NAME> <USERNAME> <PASSWORD> <NUMBER_OF_RECORDS>
+
+Replace <IP_ADDRESS>, <INDEX_NAME>, <USERNAME>, <PASSWORD>, and <NUMBER_OF_RECORDS> with the actual values. For example:
+
+
+./ssh_get_records_download.sh 192.168.1.100 alerts_index es_user es_password 200
+
+
+
+Explanation of the Script:
+
+Command-Line Arguments:
+
+The script takes five command-line arguments:
+
+IP_ADDRESS: The IP address of the server to SSH into.
+
+INDEX_NAME: The name of the Elasticsearch index.
+
+USERNAME and PASSWORD: Credentials for accessing Elasticsearch.
+
+NUMBER_OF_RECORDS: The number of records you want to retrieve.
+
+
+
+SSH and Curl Execution:
+
+The ssh command connects to the server at IP_ADDRESS and executes the curl command remotely to retrieve the specified number of records from Elasticsearch, saving the results to a file on the remote server.
+
+
+File Download Using SCP:
+
+The scp command securely copies the output file (OUTPUT_FILE) from the remote server back to the current directory on your local machine.
+
+
+Error Handling:
+
+The script checks if both the SSH and scp commands are successful and provides appropriate feedback.
+
+
+
+Notes:
+
+SSH Key Authentication:
+
+Ensure SSH key-based authentication is set up correctly to avoid needing to enter a password each time you SSH or scp to the server.
+
+
+Local File Download:
+
+
+
+=================
+
+
 Here's the modified Linux shell script that allows you to specify the number of records to retrieve from the Elasticsearch index as an additional input from the command line. This script uses SSH to connect to the specified server and runs a curl command to get the desired number of records.
 
 Modified Linux Shell Script: SSH to Server and Retrieve Specified Number of Records
