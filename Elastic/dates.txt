@@ -1,0 +1,55 @@
+02 98499100
+
+
+#!/bin/bash
+
+# Check if the Elasticsearch host and dates are provided
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+  echo "Usage: $0 <es_host> <index_name> <start_date> <end_date> [wildcard_query]"
+  echo "Example: $0 https://your_elasticsearch_host:9200 ecomm_production_20280929_message_types_2023-11-19 '2023-09-01T00:00:00' '2023-09-30T23:59:59'"
+  exit 1
+fi
+
+# Assign the Elasticsearch host, index name, start date, and end date from the arguments
+ES_HOST=""
+INDEX_NAME="$1"
+START_DATE="$2"
+END_DATE="$3"
+
+# Optional wildcard query
+WILDCARD_QUERY="*"
+if [ -n "$5" ]; then
+  WILDCARD_QUERY="$5"
+fi
+
+USERNAME=""
+PASSWORD=""
+
+# Replace these with your actual credentials
+
+# Fetch all documents from the Elasticsearch index (limited by the "size" parameter)
+QUERY="{
+  \"size\": 10000,
+  \"_source\": [\"parent_message_id\", \"@timestamp\"],
+  \"query\": {
+    \"bool\": {
+      \"must\": [
+        {\"range\": {\"@timestamp\": {\"gte\": \"$START_DATE\", \"lte\": \"$END_DATE\"}}},
+        {\"wildcard\": {\"_all\": \"$WILDCARD_QUERY\"}}
+      ]
+    }
+  },
+  \"sort\": [
+    {\"@timestamp\": {\"order\": \"desc\"}}
+  ]
+}"
+
+# Execute the curl request to Elasticsearch
+RESPONSE=$(curl -u "$USERNAME:$PASSWORD" --header "Content-Type: application/json" --location --request GET "$ES_HOST/$INDEX_NAME/_search" --data-raw "$QUERY")
+
+# Parse the parent_message_id field from the response and count duplicates using awk
+echo "$RESPONSE" | grep -o '"parent_message_id":"[^"]*' | awk -F'":"' '{print $2}' | sort | uniq -d
+
+
+./script_name.sh "https://your_elasticsearch_host:9200" "index" "2023-09-01T00:00:00" "2023-09-30T23:59:59"
+
