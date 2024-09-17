@@ -1,0 +1,115 @@
+Here's a Linux shell script to retrieve all documents with the same parent from an Elasticsearch index, where the size (number of results) is passed as a command-line parameter.
+
+Linux Shell Script: Retrieve All Documents with the Same Parent
+
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 5 ]; then
+  echo "Usage: $0 <INDEX_NAME> <USERNAME> <PASSWORD> <PARENT_ID> <SIZE>"
+  exit 1
+fi
+
+# Assign command-line arguments to variables
+INDEX_NAME="$1"
+USERNAME="$2"
+PASSWORD="$3"
+PARENT_ID="$4"
+SIZE="$5"
+
+# Get current timestamp for the file name
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+# Define the output file name with the current timestamp
+OUTPUT_FILE="parent_results_${TIMESTAMP}.json"
+
+# Elasticsearch query to search for documents with the same parent
+ES_QUERY="{
+  \"query\": {
+    \"term\": {
+      \"parent.keyword\": \"$PARENT_ID\"
+    }
+  },
+  \"size\": $SIZE
+}"
+
+# Execute the curl command to perform the search
+curl -s -u $USERNAME:$PASSWORD -X GET "http://localhost:9200/$INDEX_NAME/_search" \
+-H "Content-Type: application/json" -d "$ES_QUERY" -o "$OUTPUT_FILE"
+
+# Check if the curl command was successful
+if [ $? -eq 0 ]; then
+  echo "Search for documents with parent ID '$PARENT_ID' completed successfully, and results are saved to $OUTPUT_FILE"
+else
+  echo "Error: Failed to perform the search on Elasticsearch"
+fi
+
+How to Use the Script:
+
+1. Save the Script:
+
+Save the script to a file, e.g., search_parent.sh.
+
+
+
+2. Make the Script Executable:
+
+chmod +x search_parent.sh
+
+
+3. Run the Script with Command-Line Arguments:
+
+./search_parent.sh <INDEX_NAME> <USERNAME> <PASSWORD> <PARENT_ID> <SIZE>
+
+Replace <INDEX_NAME>, <USERNAME>, <PASSWORD>, <PARENT_ID>, and <SIZE> with the actual values. For example:
+
+
+./search_parent.sh my_index es_user es_password "MES-4bc2485ca17b8d6c-ffa9f4700000000" 100
+
+
+
+Explanation of the Script:
+
+Command-Line Arguments:
+
+The script takes five command-line arguments:
+
+INDEX_NAME: The name of the Elasticsearch index to search.
+
+USERNAME and PASSWORD: Credentials for accessing Elasticsearch.
+
+PARENT_ID: The parent ID to search for.
+
+SIZE: The number of results to return.
+
+
+
+Elasticsearch Query:
+
+The term query searches for all documents with the specified parent ID. The size parameter specifies the number of documents to return.
+
+
+Curl Execution:
+
+The curl command is executed locally to perform the search using the query defined in the script. The results are saved to a file with a name that includes the current timestamp.
+
+
+Error Handling:
+
+The script checks if the curl command executed successfully and provides appropriate feedback.
+
+
+
+Notes:
+
+Execute on Remote Machine:
+
+This script is designed to be run directly on the machine where Elasticsearch is hosted.
+
+
+Flexible Query Input:
+
+By using command-line arguments, the script allows for flexibility and easy modification of the search criteria without changing the script itself.
+
+
+
