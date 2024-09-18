@@ -1,0 +1,444 @@
+I'm sorry to hear you're encountering this error. The issue arises because you're referencing `this` inside the `data()` function when defining your validation rules. In JavaScript, arrow functions (`() => {}`) inside `data()` do not have the correct `this` context, leading to `this.rules` being undefined.
+
+---
+
+### **Problem Explanation**
+
+In your `FormComponent.vue`, you're using `this` inside the `rules` array within `formFields`, like so:
+
+```javascript
+rules: [(v) => !!v || 'To is required.', (v) => this.rules.email(v)],
+```
+
+However, inside the `data()` function, `this` does not refer to the Vue component instance as you might expect, especially within arrow functions. This results in `this.rules` being `undefined`, causing the error:
+
+```
+Cannot read properties of undefined (reading 'required')
+```
+
+---
+
+### **Solution**
+
+To fix this issue, we need to avoid using `this` inside the `data()` function's arrow functions. Instead, we'll:
+
+1. **Define the validation functions outside of `data()`, preferably in the `methods` section.**
+2. **Reference these methods without using `this` inside `data()`.**
+
+Let's rewrite the validation rules and adjust the `formFields` accordingly.
+
+---
+
+### **Updated `FormComponent.vue`**
+
+#### **`src/components/FormComponent.vue`**
+
+```vue
+<template>
+  <v-form ref="form" v-model="isFormValid" @submit.prevent="validateForm">
+    <v-container>
+      <!-- Form Title -->
+      <v-row>
+        <v-col cols="12">
+          <v-card-title class="headline mb-4">Email Configuration</v-card-title>
+        </v-col>
+      </v-row>
+
+      <!-- Form Fields -->
+      <v-row>
+        <v-col
+          cols="12"
+          md="6"
+          v-for="field in formFields"
+          :key="field.model"
+        >
+          <v-text-field
+            :label="field.label"
+            v-model="form[field.model]"
+            :placeholder="field.placeholder"
+            :rules="field.rules"
+            :type="field.type || 'text'"
+            :required="field.required || false"
+            outlined
+            dense
+            clearable
+            hide-details="auto"
+          ></v-text-field>
+        </v-col>
+
+        <!-- Email Body Field -->
+        <v-col cols="12">
+          <v-textarea
+            label="Email Body"
+            v-model="form.emailBody"
+            placeholder="Enter Email text or HTML body"
+            :rules="[requiredRule]"
+            outlined
+            rows="4"
+            dense
+            clearable
+            hide-details="auto"
+          ></v-textarea>
+        </v-col>
+      </v-row>
+
+      <!-- Submit Button -->
+      <v-row class="mt-4">
+        <v-col cols="12" class="text-right">
+          <v-btn type="submit" color="primary" :disabled="!isFormValid"
+            >Submit</v-btn
+          >
+        </v-col>
+      </v-row>
+    </v-container>
+  </v-form>
+</template>
+
+<script>
+export default {
+  name: 'FormComponent',
+  data() {
+    return {
+      isFormValid: false,
+      form: {
+        to: '',
+        cc: '',
+        bcc: '',
+        direction: '',
+        emoji: '',
+        disclaimer: '',
+        emailBody: '',
+        foreignChars: '',
+        adContent: '',
+        protectedAttachments: '',
+        replyChain: '',
+        format: '',
+      },
+      formFields: [
+        {
+          label: 'To',
+          model: 'to',
+          placeholder: 'Enter recipient email(s)',
+          rules: [this.requiredRule, this.emailRule],
+          required: true,
+        },
+        {
+          label: 'CC',
+          model: 'cc',
+          placeholder: 'Enter CC email(s)',
+          rules: [this.optionalEmailRule],
+        },
+        {
+          label: 'BCC',
+          model: 'bcc',
+          placeholder: 'Enter BCC email(s)',
+          rules: [this.optionalEmailRule],
+        },
+        {
+          label: 'Direction',
+          model: 'direction',
+          placeholder: 'Enter Direction',
+          rules: [this.requiredRule],
+          required: true,
+        },
+        {
+          label: 'Emoji',
+          model: 'emoji',
+          placeholder: 'Enter Emoji',
+        },
+        {
+          label: 'Disclaimer',
+          model: 'disclaimer',
+          placeholder: 'Enter Disclaimer',
+        },
+        {
+          label: 'Foreign Characters',
+          model: 'foreignChars',
+          placeholder: 'Enter Foreign Characters',
+        },
+        {
+          label: 'Advertisement Content',
+          model: 'adContent',
+          placeholder: 'Enter Advertisement Content',
+        },
+        {
+          label: 'Protected Attachments',
+          model: 'protectedAttachments',
+          placeholder: 'Enter Attachment Info',
+        },
+        {
+          label: 'Reply Chain',
+          model: 'replyChain',
+          placeholder: 'Enter Reply Chain Info',
+        },
+        {
+          label: 'Format',
+          model: 'format',
+          placeholder: 'Enter Format',
+        },
+      ],
+    };
+  },
+  methods: {
+    // Validation Rules
+    requiredRule(value) {
+      return !!value || 'This field is required.';
+    },
+    emailRule(value) {
+      const pattern =
+        /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6}(,[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6})*$/i;
+      return pattern.test(value) || 'Invalid email format.';
+    },
+    optionalEmailRule(value) {
+      if (!value) return true;
+      const pattern =
+        /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6}(,[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6})*$/i;
+      return pattern.test(value) || 'Invalid email format.';
+    },
+    validateForm() {
+      if (this.$refs.form.validate()) {
+        this.$emit('submitForm', { ...this.form });
+        this.resetForm();
+      }
+    },
+    resetForm() {
+      this.$refs.form.reset();
+    },
+  },
+};
+</script>
+
+<style scoped>
+.headline {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+.text-right {
+  text-align: right;
+}
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+.mt-4 {
+  margin-top: 1.5rem;
+}
+</style>
+```
+
+---
+
+### **Explanation of Changes**
+
+1. **Moved Validation Functions to `methods`:**
+
+   - Defined `requiredRule`, `emailRule`, and `optionalEmailRule` inside the `methods` section.
+   - This ensures that `this` correctly refers to the Vue component instance when these methods are called.
+
+2. **Adjusted `formFields` to Reference Methods:**
+
+   - Updated the `rules` in `formFields` to reference the validation methods without using arrow functions.
+
+   ```javascript
+   rules: [this.requiredRule, this.emailRule],
+   ```
+
+   - For optional email fields like 'CC' and 'BCC', used `optionalEmailRule` which allows empty values.
+
+3. **Avoided Using `this` Inside `data()`:**
+
+   - By moving the validation functions to `methods`, we avoid the scope issue with `this` inside `data()`.
+
+4. **Updated Email Validation Regex:**
+
+   - Adjusted the email regex to allow for multiple comma-separated emails if necessary.
+
+5. **Consistent Validation Approach:**
+
+   - Now, all validation functions are methods, making the code cleaner and easier to maintain.
+
+---
+
+### **Additional Adjustments**
+
+- **Email Validation for Multiple Emails:**
+
+  If you expect users to enter multiple emails separated by commas, ensure your regex accounts for that.
+
+  ```javascript
+  const pattern =
+    /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6}(,[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6})*$/i;
+  ```
+
+- **Form Reset After Submission:**
+
+  The `resetForm` method resets the form after successful submission.
+
+- **Clearable Inputs:**
+
+  Added the `clearable` prop to input fields for better user experience.
+
+---
+
+### **Updated `App.vue`**
+
+Make sure your `App.vue` remains compatible with the updated `FormComponent`.
+
+#### **`src/App.vue`**
+
+```vue
+<template>
+  <v-app>
+    <v-main>
+      <v-container fluid>
+        <v-row>
+          <!-- Form Column -->
+          <v-col cols="12" md="6">
+            <v-card outlined>
+              <FormComponent @submitForm="handleFormSubmit" />
+            </v-card>
+          </v-col>
+
+          <!-- Submitted Data Column -->
+          <v-col cols="12" md="6">
+            <v-card outlined>
+              <v-card-title class="headline mb-4">
+                Submitted Data
+              </v-card-title>
+              <v-card-text>
+                <div v-if="submitted">
+                  <!-- Display Submitted Data -->
+                  <v-row>
+                    <v-col cols="12">
+                      <v-subheader>Form Data</v-subheader>
+                      <pre>{{ formattedData }}</pre>
+                    </v-col>
+                    <v-col cols="12" class="mt-4">
+                      <v-subheader>Postman Input Arguments</v-subheader>
+                      <pre>{{ formattedData }}</pre>
+                    </v-col>
+                  </v-row>
+                </div>
+                <div v-else>
+                  <v-alert type="info" text>No data submitted yet.</v-alert>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
+</template>
+
+<script>
+import FormComponent from './components/FormComponent.vue';
+
+export default {
+  name: 'App',
+  components: {
+    FormComponent,
+  },
+  data() {
+    return {
+      submitted: false,
+      submittedData: {},
+    };
+  },
+  computed: {
+    formattedData() {
+      return JSON.stringify(this.submittedData, null, 2);
+    },
+  },
+  methods: {
+    handleFormSubmit(data) {
+      this.submittedData = data;
+      this.submitted = true;
+    },
+  },
+};
+</script>
+
+<style>
+.headline {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+.mt-4 {
+  margin-top: 1.5rem;
+}
+</style>
+```
+
+---
+
+### **Verify the Changes**
+
+1. **Save All Files:**
+
+   Ensure all your changes are saved.
+
+2. **Restart the Development Server:**
+
+   If your development server is running, restart it to ensure the changes take effect.
+
+   ```bash
+   npm run serve
+   ```
+
+3. **Test the Application:**
+
+   - Open your browser and navigate to `http://localhost:8080`.
+   - Fill in the form and ensure that validation works as expected.
+   - Submit the form and verify that the submitted data appears on the right.
+
+---
+
+### **Additional Tips**
+
+- **Use Regular Functions Instead of Arrow Functions:**
+
+  Alternatively, you can define your validation functions using regular functions to ensure `this` is bound correctly.
+
+  ```javascript
+  rules: [
+    function (v) {
+      return !!v || 'To is required.';
+    },
+    function (v) {
+      return this.rules.email(v);
+    }.bind(this),
+  ],
+  ```
+
+  However, this approach can become messy. It's cleaner to define validation methods in the `methods` section.
+
+- **Avoid `this` in `data()`:**
+
+  As a best practice, avoid using `this` inside the `data()` function, especially within arrow functions or nested functions.
+
+---
+
+### **Conclusion**
+
+The error occurred because of improper use of `this` inside the `data()` function. By moving validation functions to the `methods` section and referencing them appropriately, we resolved the issue.
+
+**Key Takeaways:**
+
+- **Understanding `this` Context:**
+
+  Be cautious when using `this` inside `data()`. The context might not be what you expect, especially inside arrow functions.
+
+- **Defining Methods:**
+
+  Place functions that need to access the component instance inside the `methods` section.
+
+- **Clean Code Practices:**
+
+  Organize your code to enhance readability and maintainability.
+
+---
+
+If you have any more questions or need further assistance, feel free to ask!
