@@ -1,0 +1,403 @@
+Dear Access Management Team,
+
+I am writing to request the creation of the following Active Directory (AD) groups and a Crowd group to facilitate the eComms Surveillance team's access to the Airflow platform on the Enterprise Data Platforms (EDP) EKS cluster.
+
+**1. Active Directory (AD) Groups**
+
+- **Production Environment Access**
+
+  - **Group Name:**
+    ACD-COD-ED-AD-AIRFLOW-AC-COD-PRD-CDH-AIRFLOW-ECOMMS-SURVEILLANCE-READ
+
+  - **Purpose:**
+    To provide the eComms Surveillance team with read access to the production Airflow environment.
+
+  - **Group Owner/Manager:**
+    [Your Name], eComms Surveillance Team
+
+- **Non-Production Environment Access (if required)**
+
+  - **Group Name:**
+    ACD-COD-ED-AD-AIRFLOW-AC-COD-NONPRD-CDH-AIRFLOW-ECOMMS-SURVEILLANCE-READ
+
+  - **Purpose:**
+    To provide the team with read access to the non-production Airflow environment.
+
+  - **Group Owner/Manager:**
+    [Your Name], eComms Surveillance Team
+
+**2. Crowd Group**
+
+- **Group Name:**
+  ECOMMS-SURVEILLANCE-CROWD-GROUP
+
+- **Purpose:**
+  To manage access control for our Bitbucket repositories and other services related to Airflow.
+
+- **Group Owner/Manager:**
+  [Your Name], eComms Surveillance Team
+
+**Additional Information:**
+
+- **Distribution Group Management:**
+  Our team will manage the Distribution Groups (DGs) for these AD groups.
+
+- **Justification:**
+  These groups are necessary to securely manage access as we onboard our team onto the Airflow platform for running our data pipelines, including a Lambda function that requires higher memory and concurrent execution.
+
+**Contact Information:**
+
+- **Name:** [Your Full Name]
+- **Position:** [Your Position Title]
+- **Department:** eComms Surveillance
+- **Email:** [Your Email Address]
+- **Phone:** [Your Contact Number]
+
+Please let me know if any additional information is required to process this request. We appreciate your assistance and look forward to your prompt response.
+
+Best regards,
+
+[Your Full Name]
+[Your Position]
+eComms Surveillance Team
+[Your Email Address]
+[Your Contact Number]
+
+
+
+=======================================
+
+
+**Steps for eComms Surveillance to Create an Airflow Instance**
+
+---
+
+eComms Surveillance can follow these steps to create an Airflow instance on the Enterprise Data Platforms (EDP) EKS cluster. The process includes creating necessary Active Directory (AD) and Crowd groups, setting up a Bitbucket repository, configuring Airflow, and deploying a sample job (Lambda function) that runs concurrently, requires good memory, and has a runtime of around 15 minutes.
+
+---
+
+### **1. Initiate Onboarding Request**
+
+- **Action:** Submit an onboarding request to the Enterprise Data Platforms (EDP) platform team.
+- **Contact:** Reach out via the designated communication channel (e.g., internal ticketing system or email) to start the process.
+- **Information to Provide:**
+  - Team Name: eComms Surveillance
+  - Contact Person: [Your Name and Contact Information]
+  - Brief Description: Request to onboard eComms Surveillance onto the EKS Airflow platform.
+
+---
+
+### **2. Evaluate Requirements**
+
+- **Assess Your Needs:**
+  - **Number of Pipelines:** Estimate how many Airflow pipelines (DAGs) you plan to run.
+  - **Resource Requirements:**
+    - **CPU:** Determine the CPU resources needed for your tasks.
+    - **Memory:** Since your Lambda function requires good memory, specify the amount (e.g., 2GB, 4GB).
+    - **I/O Operations:** Assess any significant input/output operations.
+  - **Concurrency:** Indicate that tasks need to run concurrently.
+  - **Resource Quota:** Summarize total resource requirements for proper allocation.
+
+---
+
+### **3. Create Active Directory (AD) Groups**
+
+- **Purpose:** AD groups manage access to Airflow services.
+- **Naming Convention:** Use UPPERCASE letters following the format:
+  ```
+  ACD-COD-ED-AD-AIRFLOW-AC-COD-PRD-CDH-AIRFLOW-ECOMMS-SURVEILLANCE-READ
+  ```
+- **Steps:**
+  - **Prepare Group Names:**
+    - **Production Access:**
+      ```
+      ACD-COD-ED-AD-AIRFLOW-AC-COD-PRD-CDH-AIRFLOW-ECOMMS-SURVEILLANCE-READ
+      ```
+    - **Non-Production Access (if needed):**
+      ```
+      ACD-COD-ED-AD-AIRFLOW-AC-COD-NONPRD-CDH-AIRFLOW-ECOMMS-SURVEILLANCE-READ
+      ```
+  - **Email Request:**
+    - Send an email to `ss@ss.com` with the subject "Request to Create AD Groups for eComms Surveillance".
+    - **Include:**
+      - The list of AD group names.
+      - Justification for the groups.
+      - Contact information for the group owner/manager.
+  - **Follow-Up:** Monitor the request and respond to any queries from the access management team.
+- **Management:** Ensure that the Distribution Groups (DGs) for these AD groups are managed by the eComms Surveillance team.
+
+---
+
+### **4. Create Crowd Group**
+
+- **Purpose:** Crowd groups are used for access control to Bitbucket repositories and other services.
+- **Naming Convention:** Use a clear and consistent name.
+  ```
+  ECOMMS-SURVEILLANCE-CROWD-GROUP
+  ```
+- **Steps:**
+  - **Request Creation:**
+    - Submit a request to the team responsible for Crowd group management.
+    - Provide the group name and list of initial users.
+  - **Management:** Designate a group administrator within eComms Surveillance to manage membership.
+
+---
+
+### **5. Create Airflow Bitbucket Repository**
+
+- **Purpose:** Store and manage your Airflow DAGs and code.
+- **Repository Name:**
+  ```
+  airflow-ecomms-surveillance
+  ```
+- **Steps:**
+  - **Request Repository Creation:**
+    - Contact the Bitbucket admin team or use the self-service portal to create a new repository.
+    - Provide the repository name and associated Crowd group for access control.
+  - **Configure Repository:**
+    - Set up appropriate permissions to allow team members to push code.
+    - Initialize the repository with a README and necessary directory structure for Airflow DAGs.
+
+---
+
+### **6. Configure Airflow on EKS**
+
+- **Action:** Collaborate with the platform team to set up your Airflow instance.
+- **Steps:**
+  - **Namespace Allocation:**
+    - Confirm that you have a Kubernetes namespace allocated for eComms Surveillance.
+  - **Provide Configuration Details:**
+    - **Resource Limits:** Share the resource requirements evaluated earlier.
+    - **Concurrency Settings:** Specify the need for concurrent task execution.
+    - **Memory Allocation:** Highlight the need for increased memory due to the Lambda function's requirements.
+  - **Work with Platform Team:**
+    - Assist in configuring the `airflow.cfg` and other necessary settings.
+    - Ensure that the scheduler, webserver, and workers are appropriately configured.
+
+---
+
+### **7. Enable Access to Secrets in HashiCorp Vault**
+
+- **Purpose:** Securely manage secrets and credentials needed by your Airflow tasks.
+- **Steps:**
+  - **Define Roles and Policies:**
+    - Work with the security team to create Vault policies that grant necessary permissions.
+  - **Update Airflow Configuration:**
+    - Configure Airflow to authenticate with Vault using Kubernetes service accounts or tokens.
+    - Update connections and variables in Airflow to retrieve secrets from Vault.
+  - **Example Configuration:**
+    ```yaml
+    vault:
+      url: https://vault.example.com
+      auth_type: kubernetes
+      role: airflow-ecomms-surveillance
+    ```
+
+---
+
+### **8. Automate Resource Setup**
+
+- **Purpose:** Use automation to set up infrastructure components.
+- **Steps:**
+  - **Scripts and Tools:**
+    - Utilize provided automation scripts (e.g., Terraform, Helm charts).
+  - **Set Up Components:**
+    - **Networking:** Configure network policies and security groups.
+    - **Storage:** Set up persistent volumes if needed.
+    - **Compute Resources:** Define resource requests and limits for pods.
+  - **Validate Setup:**
+    - Ensure all resources are correctly provisioned and accessible.
+
+---
+
+### **9. Provision EKS Airflow Under Your Namespace**
+
+- **Action:** Deploy your Airflow instance using ArgoCD under the eComms Surveillance namespace.
+- **Steps:**
+  - **ArgoCD Configuration:**
+    - Add your namespace and application configurations to ArgoCD.
+    - Use the following application name:
+      ```
+      airflow-ecomms-surveillance
+      ```
+  - **Deployment Files:**
+    - Create Kubernetes manifests or Helm charts for your Airflow deployment.
+    - Store these files in the Bitbucket repository.
+  - **Sync with ArgoCD:**
+    - Ensure ArgoCD is set up to monitor your repository and automatically deploy changes.
+
+---
+
+### **10. Enable Airflow CI/CD Service**
+
+- **Purpose:** Automate the deployment of DAGs and Airflow configurations.
+- **Steps:**
+  - **Set Up CI/CD Pipeline:**
+    - Use your organization's CI/CD tools (e.g., Jenkins, GitLab CI) to create pipelines.
+  - **Pipeline Stages:**
+    - **Build:** Validate code syntax and run unit tests.
+    - **Deploy:** Commit changes to the Bitbucket repository to trigger ArgoCD deployments.
+  - **Integration with Bitbucket:**
+    - Configure webhooks or repository event triggers to start the CI/CD pipeline upon code commits.
+
+---
+
+### **11. Encode and Update Customer Private Key**
+
+- **Purpose:** Securely manage private keys required by Airflow tasks.
+- **Steps:**
+  - **Key Generation:**
+    - Generate a private key using a secure method.
+  - **Encoding:**
+    - Base64-encode the private key to store it as a Kubernetes secret.
+  - **Create Kubernetes Secret:**
+    ```bash
+    kubectl create secret generic ecomms-surveillance-private-key --from-literal=key="$(cat private_key.pem | base64)"
+    ```
+  - **Update Airflow Configuration:**
+    - Reference the secret in your Airflow connections or variables.
+
+---
+
+### **12. Deployment via ArgoCD**
+
+- **Actions:**
+  - **Configure ArgoCD Application:**
+    - Define an ArgoCD application YAML file with your repository and path.
+    - Example:
+      ```yaml
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: airflow-ecomms-surveillance
+        namespace: argocd
+      spec:
+        project: default
+        source:
+          repoURL: 'https://bitbucket.example.com/scm/your_project/airflow-ecomms-surveillance.git'
+          targetRevision: HEAD
+          path: 'deploy'
+        destination:
+          server: 'https://kubernetes.default.svc'
+          namespace: 'ecomms-surveillance'
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+      ```
+  - **Add to ArgoCD:**
+    - Apply the application configuration:
+      ```bash
+      kubectl apply -f airflow-ecomms-surveillance-argocd-app.yaml
+      ```
+  - **Monitor Deployment:**
+    - Access the ArgoCD dashboard to monitor the deployment status.
+
+---
+
+### **13. Conduct Initial Testing**
+
+- **Actions:**
+  - **Access Airflow Webserver:**
+    - Verify that you can log in to the Airflow web interface.
+  - **Upload Sample DAG:**
+    - Create a simple DAG that triggers a test task.
+    - Ensure it appears in the Airflow UI.
+  - **Test Task Execution:**
+    - Manually trigger the DAG and monitor the task execution.
+    - Check logs for any errors.
+
+---
+
+### **14. Deploy the Sample Lambda Function Job**
+
+- **Purpose:** Set up a sample job that runs a Lambda function requiring high memory, runs for 15 minutes, and needs to run concurrently.
+- **Steps:**
+  - **Lambda Function Setup:**
+    - **Create the Lambda Function:**
+      - Develop the Lambda function code.
+      - Ensure it has the required memory allocation (up to 10GB in AWS Lambda).
+    - **Configure Concurrency:**
+      - Set the reserved concurrency for the Lambda function to allow concurrent executions.
+  - **Airflow DAG Configuration:**
+    - **Create a DAG:**
+      - Define a DAG in your Bitbucket repository that triggers the Lambda function.
+    - **Use AWS Operators:**
+      - Utilize `AWSLambdaInvokeFunctionOperator` from Airflow's AWS provider.
+    - **Example DAG:**
+      ```python
+      from airflow import DAG
+      from airflow.providers.amazon.aws.operators.lambda_function import AWSLambdaInvokeFunctionOperator
+      from datetime import datetime
+
+      with DAG(
+          'lambda_invoke_dag',
+          start_date=datetime(2023, 1, 1),
+          schedule_interval='@once',
+      ) as dag:
+
+          invoke_lambda = AWSLambdaInvokeFunctionOperator(
+              task_id='invoke_lambda',
+              function_name='ecomms-surveillance-lambda',
+              invocation_type='Event',
+          )
+      ```
+  - **Update Airflow Connections:**
+    - Ensure Airflow has the AWS credentials and configurations to invoke the Lambda function.
+  - **Test the DAG:**
+    - Trigger the DAG and monitor the execution.
+    - Confirm that the Lambda function runs successfully and concurrently if triggered multiple times.
+
+---
+
+### **15. User Acceptance Testing (UAT)**
+
+- **Actions:**
+  - **Comprehensive Testing:**
+    - Run various scenarios to test the Airflow instance with the sample job.
+  - **Performance Verification:**
+    - Verify that the Lambda function runs for the expected duration and handles memory requirements.
+    - Test concurrent executions to ensure scalability.
+  - **User Feedback:**
+    - Collect feedback from team members using the Airflow instance.
+
+---
+
+### **16. Finalize Onboarding**
+
+- **Actions:**
+  - **Review Setup:**
+    - Ensure all configurations meet your requirements.
+  - **Sign-Off:**
+    - Confirm with the platform team that the onboarding process is complete.
+  - **Documentation:**
+    - Document the setup process, configurations, and any customizations made.
+
+---
+
+### **17. Post-Onboarding Support**
+
+- **Actions:**
+  - **Support Channels:**
+    - Use designated support channels for any issues or questions.
+  - **Updates and Maintenance:**
+    - Stay informed about platform updates or changes.
+    - Regularly update your DAGs and dependencies as needed.
+
+---
+
+**Key Points to Remember**
+
+- **Communication:** Maintain regular contact with the platform team throughout the process.
+- **Access Management:** Ensure all AD and Crowd groups are correctly set up and managed.
+- **Security Compliance:** Adhere to best practices for managing secrets and sensitive information.
+- **Resource Monitoring:** Keep an eye on resource usage to optimize performance.
+- **Documentation:** Keep detailed records of configurations and changes for future reference.
+
+---
+
+By following these steps, eComms Surveillance will successfully create and deploy an Airflow instance on the EKS platform, complete with the necessary group setups and a sample Lambda function job tailored to your requirements.
+
+If you need further assistance or clarification on any step, please don't hesitate to reach out to the platform team.
+
+
