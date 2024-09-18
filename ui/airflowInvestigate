@@ -1,0 +1,106 @@
+Hi Tulika,
+
+Following up on our previous conversation, I wanted to provide more details about how parameter input works with Airflow:
+
+- **No Individual UI Fields**: Airflow does not offer a user interface with separate input fields for each parameter when triggering a job. Instead, it provides a single text area where all parameters must be entered in JSON format.
+
+- **JSON Key-Value Pairs**: When manually triggering a DAG run from the Airflow UI, you'll need to input your parameters as a JSON object in the "Config" field. For example:
+
+  ```json
+  {
+    "param1": "value1",
+    "param2": "value2",
+    "param3": "value3"
+  }
+  ```
+
+- **No Validation Checks**: Airflow doesn't perform validation on these parameters by default. This means:
+  - **Careful Formatting**: The Data Science team will need to ensure the JSON is correctly formatted. Errors like missing commas or incorrect syntax can cause the job to fail.
+  - **Parameter Accuracy**: All required parameters must be included with the correct keys and values. Missing or incorrect parameters won't be flagged until the job runs, potentially leading to failures.
+
+- **Implications**:
+  - **Data Science Responsibility**: The team will need to meticulously construct the JSON key-value pairs when inputting parameters.
+  - **Potential for Job Failures**: Without validation checks, any issues with the data will cause the job to fail without providing specific error messages.
+
+- **Possible Solutions**:
+  - **Custom Validation**: We might consider implementing validation logic within the DAG or tasks to handle parameter checking before the job runs.
+  - **Enhanced UI**: If individual input fields and validation are crucial, we may need to explore custom solutions or third-party tools that integrate with Airflow to provide a more user-friendly interface.
+
+Please let me know if you'd like to discuss this further or if there's anything I can assist with to make the process smoother for the team.
+
+Best regards,
+
+[Your Name]
+
+
+============================
+
+Yes, Apache Airflow exposes a RESTful API that allows you to trigger DAG runs and pass input parameters similar to the JSON key-value pairs you've mentioned. This can be useful for programmatically initiating workflows and supplying the necessary configurations without using the Airflow UI.
+
+### **How to Trigger a DAG Run via REST API**
+
+1. **API Endpoint**:
+   - The endpoint to trigger a DAG run is:
+     ```
+     POST /api/v1/dags/{dag_id}/dagRuns
+     ```
+     Replace `{dag_id}` with the identifier of your DAG.
+
+2. **Request Headers**:
+   - **Content-Type**: `application/json`
+   - **Authorization**: Depending on your Airflow setup, you may need to include an authentication token or credentials.
+
+3. **Request Body**:
+   - You can pass your input parameters in the `conf` field as a JSON object.
+   - Example:
+     ```json
+     {
+       "conf": {
+         "param1": "value1",
+         "param2": "value2",
+         "param3": "value3"
+       }
+     }
+     ```
+
+### **Example CURL Command**
+
+```bash
+curl -X POST "http://your-airflow-host/api/v1/dags/your_dag_id/dagRuns" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Basic your_auth_token" \
+     -d '{
+           "conf": {
+             "param1": "value1",
+             "param2": "value2",
+             "param3": "value3"
+           }
+         }'
+```
+
+### **Important Considerations**
+
+- **Authentication**: The Airflow REST API requires proper authentication. Ensure that you have the necessary permissions and include authentication headers in your requests.
+  
+- **No Validation Checks**:
+  - Similar to triggering DAGs via the UI, there are no default validation checks on the input parameters passed through the API.
+  - **Data Integrity**: It's crucial to ensure that the JSON payload is correctly formatted and includes all required parameters.
+  - **Error Handling**: If there's an issue with the data (e.g., missing keys, incorrect values), the job may fail without providing detailed error messages.
+
+- **Response Handling**:
+  - The API will return a response indicating whether the DAG run was successfully initiated.
+  - You can use this response to log the run ID or handle any errors that occur during the initiation.
+
+### **Benefits of Using the REST API**
+
+- **Automation**: Allows for automated triggering of DAGs from external systems or scripts.
+- **Integration**: Facilitates integration with other tools and services that the Data Science team might be using.
+- **Flexibility**: Parameters can be dynamically generated and supplied at runtime.
+
+### **Next Steps**
+
+- **Provide Documentation**: It might be helpful to share this information with the Data Science team so they can integrate API calls into their workflows.
+- **Implement Validation**: Consider adding validation logic within the DAG or tasks to handle any incorrect inputs gracefully.
+- **Secure Access**: Ensure that the API endpoint is secured and only accessible to authorized personnel to prevent unauthorized executions.
+
+**Let me know if you need any assistance with setting up API access or if you have further questions!**
