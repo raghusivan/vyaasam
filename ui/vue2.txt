@@ -1,0 +1,489 @@
+Certainly! Let's create a brand new Vue.js application for your email configuration app using Vuetify UI. We'll start from scratch, guiding you through each step and providing complete code snippets to help you build a modern, user-friendly interface.
+
+---
+
+## **Table of Contents**
+
+1. [Prerequisites](#prerequisites)
+2. [Create a New Vue.js Project](#create-a-new-vuejs-project)
+3. [Install Vuetify](#install-vuetify)
+4. [Set Up Vuetify](#set-up-vuetify)
+5. [Create the Form Component](#create-the-form-component)
+6. [Update the Main Application Component](#update-the-main-application-component)
+7. [Run the Application](#run-the-application)
+8. [Conclusion](#conclusion)
+
+---
+
+## **Prerequisites**
+
+Make sure you have the following installed on your machine:
+
+- **Node.js** (version 14 or higher)
+- **npm** (comes with Node.js)
+- **Vue CLI** (version 4 or higher)
+
+If you don't have the Vue CLI installed, you can install it globally using:
+
+```bash
+npm install -g @vue/cli
+```
+
+---
+
+## **Create a New Vue.js Project**
+
+Let's create a new Vue.js project using the Vue CLI.
+
+```bash
+vue create email-config-app
+```
+
+You will be prompted with project setup options. For this tutorial, select the following:
+
+- **Preset**: Choose "Default Vue 3 Preview" or manually select Vue 3 if prompted.
+
+Navigate into the project directory:
+
+```bash
+cd email-config-app
+```
+
+---
+
+## **Install Vuetify**
+
+Vuetify is a popular Vue UI library with beautifully handcrafted Material Design components.
+
+Install Vuetify version 3, which is compatible with Vue 3:
+
+```bash
+npm install vuetify@next
+```
+
+Also, install the Material Design Icons font and other required dependencies:
+
+```bash
+npm install @mdi/font sass
+```
+
+---
+
+## **Set Up Vuetify**
+
+Modify your `main.js` file to set up Vuetify in your project.
+
+#### **`src/main.js`**
+
+```javascript
+import { createApp } from 'vue';
+import App from './App.vue';
+
+// Vuetify
+import 'vuetify/styles'; // Import Vuetify styles
+import { createVuetify } from 'vuetify';
+
+import '@mdi/font/css/materialdesignicons.css'; // Import Material Design Icons
+import 'sass' // Ensure you have Sass installed
+
+const vuetify = createVuetify({
+  theme: {
+    defaultTheme: 'light',
+  },
+});
+
+createApp(App).use(vuetify).mount('#app');
+```
+
+---
+
+## **Create the Form Component**
+
+We'll create a `FormComponent.vue` file in the `src/components` directory. This component will contain the email configuration form with all the required fields.
+
+#### **Create the Components Directory**
+
+If it doesn't already exist, create a `components` directory inside `src`:
+
+```bash
+mkdir src/components
+```
+
+#### **Create `FormComponent.vue`**
+
+Create the file `FormComponent.vue` inside `src/components` and add the following code:
+
+#### **`src/components/FormComponent.vue`**
+
+```vue
+<template>
+  <v-form ref="form" v-model="isFormValid" @submit.prevent="validateForm">
+    <v-container>
+      <!-- Form Title -->
+      <v-row>
+        <v-col cols="12">
+          <v-card-title class="headline mb-4">Email Configuration</v-card-title>
+        </v-col>
+      </v-row>
+
+      <!-- Form Fields -->
+      <v-row>
+        <v-col cols="12" md="6" v-for="field in formFields" :key="field.model">
+          <v-text-field
+            :label="field.label"
+            v-model="form[field.model]"
+            :placeholder="field.placeholder"
+            :rules="field.rules"
+            :type="field.type || 'text'"
+            :required="field.required || false"
+            outlined
+            dense
+            clearable
+            hide-details="auto"
+          ></v-text-field>
+        </v-col>
+
+        <!-- Email Body Field -->
+        <v-col cols="12">
+          <v-textarea
+            label="Email Body"
+            v-model="form.emailBody"
+            placeholder="Enter Email text or HTML body"
+            :rules="[rules.required]"
+            outlined
+            rows="4"
+            dense
+            clearable
+            hide-details="auto"
+          ></v-textarea>
+        </v-col>
+      </v-row>
+
+      <!-- Submit Button -->
+      <v-row class="mt-4">
+        <v-col cols="12" class="text-right">
+          <v-btn type="submit" color="primary" :disabled="!isFormValid">Submit</v-btn>
+        </v-col>
+      </v-row>
+    </v-container>
+  </v-form>
+</template>
+
+<script>
+export default {
+  name: 'FormComponent',
+  data() {
+    return {
+      isFormValid: false,
+      form: {
+        to: '',
+        cc: '',
+        bcc: '',
+        direction: '',
+        emoji: '',
+        disclaimer: '',
+        emailBody: '',
+        foreignChars: '',
+        adContent: '',
+        protectedAttachments: '',
+        replyChain: '',
+        format: '',
+      },
+      rules: {
+        required: (value) => !!value || 'This field is required.',
+        email: (value) => {
+          if (!value) return true;
+          const pattern =
+            /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}(,[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4})*$/i;
+          return pattern.test(value) || 'Invalid email format.';
+        },
+      },
+      formFields: [
+        {
+          label: 'To',
+          model: 'to',
+          placeholder: 'Enter recipient email(s)',
+          rules: [(v) => !!v || 'To is required.', (v) => this.rules.email(v)],
+          required: true,
+        },
+        {
+          label: 'CC',
+          model: 'cc',
+          placeholder: 'Enter CC email(s)',
+          rules: [(v) => this.rules.email(v)],
+        },
+        {
+          label: 'BCC',
+          model: 'bcc',
+          placeholder: 'Enter BCC email(s)',
+          rules: [(v) => this.rules.email(v)],
+        },
+        {
+          label: 'Direction',
+          model: 'direction',
+          placeholder: 'Enter Direction',
+          rules: [this.rules.required],
+          required: true,
+        },
+        {
+          label: 'Emoji',
+          model: 'emoji',
+          placeholder: 'Enter Emoji',
+        },
+        {
+          label: 'Disclaimer',
+          model: 'disclaimer',
+          placeholder: 'Enter Disclaimer',
+        },
+        {
+          label: 'Foreign Characters',
+          model: 'foreignChars',
+          placeholder: 'Enter Foreign Characters',
+        },
+        {
+          label: 'Advertisement Content',
+          model: 'adContent',
+          placeholder: 'Enter Advertisement Content',
+        },
+        {
+          label: 'Protected Attachments',
+          model: 'protectedAttachments',
+          placeholder: 'Enter Attachment Info',
+        },
+        {
+          label: 'Reply Chain',
+          model: 'replyChain',
+          placeholder: 'Enter Reply Chain Info',
+        },
+        {
+          label: 'Format',
+          model: 'format',
+          placeholder: 'Enter Format',
+        },
+      ],
+    };
+  },
+  methods: {
+    validateForm() {
+      if (this.$refs.form.validate()) {
+        this.$emit('submitForm', { ...this.form });
+        this.resetForm();
+      }
+    },
+    resetForm() {
+      this.$refs.form.reset();
+    },
+  },
+};
+</script>
+
+<style scoped>
+.headline {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+.text-right {
+  text-align: right;
+}
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+.mt-4 {
+  margin-top: 1.5rem;
+}
+</style>
+```
+
+**Explanation:**
+
+- **Template Section:**
+  - Used Vuetify's `v-form`, `v-container`, `v-row`, and `v-col` for responsive layout.
+  - Employed `v-text-field` and `v-textarea` for input fields.
+  - Added validation rules to input fields.
+  - Used `dense` and `outlined` props for compact and modern look.
+  - Included a submit button that is disabled until the form is valid.
+
+- **Script Section:**
+  - Defined the `form` data object to hold form values.
+  - Created `rules` for validation, including required fields and email format checking.
+  - Listed `formFields` to dynamically generate form inputs.
+  - Implemented `validateForm` method to handle form submission.
+  - Included `resetForm` method to clear the form after submission.
+
+- **Style Section:**
+  - Scoped styles to adjust headings and spacing.
+
+---
+
+## **Update the Main Application Component**
+
+We'll update `App.vue` to include the form component and display the submitted data side by side.
+
+#### **`src/App.vue`**
+
+```vue
+<template>
+  <v-app>
+    <v-main>
+      <v-container fluid>
+        <v-row>
+          <!-- Form Column -->
+          <v-col cols="12" md="6">
+            <v-card outlined>
+              <FormComponent @submitForm="handleFormSubmit" />
+            </v-card>
+          </v-col>
+
+          <!-- Submitted Data Column -->
+          <v-col cols="12" md="6">
+            <v-card outlined>
+              <v-card-title class="headline mb-4">Submitted Data</v-card-title>
+              <v-card-text>
+                <div v-if="submitted">
+                  <!-- Display Submitted Data -->
+                  <v-row>
+                    <v-col cols="12">
+                      <v-subheader>Form Data</v-subheader>
+                      <v-code :code="formattedData" language="json" />
+                    </v-col>
+                    <v-col cols="12" class="mt-4">
+                      <v-subheader>Postman Input Arguments</v-subheader>
+                      <v-code :code="formattedData" language="json" />
+                    </v-col>
+                  </v-row>
+                </div>
+                <div v-else>
+                  <v-alert type="info" text>No data submitted yet.</v-alert>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
+</template>
+
+<script>
+import FormComponent from './components/FormComponent.vue';
+
+export default {
+  name: 'App',
+  components: {
+    FormComponent,
+  },
+  data() {
+    return {
+      submitted: false,
+      submittedData: {},
+    };
+  },
+  computed: {
+    formattedData() {
+      return JSON.stringify(this.submittedData, null, 2);
+    },
+  },
+  methods: {
+    handleFormSubmit(data) {
+      this.submittedData = data;
+      this.submitted = true;
+    },
+  },
+};
+</script>
+
+<style>
+.headline {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+.mt-4 {
+  margin-top: 1.5rem;
+}
+</style>
+```
+
+**Explanation:**
+
+- **Template Section:**
+  - Used `v-app` and `v-main` as the main containers for the application.
+  - Implemented a two-column layout using `v-row` and `v-col` to display the form and submitted data side by side.
+  - Included the `FormComponent` in the left column.
+  - Displayed the submitted data in the right column using `v-code` for syntax highlighting.
+  - Used a conditional to show an alert if no data has been submitted yet.
+
+- **Script Section:**
+  - Imported the `FormComponent`.
+  - Defined `submitted` and `submittedData` in the data object.
+  - Computed `formattedData` to display the JSON data in a readable format.
+  - Created `handleFormSubmit` method to handle data received from the form.
+
+- **Style Section:**
+  - Applied styling for headings and spacing.
+
+---
+
+## **Run the Application**
+
+Now that we've set up all the necessary components, let's run the application to see it in action.
+
+### **Install Dependencies**
+
+Ensure all dependencies are installed:
+
+```bash
+npm install
+```
+
+### **Start the Development Server**
+
+Run the application:
+
+```bash
+npm run serve
+```
+
+### **View the Application**
+
+Open your browser and navigate to:
+
+```
+http://localhost:8080
+```
+
+You should see your email configuration application with a modern UI, featuring:
+
+- A form with all the required fields on the left.
+- Submitted data displayed on the right after submission.
+- Responsive design that adapts to different screen sizes.
+
+---
+
+## **Conclusion**
+
+You've successfully created a brand new email configuration application using Vue.js and Vuetify UI. The application features a modern, user-friendly interface with a responsive design.
+
+### **Key Features:**
+
+- **Vuetify UI Components:** Leveraged Vuetify's rich component library to build a sleek interface.
+- **Form Validation:** Implemented form validation to ensure data integrity.
+- **Responsive Layout:** Used Vuetify's grid system to create a responsive design.
+- **Data Display:** Displayed submitted data in a readable format with syntax highlighting.
+
+### **Next Steps:**
+
+- **Enhance Validation:** Improve validation rules to handle more complex scenarios.
+- **Add Functionality:** Implement features like API calls to send the form data to a backend server.
+- **Customize Theme:** Adjust the color scheme and typography to match your branding.
+
+### **Resources:**
+
+- [Vuetify Documentation](https://vuetifyjs.com/en/)
+- [Vue.js Documentation](https://vuejs.org/)
+
+---
+
+Feel free to customize and expand upon this foundation to meet your specific needs. If you have any questions or need further assistance, don't hesitate to ask!
