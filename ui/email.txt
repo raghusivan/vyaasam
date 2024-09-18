@@ -320,3 +320,17 @@ export default {
 2. **Open your browser** and navigate to `http://localhost:8080` to view your updated application.
 
 With these changes, the form and the submitted data will be displayed side by side in a compact layout, minimizing scrolling and providing a better user experience.
+
+
+=====================
+
+// main.js
+import { createApp } from 'vue';
+import App from './App.vue';
+import { BootstrapVue3 } from 'bootstrap-vue-3';
+import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap-vue-3/dist/bootstrap-vue-3.css';
+
+const app = createApp(App);
+app.use(BootstrapVue3);
+app.mount('#app');
