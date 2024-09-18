@@ -1,0 +1,444 @@
+Certainly! Below is the rewritten code using **Vuetify UI** instead of Bootstrap for your email configuration app.
+
+---
+
+### Install Vuetify and Set Up the Project
+
+First, install Vuetify:
+
+```bash
+npm install vuetify
+```
+
+Update your `main.js` file to set up Vuetify:
+
+#### `main.js`
+
+```javascript
+import { createApp } from 'vue';
+import App from './App.vue';
+import { createVuetify } from 'vuetify';
+import 'vuetify/styles'; // Global CSS
+import '@mdi/font/css/materialdesignicons.css'; // Material Design Icons
+
+const vuetify = createVuetify({
+  // Add Vuetify options here
+});
+
+const app = createApp(App);
+app.use(vuetify);
+app.mount('#app');
+```
+
+---
+
+### Updated Vue Components Using Vuetify
+
+#### `src/components/FormComponent.vue`
+
+```vue
+<template>
+  <v-form @submit.prevent="validateForm">
+    <!-- To Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">To:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.to"
+          placeholder="Enter To email(s)"
+          :error="validation.to === false"
+          :error-messages="validation.to === false ? ['Please enter a valid To address.'] : []"
+          dense
+          outlined
+          hide-details="auto"
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- CC Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">CC:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.cc"
+          placeholder="Enter CC email(s)"
+          :error="validation.cc === false"
+          :error-messages="validation.cc === false ? ['Please enter a valid CC address.'] : []"
+          dense
+          outlined
+          hide-details="auto"
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- BCC Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">BCC:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.bcc"
+          placeholder="Enter BCC email(s)"
+          :error="validation.bcc === false"
+          :error-messages="validation.bcc === false ? ['Please enter a valid BCC address.'] : []"
+          dense
+          outlined
+          hide-details="auto"
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Additional Fields -->
+    <!-- Direction Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Direction:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.direction"
+          placeholder="Enter Direction"
+          dense
+          outlined
+          hide-details
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Emoji Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Emoji:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.emoji"
+          placeholder="Enter Emoji"
+          dense
+          outlined
+          hide-details
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Disclaimer Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Disclaimer:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.disclaimer"
+          placeholder="Enter Disclaimer"
+          dense
+          outlined
+          hide-details
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Email Body Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Email Body:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-textarea
+          v-model="form.emailBody"
+          placeholder="Enter Email text or HTML body"
+          dense
+          outlined
+          hide-details
+          rows="1"
+        ></v-textarea>
+      </v-col>
+    </v-row>
+
+    <!-- Foreign Characters Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Foreign Characters:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.foreignChars"
+          placeholder="Enter Foreign Characters"
+          dense
+          outlined
+          hide-details
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Advertisement Content Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Advertisement Content:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.adContent"
+          placeholder="Enter Advertisement Content"
+          dense
+          outlined
+          hide-details
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Protected Attachments Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Protected Attachments:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.protectedAttachments"
+          placeholder="Enter Attachment Info"
+          dense
+          outlined
+          hide-details
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Reply Chain Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Reply Chain:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.replyChain"
+          placeholder="Enter Reply Chain Info"
+          dense
+          outlined
+          hide-details
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Format Field -->
+    <v-row class="mb-1" align="center">
+      <v-col cols="4" class="text-right pr-1">
+        <span class="small font-weight-bold">Format:</span>
+      </v-col>
+      <v-col cols="8">
+        <v-text-field
+          v-model="form.format"
+          placeholder="Enter Format"
+          dense
+          outlined
+          hide-details
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <!-- Submit Button -->
+    <v-btn type="submit" color="primary" small class="mt-2" block>Submit</v-btn>
+  </v-form>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      // Prepopulate with sample data
+      form: {
+        to: 'example@domain.com',
+        cc: 'cc@domain.com',
+        bcc: 'bcc@domain.com',
+        direction: 'In',
+        emoji: '😊',
+        disclaimer: 'Confidential',
+        emailBody: 'This is a sample email body.',
+        foreignChars: '你好, Bonjour',
+        adContent: 'Sample Advertisement Content',
+        protectedAttachments: 'Attachment1.pdf',
+        replyChain: 'No change in participants',
+        format: 'Email',
+      },
+      validation: {
+        to: null,
+        cc: null,
+        bcc: null,
+      },
+    };
+  },
+  methods: {
+    validateForm() {
+      // Simple email validation
+      this.validation.to = this.validateEmail(this.form.to);
+      this.validation.cc = this.validateEmail(this.form.cc);
+      this.validation.bcc = this.validateEmail(this.form.bcc);
+
+      if (this.validation.to && this.validation.cc && this.validation.bcc) {
+        this.$emit('submitForm', { ...this.form });
+      }
+    },
+    validateEmail(email) {
+      if (!email) return false;
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return regex.test(email);
+    },
+  },
+};
+</script>
+
+<style scoped>
+.small {
+  font-size: 0.8rem;
+}
+.font-weight-bold {
+  font-weight: bold;
+}
+.text-right {
+  text-align: right;
+}
+.pr-1 {
+  padding-right: 0.25rem;
+}
+.mb-1 {
+  margin-bottom: 0.25rem;
+}
+.mt-2 {
+  margin-top: 0.5rem;
+}
+</style>
+```
+
+---
+
+#### `src/App.vue`
+
+```vue
+<template>
+  <v-container class="mt-4">
+    <v-row>
+      <!-- Form on the left -->
+      <v-col cols="12" md="6">
+        <v-card class="mb-4" style="max-height: 70vh; overflow-y: auto;">
+          <v-card-title>Email Configuration</v-card-title>
+          <v-card-text>
+            <FormComponent @submitForm="handleFormSubmit" />
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Submitted data on the right -->
+      <v-col cols="12" md="6">
+        <v-card class="mb-4" style="max-height: 70vh; overflow-y: auto;">
+          <v-card-title>Submitted Data</v-card-title>
+          <v-card-text>
+            <div v-if="submitted">
+              <h6 class="mb-2">Submitted Data:</h6>
+              <pre class="small">{{ formattedData }}</pre>
+
+              <h6 class="mt-3 mb-2">Postman Input Arguments:</h6>
+              <pre class="small">{{ getPostmanInput() }}</pre>
+            </div>
+            <div v-else>
+              <p class="small">No data submitted yet.</p>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script>
+import FormComponent from './components/FormComponent.vue';
+
+export default {
+  name: 'App',
+  components: {
+    FormComponent,
+  },
+  data() {
+    return {
+      submitted: false,
+      submittedData: {},
+    };
+  },
+  computed: {
+    formattedData() {
+      return JSON.stringify(this.submittedData, null, 2);
+    },
+  },
+  methods: {
+    handleFormSubmit(data) {
+      this.submittedData = data;
+      this.submitted = true;
+    },
+    getPostmanInput() {
+      return JSON.stringify(this.submittedData, null, 2);
+    },
+  },
+};
+</script>
+
+<style scoped>
+.mt-4 {
+  margin-top: 1.5rem;
+}
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+.small {
+  font-size: 0.8rem;
+}
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+.mt-3 {
+  margin-top: 1rem;
+}
+</style>
+```
+
+---
+
+### Explanation of Changes
+
+1. **Vuetify Components**: Replaced BootstrapVue components (`<b-form>`, `<b-form-input>`, `<b-button>`, etc.) with Vuetify components (`<v-form>`, `<v-text-field>`, `<v-btn>`, etc.).
+2. **Grid System**: Used Vuetify's grid system (`<v-row>`, `<v-col>`) to arrange labels and input fields side by side.
+3. **Styling**: Utilized Vuetify's `dense` and `outlined` props for compact and outlined input fields. Custom CSS classes were added for additional styling.
+4. **Validation**: Implemented validation using Vuetify's `:error` and `:error-messages` props to display error states and messages.
+5. **Layout**: Adjusted the layout in `App.vue` to display the form and submitted data side by side using Vuetify's grid system.
+
+### Run the Application
+
+1. **Start the Development Server:**
+
+   ```bash
+   npm run serve
+   ```
+
+2. **Open your browser** and navigate to `http://localhost:8080` to view your updated application.
+
+With these changes, your application now uses Vuetify UI components, providing a modern and responsive design that adheres to the Material Design guidelines.
+
+---
+
+### Note on Dependencies
+
+Make sure to install all necessary dependencies:
+
+```bash
+npm install vuetify @mdi/font
+```
+
+Also, ensure you have the following imports in your `main.js`:
+
+```javascript
+import 'vuetify/styles'; // Vuetify styles
+import '@mdi/font/css/materialdesignicons.css'; // Material Design Icons
+```
+
+This setup ensures that all Vuetify components and styles are correctly applied in your application.
