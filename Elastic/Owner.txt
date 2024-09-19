@@ -1,0 +1,81 @@
+Here’s the simplified script that filters only on the owner field with the value rvenkat9 using the term query:
+
+Script to Filter Only by owner:
+
+#!/bin/bash
+
+# Check if the Elasticsearch host and index name are provided
+if [ $# -lt 2 ]; then
+  echo "Usage: $0 <es_host> <index_name>"
+  echo "Example: $0 https://your_elasticsearch_host:9200 index_name"
+  exit 1
+fi
+
+# Assign the Elasticsearch host and index name from the arguments
+ES_HOST="$1"
+INDEX_NAME="$2"
+
+USERNAME="your_username"
+PASSWORD="your_password"
+# Replace these with your actual credentials
+
+# Build the Elasticsearch query to filter only by the owner "rvenkat9"
+read -r -d '' QUERY << EOM
+{
+  "size": 10000,
+  "query": {
+    "term": {
+      "owner": "rvenkat9"
+    }
+  }
+}
+EOM
+
+# Execute the curl request to Elasticsearch
+RESPONSE=$(curl -s -u "$USERNAME:$PASSWORD" \
+  --header "Content-Type: application/json" \
+  --location --request GET "$ES_HOST/$INDEX_NAME/_search" \
+  --data-raw "$QUERY")
+
+# Check if the curl command was successful
+if [ $? -ne 0 ]; then
+  echo "Error: Failed to connect to Elasticsearch."
+  exit 1
+fi
+
+# Pretty-print the filtered JSON response using jq
+echo "$RESPONSE" | jq .
+
+Key Changes:
+
+1. Removed Date Filters:
+
+No more date filters (range conditions) or sorting by created_date. We are now filtering only by the owner field.
+
+
+
+2. Simple term Query:
+
+The script now only includes the term filter for owner with the value rvenkat9.
+
+Query:
+
+{
+  "term": {
+    "owner": "rvenkat9"
+  }
+}
+
+
+
+
+Example Usage:
+
+Run the script by passing the Elasticsearch host and index name:
+
+./script_name.sh "https://your_elasticsearch_host:9200" "index_name"
+
+Expected Output:
+
+The script will return all documents where the owner field is set to rvenkat9, and the output will be formatted with jq for better readability.
+
