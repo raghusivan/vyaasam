@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# Usage: ./search_es_indices.sh <es_host> <search_text>
+# Example: ./search_es_indices.sh https://your_elasticsearch_host:9200 "rvenkat"
+
+# Check if the Elasticsearch host and search text are provided
+if [ $# -lt 2 ]; then
+  echo "Usage: $0 <es_host> <search_text>"
+  echo "Example: $0 https://your_elasticsearch_host:9200 \"rvenkat\""
+  exit 1
+fi
+
+# Assign the Elasticsearch host and search text from the arguments
+ES_HOST="$1"
+SEARCH_TEXT="$2"
+
+# Elasticsearch credentials
+USERNAME="your_username"
+PASSWORD="your_password"
+# Replace these with your actual credentials
+
+# Define an array of hardcoded audit file indices
+audit_files=(
+    "dubber_pilot_profiles_audit_types"
+    "dubber_pilot_alert_audit_types"
+    "swap_talk_alert_audit_types"
+    "testing_profiles_audit_types"
+    "testing_alert_audit_types"
+    "dummy_profiles_audit_types"
+    "dummy_alert_audit_types"
+    "dstesting_profiles_audit_types"
+    "dstesting_alert_audit_types"
+    "ecomm_production_20200929_profiles_audit_types"
+    "ecomm_production_20200929_alert_audit_types"
+    "ecomm_production_20230309_profiles_audit_types"
+    "ecomm_production_20230309_alert_audit_types"
+)
+
+# Function to perform the search on a single index
+search_index() {
+    local index="$1"
+    local text="$2"
+
+    echo "Processing index: $index"
+
+    # Build the Elasticsearch query to search for the text across all fields
+    read -r -d '' QUERY << EOM
+{
+  "size": 10000,
+  "query": {
+    "multi_match": {
+      "query": "$text",
+      "type": "best_fields",
+      "fields": ["*"]
+    }
+  }
+}
+EOM
+
+    # Execute the curl request to Elasticsearch
+    RESPONSE=$(curl -s -u "$USERNAME:$PASSWORD" \
+      --header "Content-Type: application/json" \
+      --location --request GET "$ES_HOST/$index/_search" \
+      --data-raw "$QUERY")
+
+    # Check if the curl command was successful
+    if [ $? -ne 0 ]; then
+      echo "Error: Failed to connect to Elasticsearch for index $index."
+      return 1
+    fi
+
+    # Check if jq is installed
+    if ! command -v jq &> /dev/null; then
+      echo "Error: jq is not installed. Please install jq to format JSON output."
+      exit 1
+    fi
+
+    # Pretty-print the filtered JSON response using jq
+    echo "$RESPONSE" | jq .
+
+    echo "Finished processing index: $index"
+    echo "---------------------------------------"
+}
+
+# Loop through all hardcoded audit file indices and perform the search
+for INDEX_NAME in "${audit_files[@]}"
+do
+    search_index "$INDEX_NAME" "$SEARCH_TEXT"
+done
+
+echo "Finished processing all indices."
