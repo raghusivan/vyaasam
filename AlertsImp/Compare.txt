@@ -1,0 +1,432 @@
+ Here’s the entire document rewritten using Markdown syntax:
+
+# Comparison of AWS Lambda vs Amazon EKS for Running the Closed Alerts Retrieval Code
+
+---
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Requirements Recap](#requirements-recap)
+3. [Technology Stack Options](#technology-stack-options)
+   - [Programming Languages: Python vs. Java](#programming-languages-python-vs-java)
+   - [Compute Platforms: AWS Lambda vs. Amazon EKS](#compute-platforms-aws-lambda-vs-amazon-eks)
+4. [Detailed Comparison](#detailed-comparison)
+   - [Lambda with Python](#lambda-with-python)
+   - [Lambda with Java](#lambda-with-java)
+   - [EKS with Python](#eks-with-python)
+   - [EKS with Java](#eks-with-java)
+5. [Key Considerations](#key-considerations)
+   - [Security](#security)
+   - [Logging and Monitoring](#logging-and-monitoring)
+   - [Error Handling and Notifications](#error-handling-and-notifications)
+   - [Team Expertise](#team-expertise)
+   - [Cost Analysis](#cost-analysis)
+   - [Scalability and Performance](#scalability-and-performance)
+6. [Final Recommendation](#final-recommendation)
+7. [Implementation Plan](#implementation-plan)
+8. [References](#references)
+
+---
+
+## Introduction
+
+This document provides a comprehensive comparison between **AWS Lambda** and **Amazon EKS (Elastic Kubernetes Service)** for running the code to retrieve closed alerts from CSS (Centralized Security System), manipulate the JSON data, and transfer it to a shared folder for SourceOne. The code will be implemented in **Python**, considering its strengths in JSON manipulation and ease of integration with Airflow. This comparison takes into account programming language considerations, compute platform capabilities, security, logging, error handling, notifications, team expertise, cost, scalability, and performance.
+
+---
+
+## Requirements Recap
+
+- **Data Retrieval:** 
+  - Query an Elasticsearch (ES) index in CSS to retrieve closed alerts in JSON format.
+- **Data Manipulation:** 
+  - Perform complex JSON manipulation on the retrieved data.
+- **Data Transfer:** 
+  - Move the processed data to a shared folder accessible by SourceOne.
+- **Integration with Airflow:** 
+  - The solution must be orchestrated and managed by Apache Airflow.
+- **Security:** 
+  - Ensure secure handling of data and credentials.
+- **Logging and Monitoring:** 
+  - Implement robust logging for auditing and troubleshooting.
+- **Error Handling and Notifications:** 
+  - Handle errors gracefully and send notifications as needed.
+- **Team Expertise:** 
+  - The development team is open to using Python for its advantages.
+
+---
+
+## Technology Stack Options
+
+### Programming Languages: Python vs. Java
+
+- **Python:** 
+  - Native support for JSON handling and manipulation.
+  - Fast development due to concise syntax.
+  - Seamless integration with Airflow (Python-based).
+  - Strong libraries for Elasticsearch interaction (e.g., `elasticsearch-py`).
+
+- **Java:** 
+  - Strong typing and performance for compute-intensive tasks.
+  - Robust libraries for JSON manipulation (e.g., Jackson).
+  - May require more development time due to verbose syntax.
+
+### Compute Platforms: AWS Lambda vs. Amazon EKS
+
+- **AWS Lambda:** 
+  - Serverless compute service with automatic scaling.
+  - Pay-per-use pricing model.
+  - Maximum execution time of 15 minutes per invocation.
+  - Ideal for event-driven and short-lived tasks.
+
+- **Amazon EKS:** 
+  - Managed Kubernetes service.
+  - Full control over the environment and scalability.
+  - Suitable for long-running and complex workloads.
+  - Requires more operational overhead.
+
+---
+
+## Detailed Comparison
+
+### Lambda with Python
+
+**Pros:**
+
+- **Ease of Development:** 
+  - Python's concise syntax accelerates development.
+  - Native JSON support simplifies complex data manipulation.
+- **Fast Cold Starts:** 
+  - Python Lambdas have shorter cold start times compared to Java.
+- **Integration with Airflow:** 
+  - Seamless integration, as both Airflow and Lambda code are in Python.
+- **Cost-Effective:** 
+  - Pay-per-use model reduces costs for intermittent workloads.
+- **Maintenance:** 
+  - Less operational overhead; AWS manages the infrastructure.
+
+**Cons:**
+
+- **Execution Time Limit:** 
+  - Limited to 15 minutes per Lambda invocation.
+- **Statelessness:** 
+  - Each invocation is independent; persistent connections are not maintained.
+- **Performance:** 
+  - May be less performant for compute-intensive tasks compared to Java.
+
+### Lambda with Java
+
+**Pros:**
+
+- **Performance:** 
+  - Strong performance for compute-intensive tasks after JVM warm-up.
+- **Robust Libraries:** 
+  - Use of libraries like Jackson for complex JSON manipulation.
+
+**Cons:**
+
+- **Cold Start Times:** 
+  - Longer cold starts due to JVM initialization.
+- **Development Time:** 
+  - More verbose code increases development time.
+- **Integration with Airflow:** 
+  - Requires additional configuration to integrate Java Lambdas with Airflow.
+
+### EKS with Python
+
+**Pros:**
+
+- **Control and Flexibility:** 
+  - Full control over the environment allows customization.
+- **No Execution Time Limits:** 
+  - Suitable for long-running tasks exceeding Lambda's 15-minute limit.
+- **Scalability:** 
+  - Can handle large-scale workloads with Kubernetes' scaling features.
+- **Integration with Airflow:** 
+  - Airflow's `KubernetesPodOperator` allows direct management of pods.
+
+**Cons:**
+
+- **Operational Overhead:** 
+  - Requires managing Kubernetes clusters, nodes, and networking.
+- **Complexity:** 
+  - Steeper learning curve for Kubernetes management.
+- **Cost:** 
+  - Higher baseline costs due to continuous resource allocation.
+
+### EKS with Java
+
+**Pros and Cons:** 
+
+- Similar to EKS with Python but leverages Java.
+- Additional development time due to Java's verbosity.
+- May not align with the desire to use Python's advantages.
+
+---
+
+## Key Considerations
+
+### Security
+
+#### Lambda
+
+- **IAM Roles and Policies:** 
+  - Fine-grained permissions per function.
+- **Isolation:** 
+  - Functions are isolated, reducing the attack surface.
+- **Secrets Management:** 
+  - Integrates with AWS Secrets Manager and KMS.
+
+#### EKS
+
+- **Network Security:** 
+  - Requires configuration of security groups and network policies.
+- **IAM Integration:** 
+  - More complex IAM roles for pods and services.
+- **Secrets Management:** 
+  - Requires additional tools like Kubernetes Secrets.
+
+**Recommendation:** 
+
+- **Lambda** offers simpler and more secure management of permissions and secrets, especially when combined with Python's ease of handling AWS services.
+
+### Logging and Monitoring
+
+#### Lambda
+
+- **CloudWatch Integration:** 
+  - Automatic logging to CloudWatch Logs.
+- **Monitoring:** 
+  - Built-in metrics and tracing with AWS X-Ray.
+
+#### EKS
+
+- **Logging Setup:** 
+  - Requires configuration of logging agents (e.g., Fluentd) to ship logs.
+- **Monitoring:** 
+  - Needs additional tools like Prometheus and Grafana.
+
+**Recommendation:** 
+
+- **Lambda** simplifies logging and monitoring setup, making it easier to maintain and troubleshoot.
+
+### Error Handling and Notifications
+
+#### Lambda
+
+- **Built-in Retries:** 
+  - Automatic retries and support for Dead Letter Queues.
+- **Notifications:** 
+  - Easy integration with AWS SNS or SES.
+
+#### EKS
+
+- **Custom Implementation:** 
+  - Requires building error handling and retry mechanisms.
+- **Notifications:** 
+  - Needs additional setup for alerting systems.
+
+**Recommendation:** 
+
+- **Lambda** provides robust error handling and notification mechanisms out of the box.
+
+### Team Expertise
+
+- **Python Proficiency:** 
+  - The team is open to using Python, leveraging its advantages in this context.
+- **Airflow Integration:** 
+  - Python code in Lambda aligns with Airflow's Python-based DAGs and tasks.
+
+**Recommendation:** 
+
+- **Python** is recommended due to its synergy with Airflow and the team's willingness to adopt it.
+
+### Cost Analysis
+
+#### Lambda
+
+- **Pricing Model:** 
+  - Pay-per-use; costs are based on execution time and memory usage.
+- **Cost Predictability:** 
+  - Costs are generally lower for intermittent workloads.
+
+#### EKS
+
+- **Pricing Model:** 
+  - Pay for EC2 instances (worker nodes) and EKS control plane.
+- **Cost Predictability:** 
+  - Higher baseline costs but potentially more cost-effective at large scales.
+
+**Recommendation:** 
+
+- For the expected workload, **Lambda** is more cost-effective.
+
+### Scalability and Performance
+
+#### Lambda
+
+- **Scalability:** 
+  - Automatically scales in response to demand.
+- **Performance:** 
+  - Suitable for short-lived, event-driven tasks.
+
+#### EKS
+
+- **Scalability:** 
+  - Scalable but requires configuration (e.g., Cluster Autoscaler).
+- **Performance:** 
+  - Better suited for long-running processes.
+
+**Recommendation:** 
+
+- **Lambda** is sufficient for the task's scalability and performance needs.
+
+---
+
+## Final Recommendation
+
+**Implement the solution using _Python_ running on _AWS Lambda_.**
+
+### Justification:
+
+- **Ease of Development:** 
+  - Python's concise syntax and native JSON support accelerate development and simplify complex data manipulation.
+- **Integration with Airflow:** 
+  - Seamless integration, as both Airflow and Lambda code are in Python, simplifying orchestration and parameter passing.
+- **Cost-Effectiveness:** 
+  - Lambda's pay-per-use model is economical for the expected workload.
+- **Operational Simplicity:** 
+  - AWS manages the infrastructure, reducing operational overhead.
+- **Security:** 
+  - Simplified security management with IAM roles and AWS Secrets Manager.
+- **Logging and Monitoring:** 
+  - Built-in integration with CloudWatch and AWS X-Ray simplifies monitoring.
+- **Error Handling and Notifications:** 
+  - Automatic retries and easy integration with AWS SNS or SES for notifications.
+
+---
+
+## Implementation Plan
+
+### 1. Develop the Python Lambda Function
+
+- **Elasticsearch Integration:** 
+  - Use the `elasticsearch-py` library to query the ES index.
+- **JSON Manipulation:** 
+  - Utilize Python's built-in `json` module or libraries like `jsonpath_rw` for complex manipulations.
+- **Data Transfer:** 
+  - Implement logic to transfer processed data to the shared folder.
+  - If using AWS services (e.g., S3), use the `boto3` SDK.
+- **Dependencies:** 
+  - Package any third-party libraries required.
+
+### 2. Configure AWS Lambda
+
+- **Function Setup:** 
+  - Create the Lambda function with appropriate memory and timeout settings (ensure under 15 minutes).
+- **Environment Variables:** 
+  - Store configuration settings and sensitive data securely.
+- **IAM Role:** 
+  - Assign a role with permissions to access Elasticsearch, S3, and other required services.
+
+### 3. Integrate with Airflow
+
+- **Airflow DAG:** 
+  - Use the `LambdaInvokeFunctionOperator` (if available) or the `PythonOperator` to invoke the Lambda.
+- **Parameter Passing:** 
+  - Pass necessary parameters to the Lambda function via event payloads.
+- **Error Handling:** 
+  - Configure Airflow to handle Lambda invocation results and errors.
+
+### 4. Security Implementation
+
+- **Secrets Management:** 
+  - Use AWS Secrets Manager or Parameter Store to manage sensitive information.
+- **Network Security:** 
+  - Configure the Lambda function to run within a VPC if accessing private resources.
+- **Encryption:** 
+  - Enable encryption at rest and in transit where applicable.
+
+### 5. Logging and Monitoring
+
+- **CloudWatch Logs:** 
+  - Enable logging within the Lambda function.
+- **Monitoring:** 
+  - Set up CloudWatch metrics and dashboards.
+- **AWS X-Ray:** 
+  - Enable X-Ray for tracing if needed.
+
+### 6. Error Handling and Notifications
+
+- **In-Code Error Handling:** 
+  - Implement `try-except` blocks and handle exceptions gracefully.
+- **Retries and DLQ:** 
+  - Configure retries and set up a Dead Letter Queue if necessary.
+- **Notifications:** 
+  - Use AWS SNS to send alerts on failures or critical events.
+
+### 7. Testing
+
+- **Unit Testing:** 
+  - Write tests using frameworks like `unittest` or `pytest`.
+- **Integration Testing:** 
+  - Test the Lambda function end-to-end, including interactions with Elasticsearch and data transfer destinations.
+- **Load Testing:** 
+  - Ensure the Lambda function performs under expected load.
+
+### 8. Deployment
+
+- **Packaging:** 
+  - Use AWS SAM or the Serverless Framework to package and deploy the Lambda function.
+- **CI/CD Pipeline:** 
+  - Set up pipelines using AWS CodePipeline or other CI/CD tools.
+- **Versioning:** 
+  - Implement versioning for the Lambda function.
+
+### 9. Documentation
+
+- **Confluence Pages:** 
+  - Document the architecture, configurations, and operational procedures.
+- **Code Documentation:** 
+  - Include docstrings and comments in the Python code.
+
+### 10. Maintenance and Support
+
+- **Monitoring and Alerts:** 
+  - Regularly review logs and respond to alerts.
+- **Updates:** 
+  - Keep the Lambda function and dependencies up to date.
+- **Cost Monitoring:** 
+  - Use AWS Cost Explorer to monitor expenses.
+
+---
+
+## References
+
+1. **AWS Lambda Documentation**
+   - [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html)
+
+2. **Elasticsearch Python Client**
+   - [elasticsearch-py](https://elasticsearch-py.readthedocs.io/en/latest/)
+
+3. **AWS Lambda Powertools for Python**
+   - [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools-python/)
+
+4. **Apache Airflow Documentation**
+   - [Airflow Documentation](https://airflow.apache.org/docs/)
+
+5. **AWS Security Best Practices**
+   - [AWS Security Best Practices](https://docs.aws.amazon.com/whitepapers/latest/aws-security-best-practices/aws-security-best-practices.pdf)
+
+6. **AWS SAM (Serverless Application Model)**
+   - [AWS SAM Documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html)
+
+7. **Boto3 Documentation**
+   - [AWS SDK for Python (Boto3)](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)
+
+---
+
+This document provides a detailed plan and justification for implementing the closed alerts retrieval system using Python on AWS Lambda, integrating with Apache Airflow for orchestration.
+
+This Markdown format can be used in Confluence if it supports Markdown or converted accordingly for other formats if necessary.
+
