@@ -1,0 +1,102 @@
+Here is the rewritten content based on the provided images:
+
+
+---
+
+Sending to External Emails from Unix
+
+Steps to Set Up
+
+1. Create an AD Account for Sending Emails
+
+Ensure that the AD account is created to handle email-sending functionality.
+
+
+
+2. Add the Account to ACG: ACG-All-Allow-SMTP-Relay
+
+This is a mandatory step for sending external emails.
+
+
+
+3. Open Firewall Rules
+
+Create a rule between your server and the SMTP service at smtpauthrelay.lb.....
+
+
+
+4. Retrieve the Password from CyberArk
+
+Use CyberArk to fetch the AD account credentials.
+
+
+
+5. Use the mailx Command to Send Emails from Unix
+
+Execute the mailx command as part of the Unix environment to send emails externally.
+
+
+
+
+
+---
+
+Step-by-Step Guide
+
+1. Create an AD Account for Sending Emails
+
+Follow the usual steps to create the AD account.
+
+Make sure that the AD account has the correct permissions to access shared locations, if necessary.
+
+
+2. Add the Account to ACG: ACG-All-Allow-SMTP-Relay
+
+The account needs to be added to the ACG group for SMTP relay.
+
+Ensure that any other required groups or security measures are configured for external email access.
+
+
+3. Open Firewall Rules for the SMTP Service
+
+Open firewall rules to allow your server to communicate with the SMTP service (smtpauthrelay.lb.macbank).
+
+The sample configuration includes the following IP addresses and ports:
+
+SMTP Address: smtpauthrelay.lb....
+
+Prod IP: 10.134.35.56
+
+DR IP: 10.134.43.56
+
+Port: 587
+
+
+
+4. Retrieving Password from CyberArk
+
+Fetch the password from CyberArk by using appropriate commands with your API details.
+
+Example command using curl:
+
+curl -s --cert ./fidessa-prd.pem --key ./fidessa.key --cacert ./....-CA-Bundle.cer \
+-X GET "https://cyberark-ccp.lb...../ATMWebService/api/Accounts?AppID=AP012717-PRD&UserName=pr_au_fis_app&Address=NTADMIN" \
+| grep -oP "Content\":\"K(.*)+"
+
+
+5. Sending Emails via Unix
+
+Use the mailx command to send emails:
+
+mailx -v -r "pr_au_fis_app@com" -s "This is the subject" -S smtp="smtpauthrelay.lb...:587" \
+-S smtp-use-starttls -S smtp-auth=login -S smtp-auth-user="pr_au_fis_app@......com" \
+-S smtp-auth-password="yourpassword" -S ssl-verify=ignore -S nss-config-dir="/etc/pki/nssdb" recipient@example.com
+
+
+This command authenticates using the SMTP relay and sends an email using your AD account credentials.
+
+
+---
+
+Let me know if you need further adjustments or clarifications!
+
