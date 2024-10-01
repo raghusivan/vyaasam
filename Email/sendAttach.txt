@@ -1,0 +1,183 @@
+import os
+import smtplib
+import configparser
+from email import policy
+from email.parser import BytesParser
+from email.message import EmailMessage
+import logging
+
+def load_config(config_file='config.ini'):
+    """
+    Loads the configuration parameters from the config.ini file.
+
+    Parameters:
+    - config_file (str): Path to the configuration file.
+
+    Returns:
+    - config (ConfigParser): Parsed configuration object.
+    """
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    return config
+
+def send_email(smtp_details, email_message, recipient):
+    """
+    Sends an email message using the provided SMTP details.
+
+    Parameters:
+    - smtp_details (dict): SMTP server details including server, port, use_tls, username, and password.
+    - email_message (EmailMessage): The email message to be sent.
+    - recipient (str): The recipient's email address.
+
+    Returns:
+    - None
+    """
+    try:
+        # Open a connection to the specified SMTP server
+        with smtplib.SMTP(smtp_details['server'], smtp_details['port']) as server:
+            # Use TLS if specified in the configuration
+            if smtp_details['use_tls']:
+                server.starttls()
+
+            # Log in to the server with the provided credentials
+            server.login(smtp_details['username'], smtp_details['password'])
+
+            # Send the email message
+            server.send_message(email_message, from_addr=smtp_details['username'], to_addrs=recipient)
+
+            # Log and print success message
+            logging.info(f"Email '{email_message['Subject']}' sent to {recipient}")
+            print(f"Email '{email_message['Subject']}' sent to {recipient}")
+    except smtplib.SMTPAuthenticationError as auth_err:
+        logging.error(f"SMTP Authentication failed: {auth_err}")
+        print(f"Failed to send email '{email_message['Subject']}' to {recipient}: SMTP Authentication failed. Please check your credentials.")
+    except Exception as e:
+        logging.error(f"Failed to send email '{email_message['Subject']}' to {recipient}: {e}")
+        print(f"Failed to send email '{email_message['Subject']}' to {recipient}: {e}")
+
+def load_eml_files(directory):
+    """
+    Loads all .eml files from the specified directory.
+
+    Parameters:
+    - directory (str): Path to the directory containing .eml files.
+
+    Returns:
+    - eml_files (list): List of paths to .eml files.
+    """
+    if not os.path.isdir(directory):
+        print(f"The directory {directory} does not exist.")
+        logging.error(f"The directory {directory} does not exist.")
+        return []
+
+    # List all .eml files (case-insensitive)
+    eml_files = []
+    for file in os.listdir(directory):
+        if file.lower().endswith('.eml'):
+            full_path = os.path.join(directory, file)
+            eml_files.append(full_path)
+
+    # Debug: Print found .eml files
+    if eml_files:
+        print(f"Found {len(eml_files)} .eml file(s) in {directory}:")
+        logging.info(f"Found {len(eml_files)} .eml file(s) in {directory}:")
+        for file in eml_files:
+            print(f" - {file}")
+            logging.info(f" - {file}")
+    else:
+        print(f"No .eml files found in {directory}.")
+        logging.info("No .eml files found in {directory}.")
+
+    return eml_files
+
+def parse_eml(file_path):
+    """
+    Parses an .eml file and returns an EmailMessage object.
+
+    Parameters:
+    - file_path (str): Path to the .eml file.
+
+    Returns:
+    - msg (EmailMessage): Parsed email message.
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            msg = BytesParser(policy=policy.default).parse(f)
+        return msg
+    except Exception as e:
+        print(f"Failed to parse {file_path}: {e}")
+        logging.error(f"Failed to parse {file_path}: {e}")
+        return None
+
+def main():
+    # Configure logging
+    logging.basicConfig(
+        filename='email_sender.log',
+        level=logging.INFO,
+        format='%(asctime)s:%(levelname)s:%(message)s'
+    )
+
+    # Load configuration
+    config = load_config()
+
+    # Extract SMTP details
+    try:
+        smtp_details = {
+            'server': config.get('SMTP', 'server'),
+            'port': config.getint('SMTP', 'port'),
+            'use_tls': config.getboolean('SMTP', 'use_tls'),
+            'username': config.get('SMTP', 'username'),
+            'password': config.get('SMTP', 'password')
+        }
+    except (configparser.NoSectionError, configparser.NoOptionError, ValueError) as e:
+        print(f"Configuration error: {e}")
+        logging.error(f"Configuration error: {e}")
+        return
+
+    # Extract email details
+    try:
+        recipient = config.get('EMAIL', 'recipient')
+        eml_directory = config.get('EMAIL', 'eml_directory')
+    except (configparser.NoSectionError, configparser.NoOptionError) as e:
+        print(f"Configuration error: {e}")
+        logging.error(f"Configuration error: {e}")
+        return
+
+    # Resolve absolute path
+    eml_directory = os.path.abspath(eml_directory)
+    print(f"Using .eml directory: {eml_directory}")
+    logging.info(f"Using .eml directory: {eml_directory}")
+
+    # Load .eml files
+    eml_files = load_eml_files(eml_directory)
+
+    if not eml_files:
+        print("No .eml files found to send.")
+        logging.info("No .eml files found to send.")
+        return
+
+    # Send each email
+    for eml_file in eml_files:
+        email_message = parse_eml(eml_file)
+        if email_message:
+            send_email(smtp_details, email_message, recipient)
+
+if __name__ == '__main__':
+    main()
+
+
+    ========================
+
+    [SMTP]
+server = smtp-mail.outlook.com
+port = 587
+use_tls = True
+us
+pass
+
+[EMAIL]
+recipient =...
+eml_directory = 
+
+
+
