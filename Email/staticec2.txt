@@ -1,0 +1,166 @@
+eni:
+{
+  "eni": {
+    "type": "eni",
+    "stage": "00base",
+    "persistent": true,
+    "descriptor": {
+      "SubnetId": "subnet-12345678",  // Replace with your Subnet ID
+      "Description": "Primary ENI for EC2 instance",
+      "GroupSet": ["sg-12345678"],    // Replace with your Security Group ID
+      "PrivateIpAddress": "10.0.0.5",  // Set the desired private IP
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "PrimaryENI"
+        }
+      ]
+    }
+  }
+}
+
+ec2
+
+{
+  "{{! define ENI component }}": {
+    "appEni1": {
+      "type": "eni",
+      "enabled": true,
+      "persistent": true,
+      "stage": "10default",
+      "descriptor": {
+        "component": "ec2setup",
+        "branch": "prod"
+      },
+      "Resources": {
+        "SecurityGroup": {
+          "Type": "AWS::EC2::SecurityGroup",
+          "Properties": {
+            "IngressRules": [
+              {
+                "ports": ["TCP:443", "TCP:22"],
+                "sources": ["@Internal"]
+              }
+            ]
+          }
+        },
+        "ElasticNetworkInterface": {
+          "Type": "AWS::EC2::NetworkInterface",
+          "Properties": {
+            "SubnetId": "subnet-12345678",  // Replace with your Subnet ID
+            "Description": "Primary ENI for EC2 instance",
+            "GroupSet": ["sg-12345678"],    // Replace with your Security Group ID
+            "PrivateIpAddress": "10.0.0.5",  // Set the desired private IP
+            "Tags": [
+              {
+                "Key": "Name",
+                "Value": "PrimaryENI"
+              }
+            ]
+          }
+        },
+        "ElasticIP": {
+          "Type": "AWS::EC2::EIP",
+          "Properties": {
+            "Domain": "vpc"
+          }
+        },
+        "EIPAssociation": {
+          "Type": "AWS::EC2::EIPAssociation",
+          "Properties": {
+            "NetworkInterfaceId": {
+              "Ref": "ElasticNetworkInterface"
+            },
+            "AllocationId": {
+              "Fn::GetAtt": ["ElasticIP", "AllocationId"]
+            }
+          }
+        }
+      }
+    },
+    "autohealInstance": {
+      "type": "auto-scale",
+      "enabled": true,
+      "persistent": true,
+      "stage": "10default",
+      "descriptor": {
+        "component": "ec2setup",
+        "branch": "prod"
+      },
+      "Resources": {
+        "SecurityGroup": {
+          "Type": "AWS::EC2::SecurityGroup",
+          "Properties": {
+            "IngressRules": [
+              {
+                "ports": ["TCP:443", "TCP:22"],
+                "sources": ["@Internal"]
+              }
+            ]
+          }
+        },
+        "LaunchConfiguration": {
+          "Type": "AWS::AutoScaling::LaunchTemplate",
+          "Properties": {
+            "InstanceType": "t3.medium",
+            "NetworkInterfaces": [
+              {
+                "NetworkInterfaceId": {
+                  "Ref": "ElasticNetworkInterface"
+                },
+                "DeviceIndex": 0
+              }
+            ],
+            "ImageId": "ami-0123456789abcdef0", // Replace with your AMI ID
+            "Metadata": {
+              "PipelineDataset": {
+                "Id": "{{dataset_name}}",
+                "ImageId": "{{last_dataset}}"
+              }
+            }
+          }
+        },
+        "AutoScaling::AutoScalingGroup": {
+          "Type": "AWS::AutoScaling::AutoScalingGroup",
+          "Properties": {
+            "MinSize": "1",
+            "MaxSize": "2",
+            "DesiredCapacity": "1"
+          }
+        },
+        "IAMRole": {
+          "Type": "AWS::IAM::Role",
+          "Properties": {
+            "AssumeRolePolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "ec2.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "Policies": [
+              {
+                "PolicyName": "InvokeFunctionPolicy",
+                "PolicyDocument": {
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": "lambda:InvokeFunction",
+                      "Resource": "arn:aws:lambda:ap-southeast-2:828604631598:function:commsurv_avatar_dev_avatar"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
+
+
