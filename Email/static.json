@@ -1,0 +1,186 @@
+{
+  "{{! define ENI component }}": {
+    "app01eni": {
+      "type": "eni",
+      "enabled": true,
+      "persistent": true,
+      "descriptor": {
+        "Resources": {
+          "SecurityGroup": {
+            "Type": "Pipeline::SecurityGroup",
+            "Properties": {
+              "IngressRules": [
+                {
+                  "sources": [
+                    "@Internal"
+                  ],
+                  "ports": [
+                    "TCP:80"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "NetworkInterface": {
+          "Type": "AWS::EC2::NetworkInterface",
+          "Properties": {
+            "{{! lock ENI to a single AZ }}": {},
+            "SubnetId": {
+              "Fn::Pipeline::Subnet": {
+                "az_index": "0"
+              }
+            }
+          }
+        }
+      }
+    },
+    "{{! define EC2 instance }}": {
+      "app01": {
+        "type": "auto-heal",
+        "depends_on": [
+          "app01eni"
+        ],
+        "descriptor": {
+          "Resources": {
+            "LaunchConfiguration": {
+              "Type": "AWS::AutoScaling::LaunchTemplate",
+              "Properties": {
+                "InstanceType": "t3.medium"
+              }
+            },
+            "Instance": {
+              "Properties": {
+                "InstanceType": "t3.medium",
+                "ImageId": {
+                  "Fn::Pipeline::Image": {
+                    "name": "prn::::core:soelinux:prod:latest:amazonfull"
+                  }
+                },
+                "{{! lock instance to the same AZ as ENI }}": {},
+                "SubnetId": {
+                  "Fn::Pipeline::Subnet": {
+                    "az_index": "0"
+                  }
+                },
+                "{{! attach ENI }}": {},
+                "NetworkInterfaces": [
+                  "app01eni"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "ElasticIP": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "ElasticIPAssociation": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "NetworkInterfaceId": {
+          "Ref": "app01eni"
+        },
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "ElasticIP",
+            "AllocationId"
+          ]
+        }
+      }
+    },
+    "{{! Define IAM Role }}": {
+      "EC2IAMRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ec2.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Policies": [
+            {
+              "PolicyName": "InvokeFunctionPolicy",
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": "lambda:InvokeFunction",
+                    "Resource": "arn:aws:lambda:ap-southeast-2:828064310598:function:commsurv_avatar_dev_avatar"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "{{! Define Instance Profile }}": {
+      "EC2InstanceProfile": {
+        "Type": "AWS::IAM::InstanceProfile",
+        "Properties": {
+          "Roles": [
+            {
+              "Ref": "EC2IAMRole"
+            }
+          ]
+        }
+      }
+    },
+    "{{! Define SSL Certificate }}": {
+      "SSLCertificate": {
+        "Type": "AWS::CertificateManager::Certificate",
+        "Properties": {
+          "DomainName": "yourdomain.com",
+          "ValidationMethod": "DNS"
+        }
+      }
+    },
+    "yum": {
+      "httpd": []
+    },
+    "files": {},
+    "sources": {},
+    "commands": {},
+    "{{! configure services. }}": {
+      "services": {
+        "sysvinit": {
+          "httpd": {
+            "enabled": "true"
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "InstanceId": {
+      "Description": "The InstanceId of the EC2 instance",
+      "Value": {
+        "Ref": "app01"
+      }
+    },
+    "ElasticIP": {
+      "Description": "The static Elastic IP associated with the EC2 instance",
+      "Value": {
+        "Ref": "ElasticIP"
+      }
+    },
+    "SSLCertificateArn": {
+      "Description": "The ARN of the SSL Certificate",
+      "Value": {
+        "Ref": "SSLCertificate"
+      }
+    }
+  }
+}
