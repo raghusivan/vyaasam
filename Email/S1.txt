@@ -1,0 +1,218 @@
+To fix the PRN errors (Pipeline Reference Name errors) and ensure that the configuration works properly, we need to address any incorrect PRN values and provide actual resource references. I will incorporate valid resource names based on your previous examples, ensuring that the PRN errors are resolved by replacing placeholders with actual values.
+
+Corrected and Updated JSON (PRN errors fixed):
+
+{
+  "{{! define ENI component }}": {
+    "app01eni": {
+      "type": "eni",
+      "enabled": true,
+      "persistent": true,
+      "descriptor": {
+        "Resources": {
+          "SecurityGroup": {
+            "Type": "Pipeline::SecurityGroup",
+            "Properties": {
+              "IngressRules": [
+                {
+                  "sources": [
+                    "@Internal"
+                  ],
+                  "ports": [
+                    "TCP:80"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "NetworkInterface": {
+          "Type": "AWS::EC2::NetworkInterface",
+          "Properties": {
+            "{{! lock ENI to a single AZ }}": {},
+            "SubnetId": {
+              "Fn::Pipeline::Subnet": {
+                "az_index": "0"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "{{! define EC2 instance }}": {
+    "app01": {
+      "type": "auto-heal",
+      "depends_on": [
+        "app01eni"
+      ],
+      "descriptor": {
+        "Resources": {
+          "LaunchConfiguration": {
+            "Type": "AWS::AutoScaling::LaunchTemplate",
+            "Properties": {
+              "InstanceType": "t3.medium",
+              "ImageId": {
+                "Fn::Pipeline::Image": {
+                  "name": "prn::::core:soelinux:prod:latest:amazonfull"
+                }
+              }
+            }
+          },
+          "Instance": {
+            "Properties": {
+              "InstanceType": "t3.medium",
+              "ImageId": {
+                "Fn::Pipeline::Image": {
+                  "name": "prn::::core:soelinux:prod:latest:amazonfull"
+                }
+              },
+              "{{! lock instance to the same AZ as ENI }}": {},
+              "SubnetId": {
+                "Fn::Pipeline::Subnet": {
+                  "az_index": "0"
+                }
+              },
+              "{{! attach ENI }}": {},
+              "NetworkInterfaces": [
+                "app01eni"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "AWS::CloudFormation::Init": {
+    "configSets": {
+      "default": ["setup"]
+    },
+    "setup": {
+      "packages": {
+        "yum": {
+          "httpd": []
+        }
+      },
+      "files": {},
+      "services": {
+        "sysvinit": {
+          "httpd": {
+            "enabled": true,
+            "ensureRunning": true
+          }
+        }
+      }
+    }
+  },
+  "{{! Define IAM Role }}": {
+    "EC2IAMRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "InvokeFunctionPolicy",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "lambda:InvokeFunction",
+                  "Resource": "arn:aws:lambda:ap-southeast-2:828064310598:function:commsurv_avatar_dev_avatar"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "{{! Define Instance Profile }}": {
+    "EC2InstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "EC2IAMRole"
+          }
+        ]
+      }
+    }
+  },
+  "{{! Define SSL Certificate }}": {
+    "SSLCertificate": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": "yourdomain.com",
+        "ValidationMethod": "DNS"
+      }
+    }
+  },
+  "Outputs": {
+    "InstanceId": {
+      "Description": "The InstanceId of the EC2 instance",
+      "Value": {
+        "Ref": "app01"
+      }
+    },
+    "ElasticIP": {
+      "Description": "The static Elastic IP associated with the EC2 instance",
+      "Value": {
+        "Ref": "ElasticIP"
+      }
+    },
+    "SSLCertificateArn": {
+      "Description": "The ARN of the SSL Certificate",
+      "Value": {
+        "Ref": "SSLCertificate"
+      }
+    }
+  }
+}
+
+Explanation of Fixes:
+
+1. PRN Fixes:
+
+The PRN placeholders were replaced with valid pipeline resource references, such as prn::::core:soelinux:prod:latest:amazonfull. If this AMI reference was causing the error, ensure that it's correct for your AWS environment.
+
+
+
+2. ImageId and Instance Configuration:
+
+I ensured that the ImageId is properly defined using a function pipeline with the correct prn reference. This should resolve the previous error about mismatching or unresolved PRN.
+
+
+
+3. IAM Role and Instance Profile:
+
+These elements have been added to ensure the EC2 instance has the necessary permissions to interact with AWS services, such as invoking Lambda functions.
+
+
+
+4. SSL Certificate:
+
+An SSL certificate has been added with AWS::CertificateManager::Certificate and uses DNS validation. Ensure that this is correctly linked to your domain (replace yourdomain.com with the actual domain name).
+
+
+
+
+What to Check:
+
+Make sure the PRN values used (like prn::::core:soelinux:prod:latest:amazonfull) are valid for your specific setup. Check your AWS or Bamboo configuration to ensure the resource is available.
+
+Ensure all IAM roles, security groups, and subnet configurations match your deployment environment.
+
+
+After implementing these changes, you should be able to resolve the PRN-related errors. Let me know if this helps or if you need any more changes!
+
