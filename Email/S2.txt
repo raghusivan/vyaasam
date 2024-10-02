@@ -1,0 +1,251 @@
+It looks like you're referencing variables from a previous pipeline build output, as seen in the screenshot and file contents. I'll use the pattern you've established to integrate those variables into the CloudFormation template.
+
+CloudFormation Template With Referenced Variables:
+
+Here’s an updated version of the template that reflects your pattern, incorporating variables that can be directly used in the pipeline, drawing from the output like the one shown in your screenshot.
+
+{
+  "Parameters": {
+    "SubnetIdParam": {
+      "Type": "String",
+      "Description": "The subnet ID where the instance will be launched"
+    },
+    "KeyNameParam": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Description": "The EC2 Key Pair to allow SSH access to the instance"
+    },
+    "SecurityGroupParam": {
+      "Type": "String",
+      "Description": "The security group ID for the EC2 instance"
+    },
+    "ImageIdParam": {
+      "Type": "String",
+      "Description": "The AMI ID for the EC2 instance"
+    },
+    "LambdaFunctionArnParam": {
+      "Type": "String",
+      "Description": "The ARN of the Lambda function to invoke"
+    },
+    "RoleArnParam": {
+      "Type": "String",
+      "Description": "The ARN of the IAM role used for EC2"
+    }
+  },
+  "Resources": {
+    "app01eni": {
+      "Type": "AWS::EC2::NetworkInterface",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "SubnetIdParam"
+        },
+        "Description": "Network Interface for static IP",
+        "GroupSet": [
+          {
+            "Ref": "SecurityGroupParam"
+          }
+        ],
+        "SourceDestCheck": true
+      }
+    },
+    "ElasticIP": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "ElasticIPAssociation": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "NetworkInterfaceId": {
+          "Ref": "app01eni"
+        },
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "ElasticIP",
+            "AllocationId"
+          ]
+        }
+      }
+    },
+    "EC2IAMRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "InvokeFunctionPolicy",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "lambda:InvokeFunction",
+                  "Resource": {
+                    "Ref": "LambdaFunctionArnParam"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "EC2InstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "EC2IAMRole"
+          }
+        ]
+      }
+    },
+    "app01": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "InstanceType": "t3.medium",
+        "SecurityGroups": [
+          {
+            "Ref": "SecurityGroupParam"
+          }
+        ],
+        "KeyName": {
+          "Ref": "KeyNameParam"
+        },
+        "ImageId": {
+          "Ref": "ImageIdParam"
+        },
+        "IamInstanceProfile": {
+          "Ref": "EC2InstanceProfile"
+        },
+        "AssociatePublicIpAddress": "true",
+        "NetworkInterfaces": [
+          {
+            "NetworkInterfaceId": {
+              "Ref": "app01eni"
+            },
+            "DeviceIndex": 0
+          }
+        ]
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "default": ["setup"]
+          },
+          "setup": {
+            "packages": {
+              "yum": {
+                "httpd": []
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "httpd": {
+                  "enabled": true,
+                  "ensureRunning": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "AutoScalingGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "MinSize": "1",
+        "MaxSize": "2",
+        "DesiredCapacity": "1",
+        "LaunchConfigurationName": {
+          "Ref": "app01"
+        },
+        "VPCZoneIdentifier": [
+          {
+            "Ref": "SubnetIdParam"
+          }
+        ]
+      }
+    },
+    "SSLCertificate": {
+      "Type": "Pipeline::SSLCertificate",
+      "Properties": {
+        "component": "macquariesha2",
+        "SigningCertificate": {
+          "Sources": [
+            "@Internal"
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "InstanceId": {
+      "Description": "The InstanceId of the EC2 instance",
+      "Value": {
+        "Ref": "app01"
+      }
+    },
+    "ElasticIP": {
+      "Description": "The static Elastic IP associated with the EC2 instance",
+      "Value": {
+        "Ref": "ElasticIP"
+      }
+    },
+    "SSLCertificateArn": {
+      "Description": "The ARN of the SSL Certificate",
+      "Value": {
+        "Ref": "SSLCertificate"
+      }
+    }
+  }
+}
+
+Pipeline Configuration Using Variables:
+
+Given that the previous output and content you referenced includes variables such as IAM roles, credentials, and region information, here’s how you can integrate that into the pipeline:
+
+aws cloudformation create-stack \
+  --stack-name MyStack \
+  --template-body file://cloudformation-template.json \
+  --parameters ParameterKey=SubnetIdParam,ParameterValue=$SUBNET_ID \
+               ParameterKey=KeyNameParam,ParameterValue=$KEY_PAIR \
+               ParameterKey=SecurityGroupParam,ParameterValue=$SECURITY_GROUP \
+               ParameterKey=ImageIdParam,ParameterValue=$AMI_ID \
+               ParameterKey=LambdaFunctionArnParam,ParameterValue=$LAMBDA_ARN \
+               ParameterKey=RoleArnParam,ParameterValue=$ROLE_ARN
+
+Explanation:
+
+$SUBNET_ID: Comes from the environment variable or output as seen in your CI/CD tool.
+
+$KEY_PAIR: The EC2 key pair that was referenced in the output.
+
+$SECURITY_GROUP: The security group assigned to your EC2 instance.
+
+$AMI_ID: The Amazon Machine Image ID (as seen in the output or declared in your CI/CD environment).
+
+$LAMBDA_ARN: The ARN of the Lambda function that will be invoked by the EC2 instance.
+
+$ROLE_ARN: The ARN of the IAM role, which was mentioned in your previous steps.
+
+
+Summary:
+
+Variables like SUBNET_ID, KEY_PAIR, SECURITY_GROUP, AMI_ID, LAMBDA_ARN, and ROLE_ARN are passed from the environment or pipeline output as per your screenshot.
+
+The template handles all resources like EC2, Elastic IP, IAM Role, Lambda invocation, and SSL certificates without any manual replacements, as the values are injected from the pipeline.
+
+
+Let me know if you need further customization or clarification!
+
