@@ -1,0 +1,79 @@
+import socket
+
+# Configuration for the test
+smtp_server = 'smtpoutrel'
+port = 587  # Standard port for SMTP with STARTTLS
+
+def check_connectivity():
+    try:
+        print(f"Testing connectivity to {smtp_server} on port {port}...")
+        # Create a TCP socket and attempt to connect to the SMTP server
+        connection = socket.create_connection((smtp_server, port), timeout=10)
+        print(f"Successfully connected to {smtp_server} on port {port}.")
+        connection.close()
+    except socket.timeout:
+        print(f"Connection to {smtp_server} timed out.")
+    except socket.gaierror:
+        print(f"Could not resolve the hostname {smtp_server}. Please check DNS settings.")
+    except ConnectionRefusedError:
+        print(f"Connection to {smtp_server} on port {port} was refused.")
+    except Exception as e:
+        print(f"An error occurred while connecting: {e}")
+
+if __name__ == "__main__":
+    check_connectivity()
+
+
+
+
+======
+
+import smtplib
+from smtplib import SMTP
+import socket
+
+# Configuration based on your mailx command
+smtp_server = 'smtpoutrelay.lb.macbank:587'
+smtp_user = 'rm.com'
+smtp_password = 'bb'  # Update with actual password
+from_address = smtp_user
+to_address = ' .vunukachalasetty@ .com'
+subject = "Test Email"
+message_body = "This is a test email."
+
+# Function to send an email
+def send_test_email():
+    try:
+        # Create an SMTP connection
+        with SMTP(smtp_server) as server:
+            server.ehlo()  # Identify yourself to the server
+            server.starttls()  # Secure the connection
+            server.login(smtp_user, smtp_password)  # Login using credentials
+            
+            # Compose the email message
+            message = f"Subject: {subject}\n\n{message_body}"
+            
+            # Send the email
+            server.sendmail(from_address, to_address, message)
+            print("Test email sent successfully!")
+    
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+# Function to test if SMTP port is open
+def check_smtp_port():
+    try:
+        # Check if port 587 is open
+        server = smtp_server.split(':')[0]
+        port = int(smtp_server.split(':')[1])
+        socket.create_connection((server, port), timeout=10)
+        print(f"Connection to {server} on port {port} is successful.")
+    except Exception as e:
+        print(f"Failed to connect to {server} on port {port}: {e}")
+
+if __name__ == "__main__":
+    # Check SMTP connection
+    check_smtp_port()
+
+    # Send a test email
+    send_test_email()
