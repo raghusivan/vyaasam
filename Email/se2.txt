@@ -1,0 +1,51 @@
+import smtplib
+import socket
+
+# Configuration based on your mailx command
+smtp_server = 'smtpoutrelay.lb.macbank'
+smtp_port = 587
+smtp_user = 'rmg_consumer_email@macquarie.com'
+smtp_password = 'D74Zpassword'  # Update with actual password
+from_address = smtp_user
+to_address = 'raghu.vunukachalasetty@macquarie.com'
+subject = "Test Email"
+message_body = "This is a test email."
+
+# Function to send an email
+def send_test_email():
+    try:
+        # Create an SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()  # Identify yourself to the server
+        server.starttls()  # Secure the connection
+        server.ehlo()  # Re-identify yourself after starting TLS
+        server.login(smtp_user, smtp_password)  # Login using credentials
+        
+        # Compose the email message
+        message = "Subject: {}\n\n{}".format(subject, message_body)
+        
+        # Send the email
+        server.sendmail(from_address, to_address, message)
+        print("Test email sent successfully!")
+        
+        # Close the connection
+        server.quit()
+
+    except Exception as e:
+        print("Failed to send email: {}".format(e))
+
+# Function to test if SMTP port is open
+def check_smtp_port():
+    try:
+        # Check if port 587 is open
+        socket.create_connection((smtp_server, smtp_port), timeout=10)
+        print("Connection to {} on port {} is successful.".format(smtp_server, smtp_port))
+    except Exception as e:
+        print("Failed to connect to {} on port {}: {}".format(smtp_server, smtp_port, e))
+
+if __name__ == "__main__":
+    # Check SMTP connection
+    check_smtp_port()
+
+    # Send a test email
+    send_test_email()
