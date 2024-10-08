@@ -1,3 +1,35 @@
+#!/bin/bash
+
+# IP address to allow
+IP_ADDRESS="10.194.35.56"
+PORT=587  # SMTP port
+
+# Check if iptables is installed
+if ! command -v iptables &> /dev/null; then
+    echo "iptables is not installed. Please install it and try again."
+    exit 1
+fi
+
+# Allow incoming traffic from the specified IP address on port 587 (SMTP)
+echo "Allowing incoming traffic from $IP_ADDRESS on port $PORT..."
+sudo iptables -A INPUT -p tcp -s $IP_ADDRESS --dport $PORT -j ACCEPT
+
+# Save the iptables rule to persist it after a reboot
+if [[ -f /etc/redhat-release ]]; then
+    # For RedHat/CentOS-based distributions
+    sudo service iptables save
+elif [[ -f /etc/lsb-release ]]; then
+    # For Ubuntu-based distributions
+    sudo iptables-save > /etc/iptables/rules.v4
+else
+    echo "Could not detect the Linux distribution. Please manually save iptables rules."
+    exit 1
+fi
+
+echo "Firewall rule added successfully for IP: $IP_ADDRESS on port $PORT."
+
+
+==============
 import socket
 
 # Configuration for the test
