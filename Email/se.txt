@@ -1,27 +1,26 @@
 import socket
 
 # Configuration for the test
-smtp_server = 'smtpoutrel'
+smtp_server = 'smtpoutrelay.lb.macbank'
 port = 587  # Standard port for SMTP with STARTTLS
 
 def check_connectivity():
     try:
-        print(f"Testing connectivity to {smtp_server} on port {port}...")
+        print("Testing connectivity to {} on port {}...".format(smtp_server, port))
         # Create a TCP socket and attempt to connect to the SMTP server
         connection = socket.create_connection((smtp_server, port), timeout=10)
-        print(f"Successfully connected to {smtp_server} on port {port}.")
+        print("Successfully connected to {} on port {}.".format(smtp_server, port))
         connection.close()
     except socket.timeout:
-        print(f"Connection to {smtp_server} timed out.")
+        print("Connection to {} timed out.".format(smtp_server))
     except socket.gaierror:
-        print(f"Could not resolve the hostname {smtp_server}. Please check DNS settings.")
-    except ConnectionRefusedError:
-        print(f"Connection to {smtp_server} on port {port} was refused.")
+        print("Could not resolve the hostname {}. Please check DNS settings.".format(smtp_server))
     except Exception as e:
-        print(f"An error occurred while connecting: {e}")
+        print("An error occurred while connecting: {}".format(e))
 
 if __name__ == "__main__":
     check_connectivity()
+
 
 
 
