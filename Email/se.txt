@@ -1,5 +1,26 @@
 #!/bin/bash
 
+# Define the SMTP server and port
+SMTP_SERVER="smtpoutrelay.lb.macbank"
+SMTP_PORT=587
+
+# Add outbound rule to allow traffic to SMTP server on port 587
+echo "Adding outbound rule for $SMTP_SERVER on port $SMTP_PORT..."
+sudo iptables -A OUTPUT -p tcp --dport $SMTP_PORT -j ACCEPT
+
+# Save the iptables rules to ensure they persist after reboot
+echo "Saving iptables rules..."
+sudo service iptables save
+
+# Verify that the rule was added
+echo "Verifying the iptables rule for outbound traffic..."
+sudo iptables -L OUTPUT -v -n | grep $SMTP_PORT
+
+echo "Outbound rule for SMTP server $SMTP_SERVER on port $SMTP_PORT has been added and saved."
+
+========
+#!/bin/bash
+
 # IP address to allow
 IP_ADDRESS="10.194.35.56"
 PORT=587  # SMTP port
