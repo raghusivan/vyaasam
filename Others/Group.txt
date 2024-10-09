@@ -1,0 +1,121 @@
+For the logic part where a message is assigned to different groups, and based on the group, specific behavior is triggered (like sending emails), you can utilize a combination of polymorphism and state-based logic. The email-sending process can vary by group, especially for Group C, where the sending frequency changes over time. Here’s how you can structure the logic:
+
+Step 1: Define an Interface for Group-Specific Logic
+
+Create an interface that will define how each group handles messages and emails. Each group will implement its own email sending behavior.
+
+public interface GroupHandler {
+    void handleMessage(String message);
+}
+
+Step 2: Implement Group-Specific Logic
+
+Each group will have its own logic for handling the message. For Group C, the logic will involve checking the days passed and determining whether to send the message or not.
+
+Group A and Group B (Simple Email Logic)
+
+public class GroupAHandler implements GroupHandler {
+    @Override
+    public void handleMessage(String message) {
+        // Logic for sending email to Group A
+        System.out.println("Sending email to Group A: " + message);
+    }
+}
+
+public class GroupBHandler implements GroupHandler {
+    @Override
+    public void handleMessage(String message) {
+        // Logic for sending email to Group B
+        System.out.println("Sending email to Group B: " + message);
+    }
+}
+
+Group C (More Complex Logic with State Changes)
+
+Group C has specific conditions where the email sending frequency changes over time (every 3 days for 20 days, then daily). We can manage this with state-based logic.
+
+public class GroupCHandler implements GroupHandler {
+    private int daysPassed = 0;  // Tracks how many days have passed
+    private boolean emailSentToday = false;
+
+    @Override
+    public void handleMessage(String message) {
+        if (shouldSendEmail()) {
+            sendEmail(message);
+        } else {
+            System.out.println("Skipping email for Group C today.");
+        }
+        updateState();
+    }
+
+    private boolean shouldSendEmail() {
+        if (daysPassed <= 20) {
+            return (daysPassed % 3 == 0);  // Send every 3 days for the first 20 days
+        } else {
+            return true;  // After 20 days, send daily
+        }
+    }
+
+    private void sendEmail(String message) {
+        // Logic for sending email to Group C
+        System.out.println("Sending email to Group C: " + message);
+    }
+
+    private void updateState() {
+        daysPassed++;  // Increment the day count after each check
+    }
+}
+
+Step 3: Message Processor Logic
+
+In the message processor, based on the field in the message, you can assign the task to the appropriate group handler.
+
+public class MessageProcessor {
+    private Map<String, GroupHandler> groupHandlers;
+
+    public MessageProcessor() {
+        // Initialize handlers for each group
+        groupHandlers = new HashMap<>();
+        groupHandlers.put("GroupA", new GroupAHandler());
+        groupHandlers.put("GroupB", new GroupBHandler());
+        groupHandlers.put("GroupC", new GroupCHandler());
+    }
+
+    public void processMessage(String message, String group) {
+        GroupHandler handler = groupHandlers.get(group);
+        if (handler != null) {
+            handler.handleMessage(message);
+        } else {
+            System.out.println("No handler for group: " + group);
+        }
+    }
+}
+
+Step 4: Usage
+
+When a message arrives, the processor will determine which group it belongs to and use the appropriate logic to handle that message, which includes sending emails.
+
+public class Main {
+    public static void main(String[] args) {
+        MessageProcessor processor = new MessageProcessor();
+        
+        // Example usage
+        processor.processMessage("Message for Group A", "GroupA");
+        processor.processMessage("Message for Group C", "GroupC");  // The email sending for Group C will vary
+    }
+}
+
+Summary of the Logic:
+
+1. Polymorphism: Each group implements its own logic for handling messages (in this case, sending emails).
+
+
+2. State Management for Group C: The Group C handler uses internal state (daysPassed) to determine when to send emails. For the first 20 days, it sends an email every 3 days, and after 20 days, it sends an email daily.
+
+
+3. Message Processor: The message processor assigns the message to the correct group handler, which takes care of the email sending logic.
+
+
+
+This approach ensures flexibility for handling different groups and makes it easy to modify or add new rules for handling the messages for specific groups in the future.
+
