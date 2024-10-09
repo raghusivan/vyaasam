@@ -1,0 +1,221 @@
+Certainly! Below is the modified code that separates the parameters into a config.ini file and is compatible with Python 2.7.8.
+
+
+---
+
+1. Create a config.ini File
+
+First, create a file named config.ini in the same directory as your script with the following content:
+
+[SMTP]
+smtp_server = smtpoutrelay.lb.macbank
+smtp_port = 587
+smtp_user = rmg_consumer_email@macquarie.com
+smtp_password = your_actual_password
+
+[Email]
+from_address = rmg_consumer_email@macquarie.com
+to_address = raghu.vunukachalasetty@macquarie.com
+subject = Test Email
+message_body = This is a test email.
+
+Note: Replace your_actual_password with your actual SMTP password. Ensure that this file is kept secure to protect sensitive information.
+
+
+---
+
+2. Updated Python Script
+
+Here is the modified Python script that reads parameters from config.ini:
+
+import os
+import smtplib
+import socket
+import ConfigParser
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+# Read configuration from config.ini
+config = ConfigParser.ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+subject = config.get('Email', 'subject')
+message_body = config.get('Email', 'message_body')
+
+# Function to send an email with attachments
+def send_test_email():
+    try:
+        # Create an SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()  # Identify yourself to the server
+        server.starttls()  # Secure the connection
+        server.ehlo()  # Re-identify yourself after starting TLS
+        server.login(smtp_user, smtp_password)  # Login using credentials
+
+        # Create a multipart message
+        msg = MIMEMultipart()
+        msg['From'] = from_address
+        msg['To'] = to_address
+        msg['Subject'] = subject
+
+        # Attach the message body
+        msg.attach(MIMEText(message_body, 'plain'))
+
+        # Attach all files in current directory except the script and config file
+        excluded_files = [os.path.basename(__file__), 'config.ini']
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and filename not in excluded_files:
+                with open(filename, 'rb') as attachment_file:
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(attachment_file.read())
+                    encoders.encode_base64(part)
+                    part.add_header('Content-Disposition', 'attachment; filename="%s"' % filename)
+                    msg.attach(part)
+
+        # Send the email
+        server.sendmail(from_address, to_address, msg.as_string())
+        print("Test email sent successfully!")
+
+        # Close the connection
+        server.quit()
+
+    except Exception as e:
+        print("Failed to send email: {}".format(e))
+
+# Function to test if SMTP port is open
+def check_smtp_port():
+    try:
+        # Check if port is open
+        socket.create_connection((smtp_server, smtp_port), timeout=10)
+        print("Connection to {} on port {} is successful.".format(smtp_server, smtp_port))
+    except Exception as e:
+        print("Failed to connect to {} on port {}: {}".format(smtp_server, smtp_port, e))
+
+if __name__ == "__main__":
+    # Check SMTP connection
+    check_smtp_port()
+
+    # Send a test email
+    send_test_email()
+
+
+---
+
+Explanation and Notes
+
+Configuration File:
+
+The script uses the ConfigParser module (compatible with Python 2.7.8) to read parameters from config.ini.
+
+SMTP settings and email details are stored under [SMTP] and [Email] sections, respectively.
+
+
+Excluding Certain Files from Attachments:
+
+The script excludes itself (os.path.basename(__file__)) and config.ini from being attached to the email to prevent sending sensitive information.
+
+You can add more files to the excluded_files list if needed.
+
+
+Password Security:
+
+Keep the config.ini file secure since it contains your SMTP password.
+
+Set appropriate file permissions to restrict access (e.g., chmod 600 config.ini on Unix systems).
+
+
+Python 2.7.8 Compatibility:
+
+The script uses syntax and modules compatible with Python 2.7.8.
+
+The ConfigParser module is used instead of configparser (which is for Python 3).
+
+
+Dependencies:
+
+The script uses only standard libraries available in Python 2.7.8; no additional installations are required.
+
+
+
+
+---
+
+Security Considerations
+
+Secure Storage of Credentials:
+
+For better security, consider storing sensitive information like smtp_password in environment variables or using a secrets management tool.
+
+If you store credentials in a file, ensure it's excluded from version control systems like Git by adding it to .gitignore.
+
+
+Email Security:
+
+Use secure connections (starttls()) as implemented in the script to protect your email data during transmission.
+
+
+
+
+---
+
+Usage Instructions
+
+1. Set Up config.ini:
+
+Ensure the config.ini file is in the same directory as your script.
+
+Update the file with your actual SMTP credentials and email details.
+
+
+
+2. Run the Script:
+
+Execute the script using Python 2.7.8:
+
+python your_script_name.py
+
+The script will check the SMTP connection and send the email with attachments.
+
+
+
+3. Verify Email Delivery:
+
+Check the recipient's inbox (to_address) to confirm that the email and attachments were received successfully.
+
+
+
+
+
+---
+
+Final Remarks
+
+Error Handling:
+
+The script includes try-except blocks to handle exceptions and provide meaningful error messages.
+
+If you encounter issues, check the printed error messages for troubleshooting.
+
+
+Customization:
+
+You can modify the message_body or any other email parameters in the config.ini file without changing the script.
+
+To attach files from a different directory, modify the os.listdir('.') line accordingly.
+
+
+
+
+---
+
+Let me know if you need further assistance or have any questions!
+
