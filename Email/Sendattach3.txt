@@ -1,0 +1,252 @@
+Certainly! Below is the modified code and instructions that add a parameter to indicate which file extensions to pick and send as attachments only those files. The code remains compatible with Python 2.7.8.
+
+
+---
+
+1. Update config.ini File
+
+Add a new parameter extensions under the [Email] section in your config.ini file:
+
+[SMTP]
+smtp_server = smtpoutrelay.lb.macbank
+smtp_port = 587
+smtp_user = rmg_consumer_email@macquarie.com
+smtp_password = your_actual_password
+
+[Email]
+from_address = rmg_consumer_email@macquarie.com
+to_address = raghu.vunukachalasetty@macquarie.com
+subject = Test Email
+message_body = This is a test email.
+extensions = .txt,.log  # Add the file extensions you want to include
+
+Note: Replace your_actual_password with your actual SMTP password. Ensure that this file is kept secure to protect sensitive information.
+
+
+---
+
+2. Updated Python Script
+
+Here is the modified Python script that reads the extensions parameter from config.ini and sends only the files with specified extensions:
+
+import os
+import smtplib
+import socket
+import ConfigParser
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+# Read configuration from config.ini
+config = ConfigParser.ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+subject = config.get('Email', 'subject')
+message_body = config.get('Email', 'message_body')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send an email with attachments
+def send_test_email():
+    try:
+        # Create an SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()  # Identify yourself to the server
+        server.starttls()  # Secure the connection
+        server.ehlo()  # Re-identify yourself after starting TLS
+        server.login(smtp_user, smtp_password)  # Login using credentials
+
+        # Create a multipart message
+        msg = MIMEMultipart()
+        msg['From'] = from_address
+        msg['To'] = to_address
+        msg['Subject'] = subject
+
+        # Attach the message body
+        msg.attach(MIMEText(message_body, 'plain'))
+
+        # Attach files with specified extensions
+        excluded_files = [os.path.basename(__file__), 'config.ini']
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and filename not in excluded_files:
+                if any(filename.endswith(ext) for ext in extensions):
+                    with open(filename, 'rb') as attachment_file:
+                        part = MIMEBase('application', 'octet-stream')
+                        part.set_payload(attachment_file.read())
+                        encoders.encode_base64(part)
+                        part.add_header('Content-Disposition', 'attachment; filename="%s"' % filename)
+                        msg.attach(part)
+
+        # Send the email
+        server.sendmail(from_address, to_address, msg.as_string())
+        print("Test email sent successfully!")
+
+        # Close the connection
+        server.quit()
+
+    except Exception as e:
+        print("Failed to send email: {}".format(e))
+
+# Function to test if SMTP port is open
+def check_smtp_port():
+    try:
+        # Check if port is open
+        socket.create_connection((smtp_server, smtp_port), timeout=10)
+        print("Connection to {} on port {} is successful.".format(smtp_server, smtp_port))
+    except Exception as e:
+        print("Failed to connect to {} on port {}: {}".format(smtp_server, smtp_port, e))
+
+if __name__ == "__main__":
+    # Check SMTP connection
+    check_smtp_port()
+
+    # Send a test email
+    send_test_email()
+
+
+---
+
+Explanation and Notes
+
+Extensions Parameter:
+
+The extensions parameter in config.ini allows you to specify which file extensions to include as attachments.
+
+The script reads this parameter and splits it into a list of extensions using split(',') and strips any whitespace.
+
+Example: extensions = .txt,.log will include files ending with .txt or .log.
+
+
+Attachment Filtering:
+
+The script checks each file in the current directory and attaches it only if:
+
+It is a file (not a directory).
+
+It is not in the excluded_files list (e.g., the script itself and config.ini).
+
+It matches one of the specified extensions.
+
+
+
+Usage Instructions:
+
+Set Up config.ini:
+
+Update the extensions parameter with the file extensions you wish to include.
+
+Separate multiple extensions with commas.
+
+Ensure there are no spaces unless they are part of the extension.
+
+
+Run the Script:
+
+Execute the script using Python 2.7.8:
+
+python your_script_name.py
+
+
+Verify Email Delivery:
+
+Check the recipient's inbox (to_address) to confirm that the email and attachments were received successfully.
+
+
+
+Example:
+
+If you set extensions = .txt,.log in config.ini, and your current directory contains the following files:
+
+document.txt
+
+report.pdf
+
+error.log
+
+image.jpg
+
+
+Only document.txt and error.log will be attached to the email.
+
+
+Python 2.7.8 Compatibility:
+
+The script uses ConfigParser module and other syntax compatible with Python 2.7.8.
+
+
+
+
+---
+
+Security Considerations
+
+Protecting Sensitive Information:
+
+Ensure that config.ini is secured and not accessible to unauthorized users.
+
+Consider setting file permissions to restrict access (e.g., chmod 600 config.ini on Unix systems).
+
+
+Password Storage:
+
+Storing passwords in plaintext in configuration files is not recommended.
+
+For enhanced security, consider using environment variables or a dedicated secrets management system.
+
+
+
+
+---
+
+Troubleshooting
+
+No Attachments Sent:
+
+If no attachments are sent, ensure that:
+
+Files with the specified extensions exist in the current directory.
+
+The extensions parameter is correctly formatted in config.ini.
+
+There are no typos in the extensions (e.g., .txt vs txt).
+
+
+
+Connection Issues:
+
+If you encounter SMTP connection errors, verify your SMTP settings in config.ini.
+
+Ensure that the SMTP server is reachable and that you have network connectivity.
+
+
+
+
+---
+
+Final Remarks
+
+Customization:
+
+You can modify other email parameters such as subject and message_body directly in config.ini.
+
+To attach files from a different directory, adjust the os.listdir('.') line to point to the desired path.
+
+
+Extending Functionality:
+
+You can enhance the script by adding more configuration options or handling additional email features (e.g., CC, BCC, HTML content).
+
+
+
+
+---
+
+Let me know if you need any further assistance or have questions!
+
