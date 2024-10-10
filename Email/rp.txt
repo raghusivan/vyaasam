@@ -1,3 +1,79 @@
+The error message indicates that Python is not able to find the configparser module. In Python 2, the module was called ConfigParser (with capital C), whereas in Python 3, it was renamed to configparser (all lowercase).
+
+Since you are likely running this on Python 2.x, you need to update your import statement to use the correct module name for Python 2.x.
+
+Solution for Python 2.x:
+
+1. Update your script to import ConfigParser (with a capital C).
+
+
+
+Here’s the corrected import line for Python 2.x:
+
+import ConfigParser
+
+Here is the updated version of your script:
+
+import subprocess
+import ConfigParser  # This is the correct module name for Python 2.x
+
+def load_config(config_file):
+    config = ConfigParser.ConfigParser()
+    config.read(config_file)
+    return config
+
+def run_curl_command(config):
+    cert = config.get('Paths', 'cert')
+    key = config.get('Paths', 'key')
+    cacert = config.get('Paths', 'cacert')
+    url = config.get('URL', 'url')
+    appid = config.get('URL', 'appid')
+    safe = config.get('URL', 'safe')
+    username = config.get('URL', 'username')
+    address = config.get('URL', 'address')
+    
+    # Build the complete URL
+    full_url = "{}?AppID={}&Safe={}&UserName={}&Address={}".format(url, appid, safe, username, address)
+    
+    # Logging the URL to ensure it's correctly formatted
+    print("Full URL:", full_url)
+    
+    # Building the curl command
+    curl_command = [
+        "curl", "-v", "--cert-type", "pem", "--cert", cert, 
+        "--key", key, "--cacert", cacert, "-X", "GET", full_url
+    ]
+    
+    # Logging the curl command
+    print("Executing curl command:", ' '.join(curl_command))
+    
+    # Running the curl command
+    result = subprocess.Popen(curl_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = result.communicate()
+    
+    if result.returncode == 0:
+        print("Curl command executed successfully:\n", stdout.decode('utf-8'))
+    else:
+        print("Error executing curl command:\n", stderr.decode('utf-8'))
+
+if __name__ == "__main__":
+    config = load_config('config.ini')
+    run_curl_command(config)
+
+Next Steps:
+
+1. Modify the import statement as shown above.
+
+
+2. Re-run the script using Python 2.x, and this should resolve the No module named configparser error.
+
+
+
+Let me know if you encounter any other issues!
+
+
+========
+
 The error you are encountering seems to be related to the URL that is being passed to the curl command. Specifically, the message "Port number was not a decimal number between 0 and 65535" suggests that the URL might be malformed, potentially missing a valid port number or misconfigured in some other way.
 
 Let's go through a few steps to troubleshoot and fix the issue.
