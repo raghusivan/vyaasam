@@ -1,13 +1,8 @@
-Apologies for the confusion. The dsn_options argument is not supported by the sendmail() method in Python's smtplib. Python's standard smtplib does not natively support requesting delivery status notifications (DSN) in the way I initially described. We can instead add headers to request delivery receipts and read receipts.
+To print any delivery message or code that is returned from the SMTP server when sending an email, you can directly inspect the sendmail() response and output the server’s reply. While smtplib.sendmail() typically returns an empty dictionary {} if the email is successfully accepted for delivery, any issues or responses will be captured in the returned data.
 
-Here's a modified approach where:
+Here's how you can modify the code to print any response from the sendmail() function:
 
-Delivery Status Notification (DSN) and Read Receipts are requested by adding appropriate headers to the email.
-
-This method uses Disposition-Notification-To for read receipts and Return-Receipt-To for DSN, but it depends on both the recipient's email server and the recipient's email client supporting these features.
-
-
-Updated Code Without dsn_options:
+Updated Code to Print SMTP Server Responses:
 
 import os
 import smtplib
@@ -75,13 +70,18 @@ def send_eml_files():
                         email_msg.attach(part)
 
                     # Send the email with attachment
-                    response = server.sendmail(email_msg['From'], email_msg['To'], email_msg.as_string())
+                    try:
+                        response = server.sendmail(email_msg['From'], email_msg['To'], email_msg.as_string())
 
-                    # Check the response and print it
-                    if response == {}:
-                        print("Email sent successfully and accepted for delivery: {}".format(filename))
-                    else:
-                        print("Failed to send email or not accepted for delivery: {}, response: {}".format(filename, response))
+                        # Print the response from the SMTP server
+                        if response == {}:
+                            print("Email sent successfully and accepted for delivery: {}".format(filename))
+                        else:
+                            print("Email sent with a response: {}, filename: {}".format(response, filename))
+
+                    except smtplib.SMTPResponseException as smtp_error:
+                        # Catch specific SMTP errors and print the error code and message
+                        print("SMTP error occurred: Code: {}, Message: {}".format(smtp_error.smtp_code, smtp_error.smtp_error))
 
         # Close the connection
         server.quit()
@@ -106,28 +106,44 @@ if __name__ == "__main__":
 
 Key Changes:
 
-1. Requesting Read Receipt: The header Disposition-Notification-To requests a read receipt, asking the recipient’s email client to notify the sender when the email is read.
+1. Handling SMTP Response:
 
+The sendmail() response is captured and printed. If the response is an empty dictionary ({}), it means the SMTP server accepted the email for delivery without any issues.
 
-2. Requesting Delivery Receipt: The header Return-Receipt-To requests a delivery status notification. However, this depends on the recipient’s email server supporting this feature.
-
-
-
-Important Notes:
-
-Recipient Control: Both read receipts and delivery receipts are optional for recipients to provide. The recipient’s email client or server may choose not to send any notifications, even if requested.
-
-Response Handling: As before, the script prints whether the email was successfully sent from your end and accepted for delivery.
-
-
-Testing:
-
-1. Run the Script: This will send .eml files as attachments, use their subject for the email subject, and request read and delivery receipts.
-
-
-2. Check Output: The terminal output will confirm if the emails were sent and accepted for delivery.
+If the response contains any information, it will be printed alongside the filename.
 
 
 
-Let me know if this resolves your issue!
+2. SMTPResponseException Handling:
+
+Added handling for specific SMTP response errors. If the SMTP server returns an error (such as an issue with the recipient or email content), the error code and message are printed.
+
+
+
+
+Example of Possible Output:
+
+If the email is successfully sent and accepted for delivery:
+
+Email sent successfully and accepted for delivery: journal_001.eml
+
+If the email is sent with some warning or non-fatal response from the SMTP server:
+
+Email sent with a response: {<email address>: (code, 'message')}, filename: journal_001.eml
+
+If an SMTP error occurs:
+
+SMTP error occurred: Code: 550, Message: '5.7.1 Authentication required'
+
+
+Next Steps:
+
+1. Run the Script: This version will print any response or error code returned by the SMTP server.
+
+
+2. Verify the Output: Check the terminal output for successful email deliveries or any errors returned by the SMTP server.
+
+
+
+Let me know how this works for you!
 
