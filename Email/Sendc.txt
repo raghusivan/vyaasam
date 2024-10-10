@@ -1,0 +1,149 @@
+To achieve the functionality of getting a response to whether the email was received or not, we need to handle the response (or at least confirm that the email was sent successfully from our end). SMTP doesn't natively offer a feature to check if an email has been received unless you request a delivery receipt (which the recipient can choose to ignore).
+
+Here’s an approach that includes:
+
+Requesting a Delivery Status Notification (DSN) using the SMTP.sendmail() function.
+
+Printing whether the email was successfully accepted for delivery by the SMTP server, as well as any response from the server.
+
+
+Updated Code to Include Email Delivery Status:
+
+import os
+import smtplib
+import socket
+import ConfigParser
+from email import message_from_file
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+
+# Read configuration from config.ini
+config = ConfigParser.ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send .eml files as attachments, using subject from the .eml and requesting delivery status notification
+def send_eml_files():
+    try:
+        # Create an SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+
+        # Process each .eml file
+        for filename in os.listdir('.'):  # Iterate through files in the current directory
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):  # Filter based on extension
+                print("Processing file: {}".format(filename))
+                with open(filename, 'r') as eml_file:
+                    msg = message_from_file(eml_file)  # Read the .eml file as an email message
+
+                    # Get the subject from the .eml file
+                    subject = str(msg['Subject'])
+
+                    # Create a multipart message
+                    email_msg = MIMEMultipart()
+                    email_msg['From'] = smtp_user
+                    email_msg['To'] = config.get('Email', 'to_address')  # Assuming the recipient is set in config
+                    email_msg['Subject'] = subject  # Use subject from .eml
+
+                    # Attach a simple text body (optional)
+                    body = "Please see the attached journal file."
+                    email_msg.attach(MIMEText(body, 'plain'))
+
+                    # Attach the .eml file
+                    with open(filename, 'rb') as attachment_file:
+                        part = MIMEBase('application', 'octet-stream')
+                        part.set_payload(attachment_file.read())
+                        encoders.encode_base64(part)
+                        part.add_header('Content-Disposition', 'attachment; filename="{}"'.format(filename))
+                        email_msg.attach(part)
+
+                    # Requesting delivery status notification (DSN)
+                    dsn_options = ['SUCCESS', 'FAILURE', 'DELAY']
+
+                    # Send the email with attachment and request delivery receipt
+                    response = server.sendmail(email_msg['From'], email_msg['To'], email_msg.as_string(), dsn_options=dsn_options)
+
+                    # Check the response and print it
+                    if response == {}:
+                        print("Email sent successfully and accepted for delivery: {}".format(filename))
+                    else:
+                        print("Failed to send email or not accepted for delivery: {}, response: {}".format(filename, response))
+
+        # Close the connection
+        server.quit()
+
+    except Exception as e:
+        print("Failed to send email: {}".format(e))
+
+# Function to test if SMTP port is open
+def check_smtp_port():
+    try:
+        socket.create_connection((smtp_server, smtp_port), timeout=10)
+        print("Connection to {} on port {} is successful.".format(smtp_server, smtp_port))
+    except Exception as e:
+        print("Failed to connect to {} on port {}: {}".format(smtp_server, smtp_port, e))
+
+if __name__ == "__main__":
+    # Check SMTP connection
+    check_smtp_port()
+
+    # Send emails with .eml files as attachments and request delivery status
+    send_eml_files()
+
+Key Changes:
+
+1. Requesting Delivery Status Notification (DSN): The dsn_options parameter is added to the sendmail() call to request notification of delivery status. It includes:
+
+'SUCCESS': Request notification if the message is successfully delivered.
+
+'FAILURE': Request notification if delivery fails.
+
+'DELAY': Request notification if the message is delayed.
+
+
+Keep in mind that these notifications depend on the recipient's email server and may not always be supported.
+
+
+2. Response Handling: The response from the sendmail() call is checked:
+
+If the response is an empty dictionary ({}), it means the SMTP server accepted the email for delivery.
+
+If the response is not empty, it means there was an issue with the delivery or the server did not accept the email.
+
+
+
+3. Printing the Response: The code prints whether the email was successfully sent and accepted for delivery, as well as any SMTP server response.
+
+
+
+Considerations:
+
+DSN Support: The recipient's mail server needs to support DSN for the notifications to work.
+
+Server Acceptance: The script will print whether the email was accepted by the SMTP server for delivery but cannot guarantee final delivery to the recipient.
+
+
+Testing:
+
+1. Run the Script: This version will send .eml files as attachments, use their subject for the email subject, and request delivery status notifications.
+
+
+2. Verify the Output: Check the terminal output to see whether the emails were accepted for delivery and any responses from the SMTP server.
+
+
+
+Let me know if this works for you!
+
