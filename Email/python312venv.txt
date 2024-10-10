@@ -17,13 +17,13 @@ check_root() {
 # Update the system package list
 update_system() {
     if command -v yum > /dev/null; then
-        sudo yum update -y | pv -pterb
-        sudo yum groupinstall "Development Tools" -y | pv -pterb
-        sudo yum install gcc openssl-devel bzip2-devel libffi-devel -y | pv -pterb
+        sudo yum update -y
+        sudo yum groupinstall "Development Tools" -y
+        sudo yum install gcc openssl-devel bzip2-devel libffi-devel -y
     elif command -v apt > /dev/null; then
-        sudo apt update -y | pv -pterb
+        sudo apt update -y
         sudo apt install -y build-essential libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev \
-            libreadline-dev libsqlite3-dev libgdbm-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev | pv -pterb
+            libreadline-dev libsqlite3-dev libgdbm-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev
     else
         echo "Unsupported package manager. Please use a system with apt or yum."
         exit 1
@@ -35,16 +35,16 @@ install_python() {
     cd /usr/src/
     
     # Download Python 3.12 source code
-    wget ${PYTHON_URL} | pv -pterb
+    wget -q --show-progress ${PYTHON_URL}
 
     # Extract tar file
-    tar xzf ${PYTHON_TAR} | pv -pterb
+    tar xzf ${PYTHON_TAR}
 
     # Compile and install Python
     cd "Python-${PYTHON_VERSION}"
-    ./configure --enable-optimizations | pv -pterb
-    make -j $(nproc) | pv -pterb
-    sudo make altinstall | pv -pterb
+    ./configure --enable-optimizations --with-lto
+    make -j $(nproc)
+    sudo make altinstall
 }
 
 # Create virtual environment with Python 3.12
@@ -52,7 +52,7 @@ create_virtualenv() {
     # Ensure pip for Python 3.12 is installed
     if ! command -v pip3.12 > /dev/null; then
         echo "pip not found for Python 3.12, installing pip..."
-        curl https://bootstrap.pypa.io/get-pip.py | sudo python3.12 | pv -pterb
+        curl -s https://bootstrap.pypa.io/get-pip.py | sudo python3.12
     fi
 
     # Create virtual environment
