@@ -6,7 +6,7 @@ PYTHON_TAR="Python-${PYTHON_VERSION}.tgz"
 PYTHON_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_TAR}"
 VENV_DIR="$HOME/python-venv"
 
-# Function to check if the script is running as root
+# Check if the script is running as root
 check_root() {
     if [ "$(id -u)" != "0" ]; then
         echo "This script must be run as root" 1>&2
@@ -14,7 +14,7 @@ check_root() {
     fi
 }
 
-# Update the system package list
+# Update the system package list and install dependencies
 update_system() {
     if command -v yum > /dev/null; then
         sudo yum update -y
@@ -80,13 +80,11 @@ verify_installation() {
 }
 
 # Script execution starts here
-nohup bash -c "(
-    check_root  # Ensure the script is run as root
-    update_system  # Update system packages and install dependencies
-    install_python  # Download, compile, and install Python
-    create_virtualenv  # Create a virtual environment with Python 3.12
-    cleanup  # Clean up installation files
-    verify_installation  # Verify Python 3.12 installation in the virtual environment
-)" > install_python_venv.log 2>&1 &
+check_root  # Ensure the script is run as root
+update_system  # Update system packages and install dependencies
+install_python  # Download, compile, and install Python
+create_virtualenv  # Create a virtual environment with Python 3.12
+cleanup  # Clean up installation files
+verify_installation  # Verify Python 3.12 installation in the virtual environment
 
-echo "Installation is running in the background. Check the progress in install_python_venv.log."
+echo "Installation complete."
