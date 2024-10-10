@@ -40,7 +40,16 @@ def send_eml_files():
 
                     # Extract the subject and body to be reused
                     subject = msg['Subject']
-                    body = msg.get_payload()  # Assumes payload contains the body text
+
+                    # Handle multipart emails
+                    if msg.is_multipart():
+                        body = ""
+                        for part in msg.walk():
+                            if part.get_content_type() == 'text/plain':  # Get the plain text part
+                                body = part.get_payload(decode=True)  # decode=True to handle encoded payloads
+                                break
+                    else:
+                        body = msg.get_payload(decode=True)  # Handle non-multipart messages
 
                     # Construct a MIMEText email to send
                     email_msg = MIMEText(body, 'plain')
