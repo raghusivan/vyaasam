@@ -1,0 +1,7 @@
+Since I can only send emails from the approved sender email ID (commsurv), the journals will be sent as attachments.
+
+Please see below for an example of how it will look.
+
+We cannot send the journals directly as emails because the senders specified within them are different and not approved. For example, we cannot use xyn@mail.com, which is the sender used within the journal.
+
+For now, I will send the journals as attachments. Sowndharya is working on the formatting, and once it's ready, I will share them with you.
