@@ -1,0 +1,74 @@
+import os
+import smtplib
+import socket
+import ConfigParser
+from email import message_from_file
+from email.mime.text import MIMEText
+
+# Read configuration from config.ini
+config = ConfigParser.ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send emails from .eml files
+def send_eml_files():
+    try:
+        # Create an SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+
+        # Process each .eml file
+        for filename in os.listdir('.'):  # Iterate through files in the current directory
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):  # Filter based on extension
+                print("Processing file: {}".format(filename))
+                with open(filename, 'r') as eml_file:
+                    msg = message_from_file(eml_file)  # Read the .eml file as an email message
+
+                    # Replace the sender with the one from config.ini
+                    msg.replace_header('From', smtp_user)
+
+                    # Extract the subject and body to be reused
+                    subject = msg['Subject']
+                    body = msg.get_payload()  # Assumes payload contains the body text
+
+                    # Construct a MIMEText email to send
+                    email_msg = MIMEText(body, 'plain')
+                    email_msg['From'] = smtp_user
+                    email_msg['To'] = msg['To']
+                    email_msg['Subject'] = subject
+
+                    # Send the email
+                    server.sendmail(email_msg['From'], email_msg['To'], email_msg.as_string())
+                    print("Email sent successfully from file: {}".format(filename))
+
+        # Close the connection
+        server.quit()
+
+    except Exception as e:
+        print("Failed to send email: {}".format(e))
+
+# Function to test if SMTP port is open
+def check_smtp_port():
+    try:
+        socket.create_connection((smtp_server, smtp_port), timeout=10)
+        print("Connection to {} on port {} is successful.".format(smtp_server, smtp_port))
+    except Exception as e:
+        print("Failed to connect to {} on port {}: {}".format(smtp_server, smtp_port, e))
+
+if __name__ == "__main__":
+    # Check SMTP connection
+    check_smtp_port()
+
+    # Send emails from .eml files
+    send_eml_files()
