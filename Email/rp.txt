@@ -1,3 +1,91 @@
+The error you are encountering seems to be related to the URL that is being passed to the curl command. Specifically, the message "Port number was not a decimal number between 0 and 65535" suggests that the URL might be malformed, potentially missing a valid port number or misconfigured in some other way.
+
+Let's go through a few steps to troubleshoot and fix the issue.
+
+1. Check the URL in the config.ini
+
+Review the URL you are passing in the config.ini file. It should follow this format:
+
+
+https://<domain>:<port>/<path>?<parameters>
+
+If no port is specified, it will default to 443 for HTTPS. Make sure that your URL is properly formatted and does not include any extra colons or other characters that might be interpreted as an invalid port number.
+
+2. Edit the config.ini file
+
+Make sure the URL and parameters in your config.ini are correctly structured. Here’s an example of what the section for the URL should look like:
+
+[URL]
+url = https://cyberark-cpp.lb.macbank/AIMWebService/api/Accounts
+appid = AP012815-PRD
+safe = CP-AP012815-SYS-PRD-INT
+username = mg_commsurv_email
+address = NTADMIN
+
+3. Modify Python Script
+
+If the issue persists, you can add some logging in the Python script to print out the complete URL and the command being executed for additional troubleshooting. Here’s an updated version of the script:
+
+import subprocess
+import configparser
+
+def load_config(config_file):
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    return config
+
+def run_curl_command(config):
+    cert = config.get('Paths', 'cert')
+    key = config.get('Paths', 'key')
+    cacert = config.get('Paths', 'cacert')
+    url = config.get('URL', 'url')
+    appid = config.get('URL', 'appid')
+    safe = config.get('URL', 'safe')
+    username = config.get('URL', 'username')
+    address = config.get('URL', 'address')
+    
+    # Build the complete URL
+    full_url = "{}?AppID={}&Safe={}&UserName={}&Address={}".format(url, appid, safe, username, address)
+    
+    # Logging the URL to ensure it's correctly formatted
+    print("Full URL:", full_url)
+    
+    # Building the curl command
+    curl_command = [
+        "curl", "-v", "--cert-type", "pem", "--cert", cert, 
+        "--key", key, "--cacert", cacert, "-X", "GET", full_url
+    ]
+    
+    # Logging the curl command
+    print("Executing curl command:", ' '.join(curl_command))
+    
+    # Running the curl command
+    result = subprocess.Popen(curl_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = result.communicate()
+    
+    if result.returncode == 0:
+        print("Curl command executed successfully:\n", stdout.decode('utf-8'))
+    else:
+        print("Error executing curl command:\n", stderr.decode('utf-8'))
+
+if __name__ == "__main__":
+    config = load_config('config.ini')
+    run_curl_command(config)
+
+4. Execute the Updated Script
+
+Run the updated Python script after modifying it to see the full URL and curl command it is generating. This will help identify if there is an issue with how the URL is formed.
+
+5. Verify the Port Number
+
+Ensure that the port number in your URL is correctly set or omitted if using a default port (443 for HTTPS). If a non-standard port is used, make sure it falls within the valid range (0-65535).
+
+Try these steps, and let me know what you observe after running the updated script!
+
+
+
+============
+
 Here’s a Python 2.7.8 script that reads from a configuration file (config.ini) to store all the paths and parameters used in the curl command. The script then executes the command using Python’s subprocess module.
 
 config.ini file structure:
