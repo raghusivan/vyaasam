@@ -1,0 +1,92 @@
+#!/bin/bash
+
+# Define Python version and URL
+PYTHON_VERSION="3.12.0"
+PYTHON_TAR="Python-${PYTHON_VERSION}.tgz"
+PYTHON_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_TAR}"
+VENV_DIR="$HOME/python-venv"
+
+# Function to check if the script is running as root
+check_root() {
+    if [ "$(id -u)" != "0" ]; then
+        echo "This script must be run as root" 1>&2
+        exit 1
+    fi
+}
+
+# Update the system package list
+update_system() {
+    if command -v yum > /dev/null; then
+        sudo yum update -y | pv -pterb
+        sudo yum groupinstall "Development Tools" -y | pv -pterb
+        sudo yum install gcc openssl-devel bzip2-devel libffi-devel -y | pv -pterb
+    elif command -v apt > /dev/null; then
+        sudo apt update -y | pv -pterb
+        sudo apt install -y build-essential libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev \
+            libreadline-dev libsqlite3-dev libgdbm-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev | pv -pterb
+    else
+        echo "Unsupported package manager. Please use a system with apt or yum."
+        exit 1
+    fi
+}
+
+# Download and install Python 3.12
+install_python() {
+    cd /usr/src/
+    
+    # Download Python 3.12 source code
+    wget ${PYTHON_URL} | pv -pterb
+
+    # Extract tar file
+    tar xzf ${PYTHON_TAR} | pv -pterb
+
+    # Compile and install Python
+    cd "Python-${PYTHON_VERSION}"
+    ./configure --enable-optimizations | pv -pterb
+    make -j $(nproc) | pv -pterb
+    sudo make altinstall | pv -pterb
+}
+
+# Create virtual environment with Python 3.12
+create_virtualenv() {
+    # Ensure pip for Python 3.12 is installed
+    if ! command -v pip3.12 > /dev/null; then
+        echo "pip not found for Python 3.12, installing pip..."
+        curl https://bootstrap.pypa.io/get-pip.py | sudo python3.12 | pv -pterb
+    fi
+
+    # Create virtual environment
+    python3.12 -m venv ${VENV_DIR}
+
+    echo "Virtual environment created at ${VENV_DIR}"
+    echo "To activate it, run: source ${VENV_DIR}/bin/activate"
+}
+
+# Clean up installation files
+cleanup() {
+    cd /usr/src/
+    sudo rm -rf "Python-${PYTHON_VERSION}" "${PYTHON_TAR}"
+}
+
+# Verify installation
+verify_installation() {
+    if [ -f "${VENV_DIR}/bin/python3.12" ]; then
+        echo "Python 3.12 installed successfully in virtual environment"
+        ${VENV_DIR}/bin/python3.12 --version
+    else
+        echo "Python 3.12 installation failed"
+        exit 1
+    fi
+}
+
+# Script execution starts here
+nohup bash -c "(
+    check_root  # Ensure the script is run as root
+    update_system  # Update system packages and install dependencies
+    install_python  # Download, compile, and install Python
+    create_virtualenv  # Create a virtual environment with Python 3.12
+    cleanup  # Clean up installation files
+    verify_installation  # Verify Python 3.12 installation in the virtual environment
+)" > install_python_venv.log 2>&1 &
+
+echo "Installation is running in the background. Check the progress in install_python_venv.log."
