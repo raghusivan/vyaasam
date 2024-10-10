@@ -36,7 +36,7 @@ def send_eml_files():
                     msg = message_from_file(eml_file)  # Read the .eml file as an email message
 
                     # Replace the sender with the one from config.ini
-                    msg.replace_header('From', smtp_user)
+                    msg.replace_header('From', str(smtp_user))
 
                     # Extract the subject and body to be reused
                     subject = msg['Subject']
@@ -46,16 +46,16 @@ def send_eml_files():
                         body = ""
                         for part in msg.walk():
                             if part.get_content_type() == 'text/plain':  # Get the plain text part
-                                body = part.get_payload(decode=True)  # decode=True to handle encoded payloads
+                                body = str(part.get_payload(decode=True))  # Convert to string explicitly
                                 break
                     else:
-                        body = msg.get_payload(decode=True)  # Handle non-multipart messages
+                        body = str(msg.get_payload(decode=True))  # Handle non-multipart messages, converted to string
 
                     # Construct a MIMEText email to send
                     email_msg = MIMEText(body, 'plain')
-                    email_msg['From'] = smtp_user
-                    email_msg['To'] = msg['To']
-                    email_msg['Subject'] = subject
+                    email_msg['From'] = str(smtp_user)
+                    email_msg['To'] = str(msg['To'])
+                    email_msg['Subject'] = str(subject)
 
                     # Send the email
                     server.sendmail(email_msg['From'], email_msg['To'], email_msg.as_string())
