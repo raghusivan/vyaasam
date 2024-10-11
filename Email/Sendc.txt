@@ -1,29 +1,19 @@
-I understand now that you're using an internal SMTP server to send emails to external addresses like Hotmail or Gmail, and you want to receive a response from the recipient's mail server (e.g., Hotmail or Gmail) to confirm that the email has been accepted or delivered by their servers.
+ I see that the error message indicates that the sendmail() method encountered an unexpected keyword argument 'dsn_options'. This is because dsn_options is not supported in the Python smtplib's sendmail() function.
 
-Limitations of Standard SMTP
+Solution:
 
-Unfortunately, SMTP by itself is a store-and-forward protocol, which means that your internal SMTP server does not usually get a direct response from external servers (like Hotmail or Gmail) beyond a confirmation that it has passed the email to the next hop. Once your SMTP server forwards the email, it doesn't have visibility into what happens after that. SMTP typically doesn't give feedback from the recipient's mail server (like Hotmail) unless you use a special mechanism such as Delivery Status Notifications (DSN) or Return Receipts.
+You can instead use headers to request Delivery Status Notifications (DSNs) from the recipient's mail server. The headers you'll use are:
 
-Options to Get Responses from Recipient Servers
+1. Disposition-Notification-To: This asks for a read receipt.
 
-1. Delivery Status Notification (DSN): This is the most reliable way to ask for a delivery report or failure report from the recipient's email server.
 
-You can request a DSN when you send the email. If the recipient's mail server supports DSNs, it will send a report back to your internal SMTP server, which you can capture.
-
-The recipient's mail server (e.g., Hotmail or Gmail) may respond with a delivery confirmation or failure notification.
+2. Return-Receipt-To: This asks for a delivery receipt.
 
 
 
-2. Return Receipt (Read Receipt): This requests a notification when the recipient opens the email. However, this depends on the recipient's email client and settings, and the user may choose not to send a read receipt.
+These headers work at the email protocol level, but they rely on the recipient's email client and mail server for support and might not always result in a response.
 
-
-3. SMTP Logs: You can check your internal SMTP server logs to see if there are any error messages or bounces from the recipient's mail servers.
-
-
-
-Modifying the Script to Request a DSN
-
-Here's how you can modify the Python script to request a Delivery Status Notification (DSN) from the recipient's server (Hotmail, Gmail, etc.).
+Updated Python Script Without dsn_options:
 
 import os
 import smtplib
@@ -48,7 +38,7 @@ smtp_password = config.get('SMTP', 'smtp_password')
 # Email Configuration
 extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
 
-# Function to send .eml files as attachments, using subject from the .eml and requesting DSN (Delivery Status Notification)
+# Function to send .eml files as attachments, using subject from the .eml and requesting delivery/read receipts
 def send_eml_files():
     try:
         # Create an SMTP connection
@@ -77,7 +67,7 @@ def send_eml_files():
                     email_msg['To'] = config.get('Email', 'to_address')  # Assuming the recipient is set in config
                     email_msg['Subject'] = subject  # Use subject from .eml
 
-                    # Add headers for DSN (Delivery Status Notification)
+                    # Add headers for Delivery Status Notification and Read Receipt
                     email_msg.add_header('Disposition-Notification-To', smtp_user)  # Request read receipt
                     email_msg.add_header('Return-Receipt-To', smtp_user)  # Request delivery status notification
 
@@ -93,10 +83,9 @@ def send_eml_files():
                         part.add_header('Content-Disposition', 'attachment; filename="{}"'.format(filename))
                         email_msg.attach(part)
 
-                    # Request Delivery Status Notification (DSN)
+                    # Send the email with attachment
                     try:
-                        response = server.sendmail(email_msg['From'], email_msg['To'], email_msg.as_string(),
-                                                   dsn_options=['SUCCESS', 'FAILURE', 'DELAY'])
+                        response = server.sendmail(email_msg['From'], email_msg['To'], email_msg.as_string())
 
                         # Print the response from the SMTP server
                         if response == {}:
@@ -129,42 +118,30 @@ if __name__ == "__main__":
     # Send emails with .eml files as attachments
     send_eml_files()
 
-Key Changes:
+Explanation of Changes:
 
-1. dsn_options: The sendmail() function now includes the dsn_options parameter with values ['SUCCESS', 'FAILURE', 'DELAY']. This requests notifications from the recipient's server in the following cases:
+1. Remove dsn_options: Since sendmail() doesn't support dsn_options, we removed that argument from the function call.
 
-SUCCESS: When the email is successfully delivered to the recipient's mailbox.
 
-FAILURE: If the email could not be delivered (e.g., if the recipient's mailbox doesn't exist).
-
-DELAY: If the delivery is delayed (e.g., due to temporary issues at the recipient's mail server).
+2. Request DSN and Read Receipts via Headers: We are using headers such as Disposition-Notification-To and Return-Receipt-To to request read receipts and delivery receipts from the recipient's server. This will request the recipient's email client or server to notify you when the email is read or delivered.
 
 
 
-2. Handling DSN Responses: The sendmail() function captures the server response, and the script prints this response to the console. The recipient's mail server (e.g., Hotmail or Gmail) may return delivery or failure reports based on these DSN requests.
+Notes:
+
+Read Receipts: The recipient may have the option to ignore or deny sending a read receipt, so it might not always be reliable.
+
+Delivery Receipts: These depend on the recipient’s email server to support them and may not always be returned.
+
+
+Next Steps:
+
+1. Run the Updated Script: Test the updated script without dsn_options.
+
+
+2. Check Logs: Review the console output for SMTP responses and print any feedback regarding the sent emails.
 
 
 
-Important Notes:
-
-DSN Support: The recipient's server (Hotmail, Gmail, etc.) must support DSN. Not all mail servers support DSN, and even when supported, the recipient's mail server can decide not to send a DSN report.
-
-Limitations: DSN does not guarantee final delivery to the inbox. It only provides information if the recipient's server chooses to respond.
-
-
-SMTP Logs:
-
-If you're using an internal SMTP server, you may also need to check your SMTP logs for additional details about the communication with external servers like Hotmail or Gmail. The logs can show bounce messages or failure reasons.
-
-
-Testing:
-
-1. Run the Script: This version of the script requests delivery status notifications from the recipient's mail server.
-
-
-2. Monitor Responses: Look at the printed responses to see if there are any delivery success or failure reports returned by Hotmail, Gmail, or other external servers.
-
-
-
-Let me know if this solution works for your setup or if you need further assistance!
+Let me know if this resolves your issue, or if any further modifications are required!
 
