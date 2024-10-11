@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+echo "Updating system packages..."
+sudo yum update -y
+
+echo "Installing development tools and libraries..."
+sudo yum groupinstall "Development Tools" -y
+sudo yum install openssl-devel bzip2-devel libffi-devel zlib-devel -y
+
+echo "Downloading Python 3.12..."
+cd /opt
+sudo wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz
+sudo tar xzf Python-3.12.0.tgz
+
+echo "Configuring and installing Python 3.12..."
+cd Python-3.12.0
+sudo ./configure --enable-optimizations
+sudo make altinstall
+
+echo "Cleaning up..."
+cd /opt
+sudo rm Python-3.12.0.tgz
+
+echo "Creating symbolic links..."
+sudo ln -sf /usr/local/bin/python3.12 /usr/bin/python3
+sudo ln -sf /usr/local/bin/pip3.12 /usr/bin/pip3
+
+echo "Verifying installation..."
+python3 --version
+pip3 --version
+
+echo "Python 3.12 installation completed successfully!"
