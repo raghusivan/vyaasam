@@ -1,4 +1,58 @@
 
+Sure! Here's the updated list with your additional point included:
+
+
+---
+
+Next Steps:
+
+1. Confirm Closed Alerts Volume:
+
+Check with Brie and the compliance team to verify the number of closed alerts.
+
+
+
+2. Analyze ES Data Structure:
+
+Raghu to examine Elasticsearch to retrieve closed alerts matching the CSS API format.
+
+
+
+3. Retrieve Alerts Data from ES:
+
+Develop a method to get alerts data from the ES index that overcomes the 60-day limitation.
+
+
+
+4. Confirm Required Fields in CSS API Alert:
+
+Brie to confirm if any additional fields are needed in the CSS API alert data.
+
+
+
+
+Questions:
+
+Determine Data Retrieval Start Year:
+
+From which year should we start the initial data retrieval? Is it from 2019 onwards?
+
+Note: The first retrieval will involve large volumes; we need an efficient approach to handle it in chunks.
+
+
+Capturing Historical Status Changes:
+
+Alerts retrieved via CSS API and comments show current data but not historical status changes.
+
+We need further analysis and design to determine how to capture alerts' historical status transitions.
+
+
+
+
+---
+
+
+======
 Certainly! Here is a rewrite of your points in the requested format:
 
 
