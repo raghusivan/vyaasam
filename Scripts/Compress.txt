@@ -1,0 +1,67 @@
+To create a macOS script that compresses the file contents by removing all new lines and extra white spaces and then adds it to your .zshrc, follow these steps:
+
+Step 1: Create the Script
+
+1. Open a terminal and create a new script file, let's call it compress_file.sh:
+
+nano ~/compress_file.sh
+
+
+2. Inside the file, add the following script:
+
+#!/bin/bash
+# Compress file by removing new lines and extra white spaces
+
+if [ $# -eq 0 ]; then
+  echo "Usage: compress_file.sh <file>"
+  exit 1
+fi
+
+# Read the file and remove newlines and excess spaces
+tr -s '[:space:]' ' ' < "$1" > "$1_compressed"
+
+echo "Compressed file saved as $1_compressed"
+
+This script reads the input file, removes all new lines and compresses multiple spaces into a single space, and saves the output as a new file with a _compressed suffix.
+
+
+3. Save and exit the file (CTRL + X, then Y, then Enter).
+
+
+
+Step 2: Make the Script Executable
+
+In the terminal, make the script executable:
+
+chmod +x ~/compress_file.sh
+
+Step 3: Add the Script to .zshrc
+
+1. Open your .zshrc file:
+
+nano ~/.zshrc
+
+
+2. Add the following line to include the script as an alias or function:
+
+alias compress_file='~/compress_file.sh'
+
+
+3. Save and exit (CTRL + X, then Y, then Enter).
+
+
+
+Step 4: Source .zshrc
+
+Source the .zshrc file to apply the changes:
+
+source ~/.zshrc
+
+Now you can use the compress_file command in the terminal to compress any file. For example:
+
+compress_file /path/to/yourfile.txt
+
+This will remove new lines and extra spaces and save the result as yourfile.txt_compressed.
+
+Let me know if you need further assistance!
+
