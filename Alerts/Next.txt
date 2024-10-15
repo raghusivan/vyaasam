@@ -1,3 +1,69 @@
+
+Certainly! Here is a rewrite of your points in the requested format:
+
+
+---
+
+Next Steps:
+
+1. Confirm Closed Alerts Volume with Compliance Team
+
+Action: Check with Brie and the compliance team to confirm the volume of closed alerts.
+
+Purpose: Ensure the accuracy of the closed alerts data for proper analysis and migration planning.
+
+Responsibility: Brie and the compliance team.
+
+
+
+2. Analyze Elasticsearch (ES) Data Structure
+
+Action: Conduct further analysis on the ES data structure to retrieve closed alerts data that matches the CSS API format.
+
+Purpose: Align the retrieved data with the CSS API to facilitate seamless integration.
+
+Responsibility: Raghu.
+
+
+
+3. Retrieve Alerts Data from ES Index
+
+Action: Develop a method to retrieve alerts data from the ES index that matches the CSS API, overcoming the 60-day limitation.
+
+Purpose: Access historical alert data beyond the current 60-day limit for comprehensive data migration.
+
+Responsibility: Raghu and the technical team.
+
+
+
+4. Confirm Required Fields in CSS API Alert
+
+Action: Have Brie confirm if any additional fields are required in the CSS API alert data.
+
+Purpose: Ensure all necessary data fields are included to meet compliance and operational requirements.
+
+Responsibility: Brie.
+
+
+
+
+Questions:
+
+Determine Cut-off Year for Initial Data Retrieval
+
+Question: From which year should we start the initial data retrieval? Is it from 2019 onwards?
+
+Concern: The first-time retrieval will involve a very large volume of data, so we need to devise an efficient approach to retrieve it in chunks.
+
+
+
+
+---
+
+By following these steps, we can proceed efficiently with the data retrieval and migration process while addressing any potential challenges related to data volume and system limitations. Please let me know if you need further clarification or assistance with any of these points.
+
+
+=============
 Sure! Here are the simplified bullet points:
 
 
