@@ -1,0 +1,62 @@
+To write a Unix script to clone the repository and get the files from the URL shown in the image, you can use the following steps. The script assumes that you have access to the Git repository and are using SSH or HTTP for authentication.
+
+Here’s a sample Unix script:
+
+#!/bin/bash
+
+# Variables
+REPO_URL="git@stash.internal.macquarie.com:COMMSURV/gravity.git"
+BRANCH="dev"
+TARGET_DIR="gravity/pipeline/files/cyberark/prod"
+
+# Clone the repository (shallow clone for efficiency)
+git clone --branch "$BRANCH" --depth 1 "$REPO_URL"
+
+# Navigate to the target directory
+cd gravity || exit 1
+
+# Check if the target directory exists
+if [ -d "$TARGET_DIR" ]; then
+    # Navigate to the target directory
+    cd "$TARGET_DIR" || exit 1
+    
+    # List files in the directory
+    echo "Files in $TARGET_DIR:"
+    ls -1
+else
+    echo "Target directory $TARGET_DIR does not exist."
+fi
+
+Explanation:
+
+1. REPO_URL: This should be your Git repository's URL. Replace this with the appropriate SSH or HTTPS link depending on how your Git is set up.
+
+
+2. BRANCH: In your case, the image shows you're in the dev branch. Adjust the branch name if needed.
+
+
+3. TARGET_DIR: The directory within the repo you're interested in. You can modify this path according to the structure of the repository.
+
+
+4. The script will shallow clone the repo, switch to the desired branch, navigate to the required directory, and list all files in that directory.
+
+
+
+Run this script:
+
+1. Save the script in a file, e.g., get_files.sh.
+
+
+2. Make the script executable:
+
+chmod +x get_files.sh
+
+
+3. Run the script:
+
+./get_files.sh
+
+
+
+Make sure you have appropriate permissions set up for Git, either via SSH keys or HTTPS authentication.
+
