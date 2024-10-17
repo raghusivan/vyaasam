@@ -1,3 +1,148 @@
+To modify the script so that instead of sending an .eml file as an attachment, you send the email directly from the .eml file using the original sender inside the .eml, here’s how the code can be structured:
+
+Steps:
+
+1. Extract the sender (From), recipients (To), subject, and body from the .eml file.
+
+
+2. Use the sendmail() method to directly send the email using these fields.
+
+
+
+Modified Code:
+
+import os
+import smtplib
+import socket
+import ConfigParser
+from email import message_from_file
+
+# Read configuration from config.ini
+config = ConfigParser.ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send .eml files directly, using the sender from the .eml and sending as if it was that sender
+def send_eml_files():
+    try:
+        # Create an SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.set_debuglevel(1)  # Enable detailed debugging output to see all communication with the SMTP server
+        server.ehlo()
+        server.starttls()  # Secure the connection
+        server.ehlo()
+
+        # Login to the SMTP server
+        server.login(smtp_user, smtp_password)
+
+        # Process each .eml file
+        for filename in os.listdir('.'):  # Iterate through files in the current directory
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):  # Filter based on extension
+                print("Processing file: {}".format(filename))
+                with open(filename, 'r') as eml_file:
+                    # Parse the .eml file as an email message
+                    msg = message_from_file(eml_file)
+
+                    # Extract the From, To, and Subject fields
+                    from_address = str(msg['From'])
+                    to_address = str(msg['To'])
+                    subject = str(msg['Subject'])
+
+                    # Send the email directly using the extracted From, To, and message content
+                    try:
+                        # Use the extracted sender (from_address) as the sender
+                        response = server.sendmail(from_address, to_address, msg.as_string())
+
+                        # Print the response from the SMTP server
+                        if response == {}:
+                            print("Email successfully sent and accepted for delivery: {}".format(filename))
+                        else:
+                            print("Email sent with response: {}, filename: {}".format(response, filename))
+
+                    except smtplib.SMTPResponseException as smtp_error:
+                        # Catch specific SMTP errors and print the error code and message
+                        print("SMTP error occurred: Code: {}, Message: {}".format(smtp_error.smtp_code, smtp_error.smtp_error))
+
+        # Close the connection
+        server.quit()
+
+    except Exception as e:
+        print("Failed to send email: {}".format(e))
+
+# Function to test if SMTP port is open
+def check_smtp_port():
+    try:
+        socket.create_connection((smtp_server, smtp_port), timeout=10)
+        print("Connection to {} on port {} is successful.".format(smtp_server, smtp_port))
+    except Exception as e:
+        print("Failed to connect to {} on port {}: {}".format(smtp_server, smtp_port, e))
+
+if __name__ == "__main__":
+    # Check SMTP connection
+    check_smtp_port()
+
+    # Send emails directly from .eml files
+    send_eml_files()
+
+Key Changes:
+
+1. Send Email Directly:
+
+The script now reads the .eml file and extracts the original sender (From), recipient (To), and the subject from the .eml file.
+
+Instead of attaching the .eml, the script sends the content of the .eml directly using the original sender's address and sends it as if it was sent by that sender.
+
+
+
+2. Use sendmail() to Send the Email:
+
+The sendmail() function is used to send the email using the extracted sender (From) and recipient (To) addresses.
+
+The message content is sent exactly as parsed from the .eml file using msg.as_string().
+
+
+
+3. Logging and Debugging:
+
+The debug level is set (server.set_debuglevel(1)) to print detailed interaction with the SMTP server, so you can see how the server is handling each part of the transaction.
+
+
+
+
+Assumptions:
+
+The .eml file contains valid From, To, and message body fields.
+
+The SMTP server allows you to send emails with a custom "From" address. (Some servers might block or rewrite the "From" field for security reasons.)
+
+
+Notes:
+
+Spoofing Considerations: Sending emails using another sender's address might trigger email spoofing protections (like SPF, DKIM, and DMARC), depending on the recipient’s email service and your SMTP server's configuration. Make sure you have permission to send emails on behalf of other users or addresses.
+
+
+Next Steps:
+
+1. Test the Script: Run the script and verify that the emails are sent using the original sender's address extracted from the .eml files.
+
+
+2. Monitor the Output: Check the console for any SMTP server responses or errors to ensure the emails are being sent successfully.
+
+
+
+Let me know if you need any additional adjustments or clarification!
+
+
+
+=======
 import os
 import smtplib
 import socket
