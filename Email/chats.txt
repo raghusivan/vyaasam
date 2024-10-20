@@ -1,0 +1,10 @@
+We are still unable to send the EML files to Shield. Below is what we have done:
+
+    Sowndharya generated the EML files, ensuring they match the ones that successfully worked on Oct 10.
+    Joseph compared the headers and other metadata, confirming they are identical to those that worked previously.
+    He shared the "from" and "to" addresses where the traffic flows to Shield.
+    We’ve conducted all possible testing on our end, but still haven’t had any success.
+
+Joseph will raise a request with the Shield team. Wren, is there anything else we can do on this?
+
+Thanks.
