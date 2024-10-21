@@ -1,3 +1,80 @@
+
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# Define the OpenSSL version to install
+OPENSSL_VERSION="1.1.1w"
+OPENSSL_TAR="openssl-$OPENSSL_VERSION.tar.gz"
+OPENSSL_SRC_URL="https://www.openssl.org/source/$OPENSSL_TAR"
+
+# Function to download with retry
+download_with_retry() {
+    local url=$1
+    local output=$2
+    local max_retries=3
+    local retry_count=0
+
+    while [ $retry_count -lt $max_retries ]; do
+        if curl -L --output "$output" "$url"; then
+            echo "Download successful!"
+            return 0
+        else
+            echo "Download failed. Retrying in 5 seconds..."
+            sleep 5
+            retry_count=$((retry_count + 1))
+        fi
+    done
+
+    echo "Failed to download after $max_retries attempts."
+    return 1
+}
+
+# Install required build tools and dependencies
+echo "Installing required build tools..."
+sudo yum groupinstall -y "Development Tools"
+sudo yum install -y perl-core zlib-devel curl
+
+# Download OpenSSL source code
+echo "Downloading OpenSSL $OPENSSL_VERSION source..."
+cd /usr/local/src
+if ! download_with_retry "$OPENSSL_SRC_URL" "$OPENSSL_TAR"; then
+    echo "Failed to download OpenSSL. Exiting."
+    exit 1
+fi
+
+# Extract the source tarball
+echo "Extracting OpenSSL source..."
+sudo tar -zxf $OPENSSL_TAR
+cd "openssl-$OPENSSL_VERSION"
+
+# Configure, build, and install OpenSSL
+echo "Configuring, building, and installing OpenSSL..."
+sudo ./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared zlib
+sudo make
+echo "Running tests (optional)..."
+sudo make test  # Optional: skip this if you don't want to run tests
+sudo make install
+
+# Update the system to use the newly installed OpenSSL
+echo "Updating the system to use the new OpenSSL version..."
+sudo mv /bin/openssl /bin/openssl.backup 2>/dev/null || echo "Old OpenSSL binary not found, skipping backup."
+sudo ln -s /usr/local/ssl/bin/openssl /bin/openssl
+
+# Update dynamic linker configuration
+echo "Updating dynamic linker configuration..."
+sudo sh -c "echo '/usr/local/ssl/lib' >> /etc/ld.so.conf.d/openssl-$OPENSSL_VERSION.conf"
+sudo ldconfig -v
+
+# Verify the OpenSSL version
+echo "Verifying the OpenSSL installation..."
+openssl version
+
+echo "OpenSSL $OPENSSL_VERSION installation completed successfully!"
+
+============
+
 Here’s a Linux shell script that automates the entire process of downloading, building, and installing the latest version of OpenSSL from source on a Red Hat-based system, and configuring your system to use the new version. This script will:
 
 1. Install required build tools.
