@@ -1,0 +1,117 @@
+Certainly! Here's how you can modify the Python script to use an INI configuration file instead of YAML. We'll use Python’s built-in configparser library to read the configuration.
+
+Steps:
+
+1. Create the INI configuration file (config.ini) to store all necessary parameters.
+
+
+2. Modify the Python script to read from the config.ini file using configparser.
+
+
+
+1. Create the INI Configuration File (config.ini)
+
+Create a file called config.ini with the following structure:
+
+[api]
+url = https://cyberark-ccp.lb.macbank/AIMWebService/api/Accounts
+AppID = AP012815
+Safe = CP-AP012815_PRD
+UserName = rmg_commsurv_email
+Address = NTADMIN
+
+[ssl]
+cert = /tmp/test1/FOR-Risk-DigitalReasoning-CyberArk-use.pem
+key = /tmp/test1/private-key.key
+cacert = /tmp/test1/Macquarie-Root-CA.cer
+
+2. Python Script to Read the Configuration (invoke_api.py)
+
+Now, here’s the Python script that reads from the config.ini file using configparser:
+
+import configparser
+import requests
+
+# Initialize the configparser
+config = configparser.ConfigParser()
+
+# Read the configuration file
+config.read("config.ini")
+
+# Extract API and SSL configuration from the INI file
+api_url = config['api']['url']
+api_params = {
+    'AppID': config['api']['AppID'],
+    'Safe': config['api']['Safe'],
+    'UserName': config['api']['UserName'],
+    'Address': config['api']['Address']
+}
+cert_path = config['ssl']['cert']
+key_path = config['ssl']['key']
+ca_cert_path = config['ssl']['cacert']
+
+try:
+    # Make the HTTPS request using the parameters from the config file
+    response = requests.get(
+        api_url, 
+        params=api_params, 
+        cert=(cert_path, key_path),  # Tuple of (cert, key)
+        verify=ca_cert_path  # CA certificate for SSL verification
+    )
+    
+    # Check if the request was successful
+    if response.status_code == 200:
+        print("Request successful!")
+        print("Response:", response.text)
+    else:
+        print(f"Request failed with status code: {response.status_code}")
+        print("Response:", response.text)
+
+except requests.exceptions.SSLError as ssl_err:
+    print("SSL error:", ssl_err)
+except requests.exceptions.RequestException as req_err:
+    print("Request error:", req_err)
+
+Explanation of the Code:
+
+1. INI Configuration:
+
+We are using the configparser.ConfigParser() class to read the config.ini file.
+
+The API URL and parameters (AppID, Safe, etc.) are read from the [api] section.
+
+The SSL certificate, key, and CA cert paths are read from the [ssl] section.
+
+
+
+2. Making the API Request:
+
+The requests.get() method is used to make the HTTPS request, passing the certificates and query parameters.
+
+
+
+3. Error Handling:
+
+Handles SSL and other request exceptions to print useful error messages.
+
+
+
+
+How to Run:
+
+1. Create a file called config.ini with the parameters shown above.
+
+
+2. Save the Python script to a file (e.g., invoke_api.py).
+
+
+3. Run the Python script:
+
+python invoke_api.py
+
+
+
+This setup removes hardcoding from the Python script and allows you to manage all parameters via the config.ini file. It makes your code more flexible and easier to maintain.
+
+Let me know if you have any questions or need further adjustments!
+
