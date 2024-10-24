@@ -1,0 +1,181 @@
+To modify the code and dynamically retrieve the password from the API while keeping everything else unchanged, here is an updated version that focuses only on getting the SMTP password dynamically:
+
+import os
+import sys
+import smtplib
+import logging
+import configparser
+import requests
+import email
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from typing import List
+from pathlib import Path
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('email_sender.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+class EmailSender:
+    def __init__(self, config_path: str = 'config.ini'):
+        self.config = self._load_config(config_path)
+        self.smtp_server = None
+
+    def _load_config(self, config_path: str) -> configparser.ConfigParser:
+        config = configparser.ConfigParser()
+        config.read(config_path)
+        return config
+
+    def _get_smtp_password(self) -> str:
+        """Retrieve SMTP password dynamically from an API."""
+        try:
+            api_config = self.config['API']
+            ssl_config = self.config['SSL']
+
+            response = requests.get(
+                api_config['url'],
+                params={
+                    'AppID': api_config['app_id'],
+                    'Safe': api_config['Safe'],
+                    'UserName': api_config['username'],
+                    'Address': api_config['address']
+                },
+                cert=(ssl_config['cert_path'], ssl_config['key_path']),
+                verify=ssl_config['ca_cert_path'],
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                return response.json().get('Content')  # Assuming 'Content' contains the password
+            else:
+                logger.error(f"Failed to get password. Status code: {response.status_code}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error retrieving password: {str(e)}")
+            return None
+
+    def _connect_smtp(self):
+        """Establish SMTP connection using the dynamically retrieved password."""
+        try:
+            smtp_config = self.config['SMTP']
+            smtp_password = self._get_smtp_password()
+
+            if smtp_password is None:
+                raise ValueError("SMTP password could not be retrieved")
+
+            server = smtplib.SMTP(smtp_config['server'], int(smtp_config['port']))
+            server.starttls()
+            server.login(smtp_config['username'], smtp_password)
+            return server
+        except Exception as e:
+            logger.error(f"SMTP Connection failed: {str(e)}")
+            raise
+
+    def _get_eml_files(self) -> List[Path]:
+        """Get list of all .eml files from the source directory"""
+        source_dir = Path(self.config['Email']['source_directory'])
+        return list(source_dir.glob('*.eml'))
+
+    def _process_eml_file(self, eml_path: Path) -> tuple:
+        """Extract subject and create attachment from EML file"""
+        try:
+            with open(eml_path, 'r') as eml_file:
+                eml_content = eml_file.read()
+                
+            # Parse the EML file
+            eml_message = email.message_from_string(eml_content)
+            
+            # Get subject from EML
+            subject = eml_message.get('Subject', 'No Subject')
+            
+            # Create attachment
+            attachment = MIMEApplication(eml_content.encode(), _subtype='eml')
+            attachment.add_header('Content-Disposition', 'attachment', 
+                                  filename=eml_path.name)
+            
+            return subject, attachment
+
+        except Exception as e:
+            logger.error(f"Error processing EML file {eml_path}: {str(e)}")
+            raise
+
+    def send_eml_attachments(self):
+        """Send emails with EML attachments"""
+        try:
+            # Get email configuration
+            email_config = self.config['Email']
+            from_addr = email_config['from_address']
+            to_addr = email_config['to_address']
+
+            # Get list of EML files
+            eml_files = self._get_eml_files()
+            if not eml_files:
+                logger.warning("No EML files found in source directory")
+                return
+
+            # Connect to SMTP server
+            server = self._connect_smtp()
+
+            # Process each EML file
+            for eml_path in eml_files:
+                try:
+                    # Create new message for each EML
+                    msg = MIMEMultipart()
+                    msg['From'] = from_addr
+                    msg['To'] = to_addr
+                    
+                    # Get subject and attachment from EML
+                    subject, attachment = self._process_eml_file(eml_path)
+                    msg['Subject'] = subject  # Send the subject as is
+
+                    # Attach EML file
+                    msg.attach(attachment)
+
+                    # Send email
+                    server.send_message(msg)
+                    logger.info(f"Successfully sent email with attachment: {eml_path.name}")
+
+                except Exception as e:
+                    logger.error(f"Failed to send {eml_path.name}: {str(e)}")
+                    continue
+
+            # Close connection
+            server.quit()
+            logger.info("All EML files processed")
+
+        except Exception as e:
+            logger.error(f"Email sending process failed: {str(e)}")
+            if 'server' in locals():
+                server.quit()
+            raise
+
+def main():
+    try:
+        sender = EmailSender()
+        sender.send_eml_attachments()
+        logger.info("Email sending completed successfully")
+    except Exception as e:
+        logger.error(f"Process failed: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
+Key Modification:
+
+The smtp_password is now retrieved dynamically via the _get_smtp_password method, which makes an API call to fetch the password and returns the value of the "Content" field from the response.
+
+The smtp_password is then used when logging into the SMTP server.
+
+
+Everything else in your script remains the same.
+
