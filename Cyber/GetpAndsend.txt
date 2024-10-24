@@ -1,18 +1,16 @@
-  I'll help modify the script to use the email addresses shown in your configuration file. Here's the updated version:
+ Here’s a rewritten version of your script based on your request to remove "FW:" from the subject, send the subject as is, and send only EML files as attachments one by one:
 
-```python
 import os
 import sys
 import smtplib
 import logging
 import configparser
-import requests
-from email import message_from_file
+import email
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
+from email.mime.application import MIMEApplication
 from email import encoders
-from typing import Optional
+from typing import List
 from pathlib import Path
 
 # Set up logging
@@ -28,143 +26,127 @@ logger = logging.getLogger(__name__)
 
 class EmailSender:
     def __init__(self, config_path: str = 'config.ini'):
-        """Initialize EmailSender with configuration"""
         self.config = self._load_config(config_path)
-        self.smtp_password = None
+        self.smtp_server = None
 
     def _load_config(self, config_path: str) -> configparser.ConfigParser:
-        """Load and validate configuration file"""
         config = configparser.ConfigParser()
         config.read(config_path)
         return config
 
-    def _get_smtp_password(self) -> str:
-        """Retrieve SMTP password from API"""
+    def _connect_smtp(self):
+        """Establish SMTP connection"""
         try:
-            api_config = self.config['API']
-            ssl_config = self.config['SSL']
-
-            response = requests.get(
-                api_config['url'],
-                params={
-                    'AppID': api_config['app_id'],
-                    'Safe': api_config['Safe'],
-                    'UserName': api_config['username'],
-                    'Address': api_config['address']
-                },
-                cert=(ssl_config['cert_path'], ssl_config['key_path']),
-                verify=ssl_config['ca_cert_path'],
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                return response.json().get('Content')
-            else:
-                logger.error(f"Failed to get password. Status code: {response.status_code}")
-                return None
-
-        except Exception as e:
-            logger.error(f"Error retrieving password: {str(e)}")
-            return None
-
-    def send_test_email(self):
-        """Send test email using configuration settings"""
-        try:
-            # Get email configuration
             smtp_config = self.config['SMTP']
-            email_config = self.config['Email']
-
-            # Create message
-            msg = MIMEMultipart()
-            msg['From'] = email_config['from_address']  # commsurv.ops@macquarie.com
-            msg['To'] = email_config['to_address']      # raghu.venkatachalapathy@macquarie.com
-            msg['Subject'] = email_config['subject']    # Tester EML
-
-            # Add body
-            body = email_config['message_body']         # This is a test email.
-            msg.attach(MIMEText(body, 'plain'))
-
-            # Connect to SMTP server
             server = smtplib.SMTP(smtp_config['server'], int(smtp_config['port']))
             server.starttls()
+            server.login(smtp_config['username'], smtp_config['smtp_password'])
+            return server
+        except Exception as e:
+            logger.error(f"SMTP Connection failed: {str(e)}")
+            raise
+
+    def _get_eml_files(self) -> List[Path]:
+        """Get list of all .eml files from the source directory"""
+        source_dir = Path(self.config['Email']['source_directory'])
+        return list(source_dir.glob('*.eml'))
+
+    def _process_eml_file(self, eml_path: Path) -> tuple:
+        """Extract subject and create attachment from EML file"""
+        try:
+            with open(eml_path, 'r') as eml_file:
+                eml_content = eml_file.read()
+                
+            # Parse the EML file
+            eml_message = email.message_from_string(eml_content)
             
-            # Use configured password
-            smtp_password = smtp_config['smtp_password']  # Use the password from config
+            # Get subject from EML
+            subject = eml_message.get('Subject', 'No Subject')
             
-            # Login and send
-            server.login(smtp_config['username'], smtp_password)
-            text = msg.as_string()
-            server.sendmail(msg['From'], msg['To'], text)
+            # Create attachment
+            attachment = MIMEApplication(eml_content.encode(), _subtype='eml')
+            attachment.add_header('Content-Disposition', 'attachment', 
+                                  filename=eml_path.name)
             
-            logger.info("Test email sent successfully")
-            
-            # Close connection
-            server.quit()
+            return subject, attachment
 
         except Exception as e:
-            logger.error(f"Failed to send test email: {str(e)}")
+            logger.error(f"Error processing EML file {eml_path}: {str(e)}")
+            raise
+
+    def send_eml_attachments(self):
+        """Send emails with EML attachments"""
+        try:
+            # Get email configuration
+            email_config = self.config['Email']
+            from_addr = email_config['from_address']
+            to_addr = email_config['to_address']
+
+            # Get list of EML files
+            eml_files = self._get_eml_files()
+            if not eml_files:
+                logger.warning("No EML files found in source directory")
+                return
+
+            # Connect to SMTP server
+            server = self._connect_smtp()
+
+            # Process each EML file
+            for eml_path in eml_files:
+                try:
+                    # Create new message for each EML
+                    msg = MIMEMultipart()
+                    msg['From'] = from_addr
+                    msg['To'] = to_addr
+                    
+                    # Get subject and attachment from EML
+                    subject, attachment = self._process_eml_file(eml_path)
+                    msg['Subject'] = subject  # Send the subject as is
+
+                    # Attach EML file (No body needed, sending EML directly)
+                    msg.attach(attachment)
+
+                    # Send email
+                    server.send_message(msg)
+                    logger.info(f"Successfully sent email with attachment: {eml_path.name}")
+
+                except Exception as e:
+                    logger.error(f"Failed to send {eml_path.name}: {str(e)}")
+                    continue
+
+            # Close connection
+            server.quit()
+            logger.info("All EML files processed")
+
+        except Exception as e:
+            logger.error(f"Email sending process failed: {str(e)}")
+            if 'server' in locals():
+                server.quit()
             raise
 
 def main():
-    """Main execution function"""
     try:
-        # Initialize sender
         sender = EmailSender()
-        
-        # Send test email
-        sender.send_test_email()
-        
+        sender.send_eml_attachments()
         logger.info("Email sending completed successfully")
-        
     except Exception as e:
-        logger.error(f"Email sending failed: {str(e)}")
+        logger.error(f"Process failed: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":
     main()
-```
 
-And here's the corresponding `config.ini` file based on your screenshot:
+Changes:
 
-```ini
-[API]
-url = https://cyberark-ccp.lb.macbank/AIMWebService/api/Accounts
-app_id = AP012815-PRD
-Safe = CP-AP012815-SYS-PRD-INT
-username = rng_commsurv_email
-address = NTADMIN
+1. Subject: The subject line is now sent "as is," without any modification (i.e., no "FW:" prefix).
 
-[SSL]
-cert_path = /tmp/test1/FOR-Risk-DigitalReasoning-CyberArk-use.pem
-key_path = /tmp/test1/private-key.key
-ca_cert_path = /tmp/test1/Macquarie-Root-CA.cer
 
-[SMTP]
-server = smtpauthrelay.lb.macbank
-port = 587
-username = commsurv.ops@macquarie.com
-smtp_password = DY2[aperq-vIQ@y
+2. Attachments Only: The body of the email has been removed since your request is to send only the .eml files as attachments.
 
-[Email]
-from_address = commsurv.ops@macquarie.com
-to_address = raghu.venkatachalapathy@macquarie.com
-subject = Tester EML
-message_body = This is a test email.
-extensions = .eml
-source_directory = /tmp/test1/
-```
 
-Key changes made:
-1. Used the exact SMTP server and port from your config
-2. Used the specific email addresses shown in your config
-3. Included the subject and message body from your config
-4. Maintained the SSL certificate paths as shown
-5. Used the exact API endpoint and credentials from your config
-6. Simplified the email sending process to focus on the test email case
-7. Maintained all the specific paths and directories from your config
+3. File Processing: Each .eml file is processed and sent individually as an attachment in its own email.
 
-To use this:
-1. Save both files in the same directory
-2. Run with: `python email_sender.py`
 
-The script will send a test email using the exact configuration shown in your screenshot. Would you like me to explain any part in more detail?
+
+This version sends the .eml files from the current directory without modifying the subject, and without forwarding or adding any additional text. Let me know if you need further modifications!
+
