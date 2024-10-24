@@ -1,140 +1,244 @@
- I'll help you integrate the password retrieval functionality into your SMTP email script. Here's how to combine them:
+  I'll help you rewrite the complete script incorporating both the password retrieval and SMTP email functionality.
 
 ```python
 import os
+import sys
 import smtplib
-import socket
+import logging
 import configparser
+import requests
 from email import message_from_file
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-import requests
-import logging
-from typing import Optional
+from typing import Optional, Dict, Any
+from pathlib import Path
 
-# Configure logging
+# Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('email_sender.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
 )
 logger = logging.getLogger(__name__)
 
-def get_smtp_password() -> Optional[str]:
-    """Retrieve SMTP password from API"""
-    try:
-        config = configparser.ConfigParser()
-        config.read('config.ini')
+class ConfigError(Exception):
+    """Custom exception for configuration errors"""
+    pass
 
-        api_url = config['api']['url']
-        api_params = {
-            'AppID': config['api']['AppID'],
-            'Safe': config['api']['Safe'],
-            'UserName': config['api']['UserName'],
-            'Address': config['api']['Address']
+class PasswordRetrievalError(Exception):
+    """Custom exception for password retrieval errors"""
+    pass
+
+class EmailError(Exception):
+    """Custom exception for email-related errors"""
+    pass
+
+class EmailSender:
+    def __init__(self, config_path: str = 'config.ini'):
+        """Initialize EmailSender with configuration"""
+        self.config = self._load_config(config_path)
+        self.smtp_password = None
+
+    def _load_config(self, config_path: str) -> configparser.ConfigParser:
+        """Load and validate configuration file"""
+        if not Path(config_path).exists():
+            raise ConfigError(f"Configuration file not found: {config_path}")
+
+        config = configparser.ConfigParser()
+        config.read(config_path)
+
+        required_sections = {
+            'API': ['url', 'app_id', 'safe', 'username', 'address'],
+            'SSL': ['cert_path', 'key_path', 'ca_cert_path'],
+            'SMTP': ['server', 'port', 'username'],
+            'Email': ['extensions', 'source_directory']
         }
 
-        cert_path = config['ssl']['cert']
-        key_path = config['ssl']['key']
-        ca_cert_path = config['ssl']['cacert']
+        for section, keys in required_sections.items():
+            if section not in config:
+                raise ConfigError(f"Missing section in config: {section}")
+            for key in keys:
+                if key not in config[section]:
+                    raise ConfigError(f"Missing key in {section}: {key}")
 
-        response = requests.get(
-            api_url,
-            params=api_params,
-            cert=(cert_path, key_path),
-            verify=ca_cert_path,
-            timeout=30
-        )
+        return config
 
-        response.raise_for_status()
-        return response.json()['Content']
+    def _get_smtp_password(self) -> str:
+        """Retrieve SMTP password from API"""
+        try:
+            api_config = self.config['API']
+            ssl_config = self.config['SSL']
 
-    except Exception as e:
-        logger.error(f"Failed to retrieve SMTP password: {str(e)}")
-        return None
+            response = requests.get(
+                api_config['url'],
+                params={
+                    'AppID': api_config['app_id'],
+                    'Safe': api_config['safe'],
+                    'UserName': api_config['username'],
+                    'Address': api_config['address']
+                },
+                cert=(ssl_config['cert_path'], ssl_config['key_path']),
+                verify=ssl_config['ca_cert_path'],
+                timeout=30
+            )
 
-# Read configuration from config.ini
-config = configparser.ConfigParser()
-config.read('config.ini')
+            response.raise_for_status()
+            password = response.json().get('Content')
+            
+            if not password:
+                raise PasswordRetrievalError("No password found in API response")
+            
+            return password
 
-# SMTP Configuration
-smtp_server = config.get('SMTP', 'smtp_server')
-smtp_port = config.getint('SMTP', 'smtp_port')
-smtp_user = config.get('SMTP', 'smtp_user')
+        except requests.exceptions.RequestException as e:
+            raise PasswordRetrievalError(f"API request failed: {str(e)}")
+        except ValueError as e:
+            raise PasswordRetrievalError(f"Failed to parse API response: {str(e)}")
 
-# Get password from API instead of config file
-smtp_password = get_smtp_password()
-if not smtp_password:
-    logger.error("Failed to retrieve SMTP password. Exiting.")
-    exit(1)
+    def _setup_smtp_connection(self) -> smtplib.SMTP:
+        """Set up and return SMTP connection"""
+        try:
+            smtp_config = self.config['SMTP']
+            
+            # Get password if not already retrieved
+            if not self.smtp_password:
+                self.smtp_password = self._get_smtp_password()
 
-# Email Configuration
-extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+            # Create SMTP connection
+            server = smtplib.SMTP(
+                smtp_config['server'], 
+                smtp_config.getint('port')
+            )
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(smtp_config['username'], self.smtp_password)
+            
+            return server
 
-def send_eml_files():
-    """Function to send .eml files as attachments"""
+        except Exception as e:
+            raise EmailError(f"Failed to set up SMTP connection: {str(e)}")
+
+    def _process_eml_file(self, file_path: Path, server: smtplib.SMTP) -> None:
+        """Process and send individual EML file"""
+        try:
+            # Read the .eml file
+            with open(file_path, 'r') as eml_file:
+                msg = message_from_file(eml_file)
+
+            # Send the email
+            server.send_message(msg)
+            logger.info(f"Successfully sent email: {file_path.name}")
+
+        except Exception as e:
+            raise EmailError(f"Failed to process {file_path}: {str(e)}")
+
+    def send_emails(self) -> None:
+        """Main method to process and send all emails"""
+        server = None
+        try:
+            # Set up SMTP connection
+            server = self._setup_smtp_connection()
+
+            # Get list of .eml files
+            email_config = self.config['Email']
+            source_dir = Path(email_config['source_directory'])
+            extensions = email_config['extensions'].split(',')
+            
+            eml_files = []
+            for ext in extensions:
+                eml_files.extend(source_dir.glob(f"*{ext.strip()}"))
+
+            if not eml_files:
+                logger.warning(f"No email files found in {source_dir}")
+                return
+
+            # Process each file
+            for eml_file in eml_files:
+                try:
+                    self._process_eml_file(eml_file, server)
+                except EmailError as e:
+                    logger.error(str(e))
+                    continue
+
+        except (ConfigError, PasswordRetrievalError, EmailError) as e:
+            logger.error(str(e))
+            raise
+        finally:
+            if server:
+                try:
+                    server.quit()
+                except Exception as e:
+                    logger.error(f"Error closing SMTP connection: {str(e)}")
+
+def main():
+    """Main execution function"""
     try:
-        # Create an SMTP connection
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(smtp_user, smtp_password)
-
-        # Process each .eml file
-        # Add your email processing logic here
-
-        server.quit()
-        logger.info("Email processing completed successfully")
-
+        email_sender = EmailSender()
+        email_sender.send_emails()
+        logger.info("Email sending process completed successfully")
     except Exception as e:
-        logger.error(f"Error in send_eml_files: {str(e)}")
-        if 'server' in locals():
-            try:
-                server.quit()
-            except:
-                pass
+        logger.error(f"Email sending process failed: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    send_eml_files()
+    main()
 ```
 
-Key changes made:
-
-1. Added the password retrieval functionality from the previous script
-2. Replaced the static SMTP password with the dynamically retrieved password
-3. Added error handling for password retrieval
-4. Added logging throughout the script
-5. Maintained the original SMTP email functionality
-
-To use this script, you'll need two sections in your `config.ini` file:
+Configuration file (`config.ini`) structure:
 
 ```ini
-[api]
+[API]
 url = https://your-api-url
-AppID = your-app-id
-Safe = your-safe
-UserName = your-username
-Address = your-address
+app_id = your-app-id
+safe = your-safe
+username = your-username
+address = your-address
 
-[ssl]
-cert = path/to/cert.pem
-key = path/to/key.pem
-cacert = path/to/cacert.pem
+[SSL]
+cert_path = /path/to/cert.pem
+key_path = /path/to/key.pem
+ca_cert_path = /path/to/cacert.pem
 
 [SMTP]
-smtp_server = your.smtp.server
-smtp_port = 587
-smtp_user = your.username@domain.com
+server = smtp.your-server.com
+port = 587
+username = your-email@domain.com
 
 [Email]
 extensions = .eml
+source_directory = /path/to/eml/files
 ```
 
-The script will now:
-1. First retrieve the SMTP password from your API
-2. Use that password for SMTP authentication
-3. Proceed with sending emails only if the password was successfully retrieved
+Key features of this rewritten version:
 
-Would you like me to explain any part in more detail or add any additional functionality?
+1. Object-oriented approach with a main `EmailSender` class
+2. Comprehensive error handling with custom exceptions
+3. Proper logging to both file and console
+4. Clear separation of concerns (configuration, password retrieval, SMTP handling)
+5. Type hints for better code clarity
+6. Modular design with single-responsibility methods
+7. Secure password handling
+8. Proper resource management (SMTP connection)
+9. Batch processing of email files
+10. Configurable file extensions and source directory
+
+To use this script:
+
+1. Save it as `email_sender.py`
+2. Create the `config.ini` file with your settings
+3. Run: `python email_sender.py`
+
+The script will:
+- Load configuration
+- Retrieve the SMTP password securely
+- Process all .eml files in the specified directory
+- Log all activities to both console and file
+- Handle errors gracefully
+
+Would you like me to explain any specific part in more detail?
