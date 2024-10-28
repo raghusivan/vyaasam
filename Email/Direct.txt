@@ -1,0 +1,93 @@
+To modify your script to send emails using the sender of the .eml file and to implement proper logging with timestamps, you can use the logging module in Python. Below is a revised version of your code:
+
+import os
+import smtplib
+import socket
+import logging
+from email import message_from_file
+from configparser import ConfigParser
+from datetime import datetime
+
+# Configure logging
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send emails from .eml files
+def send_eml_files():
+    try:
+        # Establish SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logging.info(f"Processing file: {filename}")
+                with open(filename, 'r') as eml_file:
+                    msg = message_from_file(eml_file)
+                
+                # Use sender from the .eml file
+                from_addr = msg['From']
+                to_addr = config.get('Email', 'to_address')  # Use default 'To' from config
+                logging.info(f"From Address: {from_addr}")
+                logging.info(f"To Address: {to_addr}")
+
+                # Send the email
+                server.sendmail(from_addr, to_addr, msg.as_string())
+                logging.info(f"Email sent successfully from: {from_addr} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+
+# Function to test if SMTP port is open
+def test_smtp_port():
+    try:
+        socket.create_connection((smtp_server, smtp_port), timeout=10)
+        logging.info(f"Connection to {smtp_server} on port {smtp_port} is successful.")
+    except Exception as e:
+        logging.error(f"Failed to connect to {smtp_server} on port {smtp_port}: {e}")
+
+# Execute the functions
+test_smtp_port()
+send_eml_files()
+
+Explanation of Changes:
+
+1. Logging Configuration: Configured logging to output messages with timestamps. Logs are saved to email_sender.log in the current directory.
+
+
+2. Use Sender from .eml File: The sender’s email is read from the .eml file’s From header and is used as the from_addr.
+
+
+3. Logging Details: Added detailed logs for the sender and recipient addresses, the file being processed, and any exceptions encountered.
+
+
+4. Timestamp Format: The logging timestamp format is set to '%Y-%m-%d %H:%M:%S' for better readability.
+
+
+
+This code will send emails using the original sender from each .eml file and log each action with timestamps.
+
