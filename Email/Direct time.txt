@@ -1,0 +1,109 @@
+To ensure the logs display timestamps in Sydney's local time, you can use Python’s pytz library to convert UTC to the local timezone. Here’s how to modify the logging configuration to use Sydney's local time:
+
+1. Install pytz if you haven't already:
+
+pip install pytz
+
+
+2. Modify the logging format to use Sydney’s timezone.
+
+
+
+Here’s the updated code:
+
+import os
+import smtplib
+import socket
+import logging
+from email import message_from_file
+from configparser import ConfigParser
+from datetime import datetime
+import pytz  # Import pytz for timezone handling
+
+# Function to get Sydney's current time in log format
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        # Convert UTC time to Sydney time
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+# Configure logging
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send emails from .eml files
+def send_eml_files():
+    try:
+        # Establish SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logging.info(f"Processing file: {filename}")
+                with open(filename, 'r') as eml_file:
+                    msg = message_from_file(eml_file)
+                
+                # Use sender from the .eml file
+                from_addr = msg['From']
+                to_addr = config.get('Email', 'to_address')  # Use default 'To' from config
+                logging.info(f"From Address: {from_addr}")
+                logging.info(f"To Address: {to_addr}")
+
+                # Send the email
+                server.sendmail(from_addr, to_addr, msg.as_string())
+                logging.info(f"Email sent successfully from: {from_addr} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+
+# Function to test if SMTP port is open
+def test_smtp_port():
+    try:
+        socket.create_connection((smtp_server, smtp_port), timeout=10)
+        logging.info(f"Connection to {smtp_server} on port {smtp_port} is successful.")
+    except Exception as e:
+        logging.error(f"Failed to connect to {smtp_server} on port {smtp_port}: {e}")
+
+# Execute the functions
+test_smtp_port()
+send_eml_files()
+
+Explanation of Changes:
+
+1. SydneyTimeFormatter: A custom formatter class, SydneyTimeFormatter, overrides formatTime to convert log timestamps to Sydney's local time.
+
+
+2. Set Formatter: The logging handler's formatter is set to SydneyTimeFormatter so all log timestamps are displayed in Sydney time.
+
+
+
+This setup will ensure all log entries are timestamped according to Sydney’s current time.
+
