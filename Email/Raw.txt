@@ -1,18 +1,8 @@
- It appears that two issues persist:
+ To ensure that the sender address used is always the one specified in config.ini, let’s simplify the code to remove any other sender configurations. This version will always use the from_address from config.ini as both the envelope sender and the "From" header in the email content.
 
-1. pytz AttributeError: The error occurs because pytz doesn’t support pytz.timezone('UTC') in the way expected. Instead, pytz.utc is valid (not pytz.UTC). This requires a slight change in the logging formatter code.
+Additionally, I'll address the pytz issue by explicitly setting utc to avoid further errors.
 
-
-2. SMTP Permissions Error (550): This error suggests that the SMTP server does not allow sending emails on behalf of the From address specified in config.ini. To resolve this, you may need to set both the envelope sender and the From header to match the authenticated SMTP user.
-
-
-
-Here’s the revised code with both fixes:
-
-Logging Fix: Correct usage of pytz.utc.
-
-SMTP Workaround: Set both from_address (envelope sender) and the From header in the email content to the authenticated SMTP user.
-
+Here’s the updated code:
 
 import os
 import smtplib
@@ -50,7 +40,7 @@ smtp_user = config.get('SMTP', 'smtp_user')
 smtp_password = config.get('SMTP', 'smtp_password')
 
 # Email Configuration
-from_address = config.get('Email', 'from_address')  # Set "From" address from config
+from_address = config.get('Email', 'from_address')  # Use this as the "From" address
 to_address = config.get('Email', 'to_address')
 extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
 
@@ -73,24 +63,18 @@ def send_raw_eml_files():
                 with open(filename, 'r') as eml_file:
                     msg = message_from_file(eml_file)
                 
-                # Update 'From' header in the email content to match smtp_user
-                msg.replace_header('From', formataddr((smtp_user, smtp_user)))
-                
-                # Extract 'Subject' from the .eml file
-                subject = msg['Subject']
-                
-                # Re-read the .eml file line by line to retain exact formatting
-                with open(filename, 'r') as eml_file:
-                    raw_content = eml_file.read()
+                # Set the "From" header to match the config `from_address`
+                msg.replace_header('From', from_address)
                 
                 # Log the details
+                subject = msg['Subject']
                 logging.info(f"Using Config 'From' Address: {from_address}")
                 logging.info(f"To Address: {to_address}")
                 logging.info(f"Subject: {subject}")
 
-                # Send the raw email content using smtp_user as the "From" envelope address
-                server.sendmail(smtp_user, to_address, raw_content)
-                logging.info(f"Email sent successfully from: {smtp_user} using file: {filename}")
+                # Send the raw email content using `from_address` as both the envelope sender and "From" header
+                server.sendmail(from_address, to_address, msg.as_string())
+                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
         
         # Close the SMTP connection
         server.quit()
@@ -101,14 +85,17 @@ def send_raw_eml_files():
 # Execute the function
 send_raw_eml_files()
 
-Explanation of Changes:
+Explanation of Changes
 
-1. Logging Fix: Used pytz.utc instead of pytz.UTC.
-
-
-2. SMTP Permissions Workaround: Both the envelope sender (using smtp_user in server.sendmail()) and the From header in the message are now set to the authenticated smtp_user.
+1. Fixed pytz Issue: Used pytz.utc explicitly.
 
 
+2. Always Use from_address: The from_address from config.ini is used as both the envelope sender in sendmail() and the "From" header in the email.
 
-This should help resolve both the pytz error and the SMTP permissions error. Let me know if this resolves the issues.
+
+3. Simplified Logging: Logs show the sender, recipient, and subject for clarity.
+
+
+
+This should ensure that the from_address specified in config.ini is consistently used, avoiding permission issues from mismatched sender addresses. Please try running this version and let me know if it resolves the issue.
 
