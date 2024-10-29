@@ -1,0 +1,101 @@
+To send the contents of each .eml file exactly as they appear without alteration, and use the subject from the .eml file itself, we need to read the .eml file line by line and send it as raw data through the SMTP server.
+
+Here's an updated version of your script that parses each .eml file line by line and sends it with the exact content, using the config.ini file for SMTP details and recipient configuration:
+
+import os
+import smtplib
+import logging
+from email import message_from_file
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+to_address = config.get('Email', 'to_address')
+
+# Function to send raw content of .eml files
+def send_raw_eml_files():
+    try:
+        # Establish SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logging.info(f"Processing file: {filename}")
+                
+                # Open and read the .eml file
+                with open(filename, 'r') as eml_file:
+                    msg = message_from_file(eml_file)
+                
+                # Extract 'From', 'To', and 'Subject' from the .eml file
+                from_address = msg['From']
+                subject = msg['Subject']
+                
+                # Re-read the .eml file line by line to retain exact formatting
+                with open(filename, 'r') as eml_file:
+                    raw_content = eml_file.read()
+                
+                # Log the details
+                logging.info(f"From Address: {from_address}")
+                logging.info(f"To Address: {to_address}")
+                logging.info(f"Subject: {subject}")
+
+                # Send the raw email content
+                server.sendmail(from_address, to_address, raw_content)
+                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_raw_eml_files()
+
+Explanation of Changes:
+
+1. Raw Content Handling: Instead of parsing and reconstructing the email, the .eml file is read entirely as a raw string, ensuring that line-by-line formatting, headers, and content remain intact.
+
+
+2. Sender and Subject: The From and Subject fields are extracted from the .eml file, with the recipient (To) taken from the config.ini file.
+
+
+3. Logging: Logs are added to provide a clear trace of the sender, recipient, and subject for each email, along with Sydney-local timestamps.
+
+
+
+This script will send each .eml file with its original formatting and headers, as specified in the screenshot example. Let me know if you'd like further customization!
+
