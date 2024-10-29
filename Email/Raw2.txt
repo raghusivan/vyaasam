@@ -1,16 +1,13 @@
-To ensure that your Python code sends the email exactly as seen in the screenshot, including the headers and X-RCPT-TO, we need to take the following steps:
+ The error suggests that the SMTP server does not have permission to send emails from the from_address in config.ini, possibly due to mismatched sender addresses in the headers and envelope sender. To ensure the server recognizes and permits the email, let's take the following steps:
 
-1. Parse .eml File with All Headers: Use the .eml file as raw content to keep all headers (including Return-path, X-RCPT-TO, etc.) unaltered.
-
-
-2. Send as Raw Content: Ensure the SMTP client sends each line as it is, including all headers without modification.
+1. Ensure that the envelope sender (the one used in sendmail) and the From header within the email are identical and strictly use from_address from config.ini.
 
 
-3. Use sendmail with Full Control: To retain control over headers and envelope sender, sendmail can be used in a way that sends the email in raw format.
+2. Avoid modifying any other headers in the .eml file but replace only the From field if necessary.
 
 
 
-Here is the revised code that should meet these requirements:
+Here’s the modified code:
 
 import os
 import smtplib
@@ -68,12 +65,15 @@ def send_raw_eml_files():
                 # Read the entire .eml file as raw content
                 with open(filename, 'r') as eml_file:
                     raw_content = eml_file.read()
+
+                # Replace the "From" header in raw content with config from_address if necessary
+                raw_content = raw_content.replace("From: ", f"From: {from_address}\n", 1)
                 
                 # Log the details for verification
                 logging.info(f"Using Config 'From' Address: {from_address}")
                 logging.info(f"To Address (X-RCPT-TO): {to_address}")
 
-                # Send the email with raw content, ensuring 'from_address' is used as the envelope sender
+                # Send the email with raw content, using `from_address` as the envelope sender
                 server.sendmail(from_address, to_address, raw_content)
                 logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
         
@@ -86,24 +86,21 @@ def send_raw_eml_files():
 # Execute the function
 send_raw_eml_files()
 
-Explanation of How It Works:
+Key Changes
 
-1. Use .eml File as Raw Content: The .eml file is read entirely, preserving all headers, body content, and any custom headers such as X-RCPT-TO.
-
-
-2. sendmail Function with Raw Content: By using server.sendmail(from_address, to_address, raw_content), the content (including X-RCPT-TO and other headers) is sent as-is.
+1. Ensure Consistent From Address: Replaced the From header in the raw email content with the from_address from config.ini if necessary. This replacement is applied only to the first occurrence of "From: " to avoid modifying unintended parts of the content.
 
 
-3. Envelope and Header Control: The from_address in config.ini is used as the envelope sender, which should be acceptable for the SMTP server and meet your configuration requirements.
+2. Sendmail Usage: The from_address from config.ini is used as the envelope sender.
 
 
 
 Notes:
 
-X-RCPT-TO Header: This header is preserved as long as it exists within the .eml file content.
+This approach ensures that the SMTP server sees the from_address consistently as both the envelope sender and From header in the email.
 
-Logging: Logs provide details about the from_address, to_address (as X-RCPT-TO), and the filename for confirmation.
+If the SMTP server still rejects this, the server may enforce stricter controls, and you might need to verify with the server administrator that the from_address is whitelisted for sending.
 
 
-This setup should meet the exact requirements shown in your screenshot by ensuring that the email is sent line-by-line in the same structure as specified in the .eml file. Let me know if this fulfills your requirements.
+Let me know if this resolves the issue.
 
