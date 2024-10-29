@@ -1,18 +1,24 @@
- To address the permission issue while retaining the raw content format, you can modify the script to always use the from_address from config.ini instead of using the From header in the .eml file. This way, the SMTP server will recognize the sender as an authorized user.
+ It appears that two issues persist:
 
-Here’s how to adjust your script:
-
-1. Use the from_address specified in config.ini.
+1. pytz AttributeError: The error occurs because pytz doesn’t support pytz.timezone('UTC') in the way expected. Instead, pytz.utc is valid (not pytz.UTC). This requires a slight change in the logging formatter code.
 
 
-2. Send the raw .eml content without altering it.
+2. SMTP Permissions Error (550): This error suggests that the SMTP server does not allow sending emails on behalf of the From address specified in config.ini. To resolve this, you may need to set both the envelope sender and the From header to match the authenticated SMTP user.
 
+
+
+Here’s the revised code with both fixes:
+
+Logging Fix: Correct usage of pytz.utc.
+
+SMTP Workaround: Set both from_address (envelope sender) and the From header in the email content to the authenticated SMTP user.
 
 
 import os
 import smtplib
 import logging
 from email import message_from_file
+from email.utils import formataddr
 from configparser import ConfigParser
 from datetime import datetime
 import pytz
@@ -21,7 +27,7 @@ import pytz
 class SydneyTimeFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         utc_dt = datetime.utcfromtimestamp(record.created)
-        sydney_dt = utc_dt.replace(tzinfo=pytz.UTC).astimezone(pytz.timezone('Australia/Sydney'))
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
         return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
 
 logging.basicConfig(
@@ -67,6 +73,9 @@ def send_raw_eml_files():
                 with open(filename, 'r') as eml_file:
                     msg = message_from_file(eml_file)
                 
+                # Update 'From' header in the email content to match smtp_user
+                msg.replace_header('From', formataddr((smtp_user, smtp_user)))
+                
                 # Extract 'Subject' from the .eml file
                 subject = msg['Subject']
                 
@@ -79,9 +88,9 @@ def send_raw_eml_files():
                 logging.info(f"To Address: {to_address}")
                 logging.info(f"Subject: {subject}")
 
-                # Send the raw email content using config `from_address`
-                server.sendmail(from_address, to_address, raw_content)
-                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
+                # Send the raw email content using smtp_user as the "From" envelope address
+                server.sendmail(smtp_user, to_address, raw_content)
+                logging.info(f"Email sent successfully from: {smtp_user} using file: {filename}")
         
         # Close the SMTP connection
         server.quit()
@@ -92,17 +101,14 @@ def send_raw_eml_files():
 # Execute the function
 send_raw_eml_files()
 
-Explanation:
+Explanation of Changes:
 
-1. Config-based "From" Address: The from_address is taken from the config.ini file and used as the sender for all emails.
-
-
-2. Log Entries: Logs provide details about the from_address from the config, the to_address, and the subject from each .eml file.
+1. Logging Fix: Used pytz.utc instead of pytz.UTC.
 
 
-3. Raw Content: The .eml file is read as raw content, ensuring the email's formatting and headers remain unchanged.
+2. SMTP Permissions Workaround: Both the envelope sender (using smtp_user in server.sendmail()) and the From header in the message are now set to the authenticated smtp_user.
 
 
 
-This setup should avoid the SMTP permissions error by using the authorized from_address from config.ini.
+This should help resolve both the pytz error and the SMTP permissions error. Let me know if this resolves the issues.
 
