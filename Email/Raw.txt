@@ -1,6 +1,13 @@
-To send the contents of each .eml file exactly as they appear without alteration, and use the subject from the .eml file itself, we need to read the .eml file line by line and send it as raw data through the SMTP server.
+ To address the permission issue while retaining the raw content format, you can modify the script to always use the from_address from config.ini instead of using the From header in the .eml file. This way, the SMTP server will recognize the sender as an authorized user.
 
-Here's an updated version of your script that parses each .eml file line by line and sends it with the exact content, using the config.ini file for SMTP details and recipient configuration:
+Here’s how to adjust your script:
+
+1. Use the from_address specified in config.ini.
+
+
+2. Send the raw .eml content without altering it.
+
+
 
 import os
 import smtplib
@@ -14,7 +21,7 @@ import pytz
 class SydneyTimeFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         utc_dt = datetime.utcfromtimestamp(record.created)
-        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        sydney_dt = utc_dt.replace(tzinfo=pytz.UTC).astimezone(pytz.timezone('Australia/Sydney'))
         return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
 
 logging.basicConfig(
@@ -37,8 +44,9 @@ smtp_user = config.get('SMTP', 'smtp_user')
 smtp_password = config.get('SMTP', 'smtp_password')
 
 # Email Configuration
-extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+from_address = config.get('Email', 'from_address')  # Set "From" address from config
 to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
 
 # Function to send raw content of .eml files
 def send_raw_eml_files():
@@ -59,8 +67,7 @@ def send_raw_eml_files():
                 with open(filename, 'r') as eml_file:
                     msg = message_from_file(eml_file)
                 
-                # Extract 'From', 'To', and 'Subject' from the .eml file
-                from_address = msg['From']
+                # Extract 'Subject' from the .eml file
                 subject = msg['Subject']
                 
                 # Re-read the .eml file line by line to retain exact formatting
@@ -68,11 +75,11 @@ def send_raw_eml_files():
                     raw_content = eml_file.read()
                 
                 # Log the details
-                logging.info(f"From Address: {from_address}")
+                logging.info(f"Using Config 'From' Address: {from_address}")
                 logging.info(f"To Address: {to_address}")
                 logging.info(f"Subject: {subject}")
 
-                # Send the raw email content
+                # Send the raw email content using config `from_address`
                 server.sendmail(from_address, to_address, raw_content)
                 logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
         
@@ -85,17 +92,17 @@ def send_raw_eml_files():
 # Execute the function
 send_raw_eml_files()
 
-Explanation of Changes:
+Explanation:
 
-1. Raw Content Handling: Instead of parsing and reconstructing the email, the .eml file is read entirely as a raw string, ensuring that line-by-line formatting, headers, and content remain intact.
-
-
-2. Sender and Subject: The From and Subject fields are extracted from the .eml file, with the recipient (To) taken from the config.ini file.
+1. Config-based "From" Address: The from_address is taken from the config.ini file and used as the sender for all emails.
 
 
-3. Logging: Logs are added to provide a clear trace of the sender, recipient, and subject for each email, along with Sydney-local timestamps.
+2. Log Entries: Logs provide details about the from_address from the config, the to_address, and the subject from each .eml file.
+
+
+3. Raw Content: The .eml file is read as raw content, ensuring the email's formatting and headers remain unchanged.
 
 
 
-This script will send each .eml file with its original formatting and headers, as specified in the screenshot example. Let me know if you'd like further customization!
+This setup should avoid the SMTP permissions error by using the authorized from_address from config.ini.
 
