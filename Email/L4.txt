@@ -1,0 +1,147 @@
+To replicate the email-sending behavior exactly as shown in your provided screenshot, we need to ensure that:
+
+1. The headers and content of the email are formatted exactly as they are in the .eml file.
+
+
+2. The X-RCPT-TO header is correctly included.
+
+
+3. The email is sent line-by-line through the SMTP DATA phase, including all headers.
+
+
+
+Here’s how to adjust the code to meet those requirements:
+
+Updated Code
+
+import os
+import smtplib
+import logging
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender_debug.log',  # Updated log filename for detailed debug logs
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')  # Use this as the "From" address
+to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send raw content of .eml files line-by-line with detailed debugging
+def send_raw_eml_files_line_by_line():
+    try:
+        # Establish SMTP connection
+        logger.debug(f"Connecting to SMTP server {smtp_server} on port {smtp_port}")
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.set_debuglevel(1)  # Enable SMTP debug output
+        server.ehlo()
+        logger.debug("EHLO command sent.")
+        
+        server.starttls()
+        logger.debug("STARTTLS command sent.")
+        
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        logger.debug("Logged in to SMTP server successfully.")
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logger.info(f"Processing file: {filename}")
+                
+                # Start the SMTP transaction manually
+                response = server.mail(from_address)
+                logger.debug(f"MAIL FROM command sent with response: {response}")
+                
+                response = server.rcpt(to_address)
+                logger.debug(f"RCPT TO command sent with response: {response}")
+                
+                response = server.docmd("DATA")  # Begin the DATA phase explicitly
+                logger.debug(f"DATA command sent with response: {response}")
+                
+                # Read and send each line of the .eml file
+                with open(filename, 'r') as eml_file:
+                    for line in eml_file:
+                        # Ensure each line ends with CRLF and send it
+                        server.sock.sendall((line.strip() + "\r\n").encode("utf-8"))
+                        logger.debug(f"Sent line: {line.strip()}")
+
+                # End the DATA section with a single period (SMTP requirement)
+                server.sock.sendall(b"\r\n.\r\n")
+                logger.debug("End of DATA section sent.")
+                
+                logger.info(f"Email sent successfully from: {from_address} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        logger.debug("SMTP connection closed.")
+        
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_raw_eml_files_line_by_line()
+
+Key Features of the Updated Code
+
+1. Sending Each Line of .eml:
+
+Each line from the .eml file is sent to the SMTP server with a CRLF at the end to conform to the SMTP protocol requirements.
+
+
+
+2. Preserving Headers:
+
+The raw content, including all headers (like X-RCPT-TO), is sent as it is in the .eml file. This ensures that the structure of the email matches exactly what you require.
+
+
+
+3. Logging and Debugging:
+
+The logging setup captures every significant step and command sent to the SMTP server, making it easy to troubleshoot if any issues arise.
+
+
+
+4. SMTP Debugging:
+
+The line server.set_debuglevel(1) allows you to see the SMTP commands and responses in real-time on your console, helping you understand the interaction between your code and the SMTP server.
+
+
+
+
+Next Steps
+
+Check Logs: After running the script, check email_sender_debug.log for any errors or issues that may provide insight into why the email wasn't received.
+
+Monitor the Spam/Junk Folder: Ensure to check the recipient's spam/junk folder as well, as the email may have been flagged.
+
+Verify SMTP Server Settings: Double-check the config.ini settings to ensure everything is correct.
+
+
+This code structure should ensure that emails are sent with the correct headers and formatting as you demonstrated in your screenshot. Let me know how it works!
+
