@@ -1,0 +1,138 @@
+You're absolutely correct. Base64 is a binary-to-text encoding and should not be treated as a text encoding. To handle Base64 encoding properly, you can use Python’s base64 library, which is designed specifically for this purpose.
+
+In the script below, I’ve modified the authentication section to use base64 encoding correctly. Here’s how you can encode the username and password in Base64 properly for SMTP authentication:
+
+Updated Python Code with Correct Base64 Encoding for Authentication
+
+import socket
+import ssl
+import base64
+from configparser import ConfigParser
+
+# Load configuration
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+eml_file_path = config.get('Email', 'eml_file_path')
+
+def send_command(sock, command):
+    """Send a command to the SMTP server and print the response."""
+    sock.sendall((command + '\r\n').encode('utf-8'))
+    response = sock.recv(1024).decode('utf-8')
+    print(f"{command.strip()}: {response.strip()}")
+    return response
+
+def send_eml_via_smtp():
+    try:
+        print(f"Connecting to {smtp_server}:{smtp_port}")
+        
+        # Connect to the server with or without SSL based on the port
+        if smtp_port == 465:
+            # For SMTPS on port 465 (SSL connection from the start)
+            context = ssl.create_default_context()
+            with context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=smtp_server) as sock:
+                sock.connect((smtp_server, smtp_port))
+                handle_smtp_session(sock)
+        else:
+            # For ports 25 and 587 (plain or STARTTLS)
+            with socket.create_connection((smtp_server, smtp_port)) as sock:
+                # Read the server's initial response
+                print(sock.recv(1024).decode('utf-8').strip())
+                
+                # Send EHLO command
+                send_command(sock, f"EHLO my-client")
+
+                # If using port 587, initiate STARTTLS
+                if smtp_port == 587:
+                    send_command(sock, "STARTTLS")
+                    context = ssl.create_default_context()
+                    sock = context.wrap_socket(sock, server_hostname=smtp_server)
+                    send_command(sock, f"EHLO my-client")  # Re-issue EHLO after STARTTLS
+
+                # Handle the rest of the SMTP session (authentication, sending email)
+                handle_smtp_session(sock)
+
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+def handle_smtp_session(sock):
+    """Handle SMTP session to send the .eml content after connection is established."""
+    # Authenticate using Base64 encoding for the username and password
+    send_command(sock, "AUTH LOGIN")
+    send_command(sock, base64.b64encode(smtp_user.encode()).decode())  # Base64 encode the username
+    send_command(sock, base64.b64encode(smtp_password.encode()).decode())  # Base64 encode the password
+
+    # Set the envelope sender
+    send_command(sock, f"MAIL FROM:<{from_address}>")
+
+    # Set the recipient
+    send_command(sock, f"RCPT TO:<{to_address}>")
+
+    # Begin the DATA phase
+    send_command(sock, "DATA")
+
+    # Read and send each line of the .eml file
+    with open(eml_file_path, 'r') as eml_file:
+        for line in eml_file:
+            sock.sendall((line.rstrip('\n') + '\r\n').encode('utf-8'))
+
+    # End the DATA phase with a period on a line by itself
+    send_command(sock, ".")
+
+    # Close the connection with QUIT
+    send_command(sock, "QUIT")
+
+# Run the function
+send_eml_via_smtp()
+
+Explanation of Changes
+
+1. Base64 Encoding with base64 Library:
+
+The base64.b64encode() function from the base64 module encodes the username and password to Base64 as required by the AUTH LOGIN SMTP method.
+
+base64.b64encode(smtp_user.encode()).decode() first converts the username to bytes, then encodes it in Base64, and finally decodes it back to a UTF-8 string for transmission.
+
+
+
+2. Improved Authentication:
+
+The AUTH LOGIN process sends the username and password as Base64-encoded strings.
+
+This approach aligns with the expected SMTP authentication flow.
+
+
+
+
+Explanation of Encoding Process for AUTH LOGIN
+
+base64.b64encode(): Converts a byte sequence into a Base64-encoded byte sequence.
+
+.decode(): Converts the Base64-encoded byte sequence into a UTF-8 string, which is suitable for transmission over the network.
+
+
+Example
+
+If smtp_user is user@example.com and smtp_password is password123, this code will:
+
+1. Send the AUTH LOGIN command.
+
+
+2. Send the Base64-encoded version of user@example.com.
+
+
+3. Send the Base64-encoded version of password123.
+
+
+
+This should work for SMTP servers requiring AUTH LOGIN with Base64-encoded credentials. Let me know if this resolves the issue, or if there are any further errors!
+
