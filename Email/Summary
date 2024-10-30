@@ -1,4 +1,27 @@
 
+======Here’s a response to address the PowerShell vs. Python differences:
+
+
+---
+
+Hi Team,
+
+Regarding the update on sending .eml files using the PowerShell script versus the Python script:
+
+While the PowerShell script worked successfully, the Python script encounters a client permissions issue. The SMTP server we are using enforces strict security policies and does not permit emails where the envelope sender (MAIL FROM) differs from the authenticated user. This restriction is causing our Python script to fail, as it cannot send the .eml files with the intended envelope sender.
+
+It’s possible that the PowerShell script succeeded because it was run in a trusted environment or network context where the SMTP server implicitly allowed different envelope senders. Alternatively, the SMTP server might have specific allowances for PowerShell, such as integrated authentication, that do not apply to the Python environment.
+
+The SMTP server’s internal policies here are particularly stringent and block any emails that do not match the authenticated user's email in the envelope sender, limiting our flexibility.
+
+Please let me know if further details are needed, or if we should consider alternative approaches as discussed.
+
+Best,
+Raghu
+
+
+
+
 Here’s a combined summary incorporating all the details from our attempts, including the latest information from the screenshot:
 
 
