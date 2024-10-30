@@ -1,3 +1,70 @@
+
+Here’s a combined summary incorporating all the details from our attempts, including the latest information from the screenshot:
+
+
+---
+
+Summary of Attempts to Send .eml Files as Synthetic Emails
+
+We have tried various methods to send .eml files as synthetic emails without success due to permission issues with the envelope sender on the SMTP server.
+
+Methods Tried:
+
+1. Sending .eml Files as Attachments:
+
+Result: Did not work as it did not meet the requirement to preserve .eml file headers and content exactly as they are.
+
+
+
+2. Sending Directly as Raw Content:
+
+Result: Encountered a "client does not have permission" error because the SMTP server enforced a restriction where the envelope sender (MAIL FROM) must match the authenticated user.
+
+
+
+3. Sending Line-by-Line with Sockets:
+
+Result: Encountered the same permission issue due to the envelope sender mismatch, even though we attempted to send the .eml file line-by-line using raw socket commands.
+
+
+
+4. PowerShell Script (Referenced in Screenshot):
+
+Observation: The PowerShell script successfully sent the .eml file in a similar environment, suggesting it was allowed to send with different envelope senders, likely due to a trusted environment or specific permissions in the SMTP server setup.
+
+
+
+
+Options to Make it Work:
+
+1. Whitelist the Sender:
+
+Action: Request that commsurv.ops be added to a monitored/whitelisted group within the SMTP server to permit it as a valid sender.
+
+Implementation: Use this whitelisted address as the sender in the .eml files.
+
+
+
+2. Modify SMTP Server Policy:
+
+Action: Work with IT or security teams to adjust the SMTP server policy to relax restrictions on the envelope sender for this specific use case.
+
+Implementation: Allow emails to be sent from authorized accounts even if the envelope sender does not match the authenticated user.
+
+
+
+
+
+---
+
+This summarizes our attempts and provides potential solutions that could allow us to send the .eml files with the correct headers and content without modifying the original emails.
+
+Let’s discuss these options to decide on the next steps.
+
+
+
+============
+
 Summary of Attempts to Send .eml Files and Observations
 
 We have been working on sending .eml files exactly as they are, including all headers and content, using a Python script. Below is a summary of the methods we tried, issues encountered, and findings, including reference to the screenshot where the email was successfully sent using a PowerShell script.
