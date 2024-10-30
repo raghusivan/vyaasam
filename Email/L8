@@ -1,0 +1,172 @@
+The "SSL wrong version number" error often occurs when attempting to establish an SSL/TLS connection on a port that doesn’t support SSL/TLS, or when using the wrong SSL/TLS settings.
+
+For SMTP servers:
+
+Port 25 is typically used for plain SMTP (unsecured or opportunistic STARTTLS).
+
+Port 465 is typically used for SMTPS (SMTP over SSL).
+
+Port 587 is typically used for SMTP with STARTTLS (upgrading an unencrypted connection to SSL/TLS).
+
+
+The error could happen if:
+
+1. The script tries to start a TLS session on port 25 (which usually doesn’t support direct SSL).
+
+
+2. The server expects a different type of SSL handshake.
+
+
+
+Solution
+
+1. Ensure the correct port is used:
+
+Port 587: Use STARTTLS (do not wrap the initial socket in SSL).
+
+Port 465: Wrap the socket in SSL directly.
+
+Port 25: Typically does not use SSL/TLS by default.
+
+
+
+2. Adjust the script for STARTTLS or direct SSL based on the port being used.
+
+
+
+Here’s the updated code with conditional handling based on the port number:
+
+import socket
+import ssl
+from configparser import ConfigParser
+
+# Load configuration
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+eml_file_path = config.get('Email', 'eml_file_path')
+
+def send_command(sock, command):
+    """Send a command to the SMTP server and print the response."""
+    sock.sendall((command + '\r\n').encode('utf-8'))
+    response = sock.recv(1024).decode('utf-8')
+    print(f"{command.strip()}: {response.strip()}")
+    return response
+
+def send_eml_via_smtp():
+    try:
+        print(f"Connecting to {smtp_server}:{smtp_port}")
+        
+        # Connect to the server with or without SSL based on the port
+        if smtp_port == 465:
+            # For SMTPS on port 465 (SSL connection from the start)
+            context = ssl.create_default_context()
+            with context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=smtp_server) as sock:
+                sock.connect((smtp_server, smtp_port))
+                handle_smtp_session(sock)
+        else:
+            # For ports 25 and 587 (plain or STARTTLS)
+            with socket.create_connection((smtp_server, smtp_port)) as sock:
+                # Read the server's initial response
+                print(sock.recv(1024).decode('utf-8').strip())
+                
+                # Send EHLO command
+                send_command(sock, f"EHLO my-client")
+
+                # If using port 587, initiate STARTTLS
+                if smtp_port == 587:
+                    send_command(sock, "STARTTLS")
+                    context = ssl.create_default_context()
+                    sock = context.wrap_socket(sock, server_hostname=smtp_server)
+                    send_command(sock, f"EHLO my-client")  # Re-issue EHLO after STARTTLS
+
+                # Handle the rest of the SMTP session (authentication, sending email)
+                handle_smtp_session(sock)
+
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+def handle_smtp_session(sock):
+    """Handle SMTP session to send the .eml content after connection is established."""
+    # Authenticate
+    send_command(sock, f"AUTH LOGIN")
+    send_command(sock, smtp_user.encode('utf-8').decode('utf-8').encode('base64').strip())  # Username in base64
+    send_command(sock, smtp_password.encode('utf-8').decode('utf-8').encode('base64').strip())  # Password in base64
+
+    # Set the envelope sender
+    send_command(sock, f"MAIL FROM:<{from_address}>")
+
+    # Set the recipient
+    send_command(sock, f"RCPT TO:<{to_address}>")
+
+    # Begin the DATA phase
+    send_command(sock, "DATA")
+
+    # Read and send each line of the .eml file
+    with open(eml_file_path, 'r') as eml_file:
+        for line in eml_file:
+            sock.sendall((line.rstrip('\n') + '\r\n').encode('utf-8'))
+
+    # End the DATA phase with a period on a line by itself
+    send_command(sock, ".")
+
+    # Close the connection with QUIT
+    send_command(sock, "QUIT")
+
+# Run the function
+send_eml_via_smtp()
+
+Explanation of Updates
+
+1. Connection Based on Port:
+
+Port 465: If the port is 465, the script wraps the socket with SSL immediately upon connecting (context.wrap_socket). This is commonly required for SMTPS, where the connection starts as SSL.
+
+Port 25 or 587: If the port is 25 or 587, the script starts a plain connection. For port 587, it issues the STARTTLS command to upgrade to SSL/TLS after the initial connection.
+
+
+
+2. handle_smtp_session Function:
+
+This function handles the SMTP commands after establishing the initial connection. It includes:
+
+Authentication (with AUTH LOGIN using base64 encoding).
+
+Sending the MAIL FROM and RCPT TO commands.
+
+Entering the DATA phase and sending each line of the .eml file.
+
+Ending the session with QUIT.
+
+
+
+
+3. Error Handling:
+
+If the wrong SSL configuration is attempted (e.g., trying to start SSL on a port that doesn’t support it), the script will catch and print the error.
+
+
+
+
+Usage
+
+Ensure your config.ini is correctly set, especially the smtp_port:
+
+Use 465 for SMTPS (SSL from the start).
+
+Use 587 for STARTTLS (plain to SSL upgrade).
+
+Use 25 for non-SSL connections (or opportunistic STARTTLS if supported by the server).
+
+
+This setup should resolve the "SSL wrong version number" issue by correctly handling SSL based on the port. Let me know if this works or if you encounter further issues!
+
