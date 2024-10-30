@@ -1,0 +1,165 @@
+Summary of Attempts to Send .eml Files and Observations
+
+We have been working on sending .eml files exactly as they are, including all headers and content, using a Python script. Below is a summary of the methods we tried, issues encountered, and findings, including reference to the screenshot where the email was successfully sent using a PowerShell script.
+
+
+---
+
+Initial Attempt with Python's smtplib:
+
+Action: Used Python's smtplib to send .eml files by reading the raw content and sending it via sendmail().
+
+Issue: Encountered a permission error: "550 5.7.60 SMTP; Client does not have permissions to send as this sender."
+
+Reason: The SMTP server rejected the email because the envelope sender (MAIL FROM) did not match the authenticated SMTP user.
+
+
+Modified Envelope Sender to Match from_address:
+
+Action: Changed the envelope sender in the MAIL FROM command to match the from_address specified in the .eml file.
+
+Issue: The SMTP server still rejected the email due to sender mismatch.
+
+Reason: The server requires the envelope sender to match the authenticated user (smtp_user), not just the from_address in the email headers.
+
+
+Set Envelope Sender to Authenticated User (smtp_user):
+
+Action: Adjusted the script to set the envelope sender to the authenticated SMTP user.
+
+Issue: The email was still rejected because the From header in the .eml file did not match the envelope sender.
+
+Reason: The SMTP server enforces that both the envelope sender and the From header must match the authenticated user.
+
+
+Attempted Low-Level SMTP Commands with Sockets:
+
+Action: Used raw sockets to send SMTP commands manually, sending the .eml content line-by-line.
+
+Issue: Encountered SSL errors such as "SSL wrong version number" and still faced permission issues.
+
+Reason: Incorrect SSL/TLS handling and persistent envelope sender restrictions by the SMTP server.
+
+
+Corrected SSL/TLS Handling:
+
+Action: Updated the script to correctly handle SSL/TLS based on the SMTP port (25, 465, 587).
+
+Issue: Resolved SSL errors but continued to receive permission errors regarding the envelope sender.
+
+
+Fixed Base64 Encoding for Authentication:
+
+Action: Correctly implemented Base64 encoding for SMTP authentication using the base64 module.
+
+Issue: Successfully authenticated but did not resolve the envelope sender permission error.
+
+
+Considered Modifying the .eml File's From Header:
+
+Action: Explored changing the From header in the .eml file to match the authenticated user.
+
+Issue: This would alter the original email content, which we aimed to preserve.
+
+Reason: Modifying the email headers is not an acceptable solution as it changes the intended message.
+
+
+Reference to Successful PowerShell Script (Screenshot Provided):
+
+Observation: A PowerShell script successfully sent the .eml file without encountering the permission issues faced in Python.
+
+Reason: The PowerShell script likely ran in a trusted environment or context where the SMTP server allowed the envelope sender to differ from the authenticated user.
+
+Screenshot Evidence: The provided screenshot shows the email being sent with the desired headers and without errors.
+
+
+Analysis of PowerShell Success vs. Python Failure:
+
+Possible Factors:
+
+Trusted Network: The script may have been executed from a network location trusted by the SMTP server.
+
+Implicit Authentication: PowerShell might have used Windows-integrated authentication, granting it permissions not available to the Python script.
+
+Server Configuration: The SMTP server might have specific allowances for clients or scripts running in certain environments.
+
+
+
+Explored Alternative Solutions:
+
+1. Using a Local SMTP Relay:
+
+Idea: Set up a local SMTP server to accept emails from our script and relay them, handling envelope sender discrepancies.
+
+Benefit: Allows sending emails with the desired From address without altering the .eml content.
+
+
+
+2. Utilizing Email API Services:
+
+Idea: Use services like SendGrid, Mailgun, or Amazon SES, which may permit custom envelope senders after verification.
+
+Benefit: Bypasses SMTP server restrictions, though may involve costs and require compliance with company policies.
+
+
+
+3. Adjusting SMTP Server Policies:
+
+Idea: Request the SMTP server administrator to permit sending emails with the specified envelope sender.
+
+Benefit: Directly addresses the permission issue but depends on administrative approval and policy considerations.
+
+
+
+4. Modifying Application Requirements:
+
+Idea: Change the application's requirements to align the envelope sender with the authenticated user.
+
+Benefit: Simplifies the process but may not meet the original objectives of preserving the email's From header.
+
+
+
+
+Conclusion:
+
+Summary: The Python script cannot bypass the SMTP server's envelope sender restrictions due to security policies.
+
+PowerShell Success Rationale: Likely succeeded due to running in a trusted context with different permissions.
+
+Next Steps: Consider alternative solutions like setting up a local SMTP relay, using an email service provider, or discussing policy adjustments with the SMTP server administrator.
+
+
+
+
+---
+
+Action Items for the Team:
+
+Review the Proposed Alternative Solutions:
+
+Assess the feasibility of setting up a local SMTP relay or using an email API service.
+
+Discuss with IT/security teams the possibility of adjusting SMTP server settings.
+
+
+Decide on the Preferred Approach:
+
+Based on organizational policies and resource availability, choose the most suitable solution.
+
+
+Plan Implementation:
+
+Develop a timeline and assign responsibilities for implementing the chosen solution.
+
+
+Ensure Compliance and Security:
+
+Verify that any changes comply with company policies and do not introduce security risks.
+
+
+
+
+---
+
+Please review this summary, and let's schedule a meeting to discuss the next steps and how we can proceed to achieve our goals effectively.
+
