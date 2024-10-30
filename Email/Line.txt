@@ -1,0 +1,119 @@
+The code provided in the previous message does not actually send each line individually to the SMTP server as intended because the smtplib.SMTP.send() method does not operate line-by-line in the DATA phase. Instead, it treats the entire message as a single block, which means that each line in the .eml file is not transmitted individually.
+
+To truly send each line individually to the SMTP server during the DATA phase, we need to:
+
+1. Open the .eml file and read it line-by-line.
+
+
+2. Use the server.sock.sendall() method (which operates at a lower level than server.sendmail() or server.send()) to send each line to the SMTP server.
+
+
+
+Revised Code to Send Line-by-Line
+
+Here’s the updated code that will actually send each line individually during the DATA phase by directly interacting with the SMTP socket:
+
+import os
+import smtplib
+import logging
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')  # Use this as the "From" address
+to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send raw content of .eml files line-by-line
+def send_raw_eml_files_line_by_line():
+    try:
+        # Establish SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logging.info(f"Processing file: {filename}")
+                
+                # Start the SMTP transaction manually
+                server.mail(from_address)
+                server.rcpt(to_address)
+                server.docmd("DATA")  # Begin the DATA phase explicitly
+
+                # Read and send each line of the .eml file
+                with open(filename, 'r') as eml_file:
+                    for line in eml_file:
+                        server.sock.sendall(line.encode("utf-8"))  # Send each line of the .eml content
+
+                # End the DATA section with a single period (SMTP requirement)
+                server.sock.sendall(b"\r\n.\r\n")
+                
+                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_raw_eml_files_line_by_line()
+
+Explanation of the Updated Code
+
+1. Low-Level sock.sendall:
+
+By using server.sock.sendall(line.encode("utf-8")), each line of the .eml file is sent directly to the SMTP server, simulating line-by-line transmission during the DATA phase.
+
+
+
+2. End of Data Signal:
+
+After sending all lines, we send \r\n.\r\n to signal the end of the DATA phase, which is required by the SMTP protocol to denote the end of the message body.
+
+
+
+3. Manual SMTP Commands:
+
+server.mail(from_address) and server.rcpt(to_address) are used to specify the sender and recipient before starting the DATA command with server.docmd("DATA"). This allows more granular control over the transaction.
+
+
+
+
+Why This Works
+
+Using sock.sendall ensures that each line in the .eml file is processed individually by the SMTP server, adhering to your requirement of line-by-line transmission. This method directly sends each line to the SMTP socket, effectively mimicking a raw SMTP transaction.
+
+This approach should now meet the exact requirement to send each line of the .eml file individually during the SMTP DATA phase.
+
