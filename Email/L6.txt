@@ -1,0 +1,140 @@
+To send the .eml file exactly as shown in your screenshot, including all headers (like Return-Path, X-RCPT-TO, etc.) and ensuring line-by-line transmission through the DATA phase, you can use Python's smtplib with a low-level approach.
+
+Here’s a Python script to send the .eml file line-by-line, preserving all headers exactly as they appear in the file, and ensuring the envelope sender is accepted by the SMTP server. This approach sends the email content exactly as it is in the .eml file while using the authenticated SMTP user as the envelope sender.
+
+Python Code
+
+import os
+import smtplib
+import logging
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender_debug.log',  # Log filename for detailed debug logs
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter())
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')  # Use this as the envelope sender
+to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send .eml files exactly as they are
+def send_eml_files():
+    try:
+        # Establish SMTP connection
+        logger.debug(f"Connecting to SMTP server {smtp_server} on port {smtp_port}")
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.set_debuglevel(1)  # Enable SMTP debug output
+        server.ehlo()
+        logger.debug("EHLO command sent.")
+
+        server.starttls()
+        logger.debug("STARTTLS command sent.")
+
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        logger.debug("Logged in to SMTP server successfully.")
+
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logger.info(f"Processing file: {filename}")
+
+                # Start the SMTP transaction manually
+                server.mail(smtp_user)  # Envelope sender is set to the authenticated user
+                server.rcpt(to_address)  # Recipient
+                server.docmd("DATA")  # Begin the DATA phase explicitly
+
+                # Read and send each line of the .eml file
+                with open(filename, 'r') as eml_file:
+                    for line in eml_file:
+                        # Ensure each line ends with CRLF and send it
+                        server.sock.sendall((line.rstrip("\n") + "\r\n").encode("utf-8"))
+                        logger.debug(f"Sent line: {line.strip()}")
+
+                # End the DATA section with a single period (SMTP requirement)
+                server.sock.sendall(b"\r\n.\r\n")
+                logger.debug("End of DATA section sent.")
+                
+                logger.info(f"Email sent successfully from: {smtp_user} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        logger.debug("SMTP connection closed.")
+
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_eml_files()
+
+Explanation
+
+1. Envelope Sender:
+
+We use smtp_user as the envelope sender in server.mail(smtp_user). This is necessary to avoid permission issues if the SMTP server expects the envelope sender to match the authenticated user.
+
+
+
+2. Preserving Headers and Content:
+
+Each line from the .eml file is sent exactly as it is, with no modifications. This ensures all headers like Return-Path, X-RCPT-TO, and custom headers are preserved.
+
+Each line is sent with a CRLF (\r\n) at the end to comply with SMTP requirements.
+
+
+
+3. Ending the DATA Phase:
+
+The DATA section is concluded with a single period (.\r\n), as required by the SMTP protocol.
+
+
+
+4. SMTP Debugging:
+
+server.set_debuglevel(1) provides detailed debugging information for every SMTP command and response, helping you verify the server's responses.
+
+
+
+5. Logging:
+
+Each step is logged for troubleshooting. Check the email_sender_debug.log file to see a record of the sending process.
+
+
+
+
+Summary
+
+This code sends the .eml file line-by-line through the SMTP DATA phase, preserving all headers.
+
+By using the authenticated SMTP user (smtp_user) as the envelope sender, it should work regardless of the envelope mismatch.
+
+The approach ensures the email is sent exactly as it appears in the .eml file, including all headers and content, mimicking the behavior shown in your screenshot.
+
+
+This should help achieve the exact sending format as in your screenshot. Let me know if this approach meets your requirements or if there’s anything further to address.
+
