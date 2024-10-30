@@ -1,0 +1,156 @@
+To determine the type of SMTP server and what commands or features it supports, you can connect to the server, issue some basic commands, and analyze the responses. For example, SMTP servers often respond with specific information during the EHLO command, which lists the server’s capabilities.
+
+Here’s a Python script that connects to an SMTP server, issues the EHLO command, and logs the server’s response, including available features like STARTTLS, AUTH, SIZE limits, and any custom commands or headers. The script will help identify the SMTP server type based on the responses and display the allowed features.
+
+Python Code to Detect SMTP Server Type and Features
+
+import smtplib
+import logging
+from configparser import ConfigParser
+from datetime import datetime
+
+# Configure logging
+logging.basicConfig(
+    filename='smtp_server_info.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Function to check SMTP server type and capabilities
+def check_smtp_server_capabilities():
+    try:
+        # Connect to the SMTP server
+        logger.info(f"Connecting to SMTP server {smtp_server} on port {smtp_port}")
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.set_debuglevel(1)  # Enable SMTP debug output for stdout
+
+        # Send EHLO command to get the server's capabilities
+        response = server.ehlo()
+        logger.info("EHLO command sent.")
+        logger.info(f"EHLO response code: {response[0]}")
+        logger.info("EHLO capabilities response:")
+        for line in response[1].decode().splitlines():
+            logger.info(line)
+
+        # Extract and log key server capabilities
+        capabilities = server.esmtp_features
+        logger.info("SMTP Server Capabilities:")
+        for feature, value in capabilities.items():
+            logger.info(f"{feature.upper()}: {value}")
+
+        # Detect and log server type based on EHLO response
+        if 'STARTTLS' in capabilities:
+            logger.info("Server supports STARTTLS.")
+            server.starttls()
+            logger.info("STARTTLS command executed.")
+            server.ehlo()  # Reissue EHLO after STARTTLS
+
+        if 'auth' in capabilities:
+            logger.info("Server supports AUTH for authentication.")
+            if smtp_user and smtp_password:
+                try:
+                    server.login(smtp_user, smtp_password)
+                    logger.info("Authenticated successfully using provided credentials.")
+                except smtplib.SMTPAuthenticationError as auth_err:
+                    logger.error(f"Authentication failed: {auth_err}")
+            else:
+                logger.warning("No SMTP credentials provided; skipping authentication check.")
+        else:
+            logger.info("Server does not support AUTH.")
+
+        if 'size' in capabilities:
+            max_size = capabilities['size']
+            logger.info(f"Server has a message size limit: {max_size} bytes")
+
+        # Log other server features and custom headers
+        custom_headers = [feature for feature in capabilities if feature not in ['starttls', 'auth', 'size']]
+        if custom_headers:
+            logger.info("Additional custom features supported by the server:")
+            for header in custom_headers:
+                logger.info(f"{header.upper()}: {capabilities[header]}")
+
+        # Close the connection
+        server.quit()
+        logger.info("SMTP connection closed.")
+
+    except Exception as e:
+        logger.error(f"Failed to connect or retrieve capabilities: {e}")
+
+# Execute the function
+check_smtp_server_capabilities()
+
+Explanation of the Code
+
+1. Connect to SMTP Server:
+
+Connects to the SMTP server using the provided host and port from config.ini.
+
+
+
+2. EHLO Command:
+
+Sends the EHLO command to retrieve the server's capabilities, which are often listed in the response.
+
+The server’s response to EHLO typically includes supported features like STARTTLS, AUTH mechanisms, SIZE limits, and other extended SMTP features.
+
+
+
+3. Logging Capabilities:
+
+Logs each feature reported by the SMTP server, including commonly supported ones (STARTTLS, AUTH, SIZE) and any additional headers or custom features.
+
+
+
+4. STARTTLS Support:
+
+If STARTTLS is supported, the script upgrades the connection to a secure TLS layer and reissues the EHLO command to confirm capabilities.
+
+
+
+5. AUTH Support:
+
+If AUTH is supported, it checks for authentication capabilities and attempts to log in if credentials are provided.
+
+
+
+6. Size Limit:
+
+Logs the maximum message size allowed by the server if the SIZE extension is provided.
+
+
+
+7. Custom Headers and Features:
+
+Any other headers not related to STARTTLS, AUTH, or SIZE are logged as additional features. This can help identify if the server has any unique or custom capabilities.
+
+
+
+
+Usage
+
+Logging: Check smtp_server_info.log for a detailed log of the server’s response to EHLO, including all supported features and extensions.
+
+Debug Output: server.set_debuglevel(1) will print SMTP debug information to stdout, which is helpful to see the raw SMTP server interaction.
+
+
+Example Output in smtp_server_info.log
+
+The log file might look like this:
+
+2024-10-29 10:00:00 - INFO - Connecting to SMTP server smtp.example.com on port 587
+2024-10-29 10:00:01 - INFO - EHLO command sent.
+2024-10-29 10:00:01 - INFO - EHLO response code: 250
+2024-10-29 10:00:01 - INFO - EHLO capabilities response:
+2024-
+
