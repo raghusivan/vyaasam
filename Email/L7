@@ -1,0 +1,144 @@
+Here’s a Python script that uses a raw socket connection to mimic the PowerShell behavior. This approach sends the .eml file line-by-line to the SMTP server, allowing control over the MAIL FROM and RCPT TO commands, which should help bypass envelope sender mismatches.
+
+Python Code to Send .eml File with Raw Socket and SMTP Commands
+
+This script will:
+
+1. Open a socket connection to the SMTP server.
+
+
+2. Issue MAIL FROM and RCPT TO commands as needed.
+
+
+3. Send the .eml file content line-by-line as it appears, preserving all headers.
+
+
+
+import socket
+import ssl
+import os
+from configparser import ConfigParser
+
+# Load configuration
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+eml_file_path = config.get('Email', 'eml_file_path')
+
+def send_command(sock, command):
+    """Send a command to the SMTP server and print the response."""
+    sock.sendall((command + '\r\n').encode('utf-8'))
+    response = sock.recv(1024).decode('utf-8')
+    print(f"{command.strip()}: {response.strip()}")
+    return response
+
+def send_eml_via_smtp():
+    try:
+        # Establish socket connection
+        print(f"Connecting to {smtp_server}:{smtp_port}")
+        context = ssl.create_default_context()
+        
+        with socket.create_connection((smtp_server, smtp_port)) as sock:
+            # Upgrade to secure connection if using port 587 (STARTTLS)
+            if smtp_port == 587:
+                sock = context.wrap_socket(sock, server_hostname=smtp_server)
+            
+            # Read the server's initial response
+            print(sock.recv(1024).decode('utf-8').strip())
+
+            # Send EHLO command
+            send_command(sock, f"EHLO my-client")
+
+            # Start TLS if available
+            if smtp_port == 587:
+                send_command(sock, "STARTTLS")
+                sock = context.wrap_socket(sock, server_hostname=smtp_server)
+                send_command(sock, f"EHLO my-client")  # Re-issue EHLO after STARTTLS
+
+            # Authenticate
+            send_command(sock, f"AUTH LOGIN")
+            send_command(sock, smtp_user.encode('utf-8').decode('utf-8').encode('base64').strip())  # Username in base64
+            send_command(sock, smtp_password.encode('utf-8').decode('utf-8').encode('base64').strip())  # Password in base64
+
+            # Set the envelope sender
+            send_command(sock, f"MAIL FROM:<{from_address}>")
+
+            # Set the recipient
+            send_command(sock, f"RCPT TO:<{to_address}>")
+
+            # Begin the DATA phase
+            send_command(sock, "DATA")
+
+            # Read and send each line of the .eml file
+            with open(eml_file_path, 'r') as eml_file:
+                for line in eml_file:
+                    sock.sendall((line.rstrip('\n') + '\r\n').encode('utf-8'))
+
+            # End the DATA phase with a period on a line by itself
+            send_command(sock, ".")
+
+            # Close the connection with QUIT
+            send_command(sock, "QUIT")
+
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+# Run the function
+send_eml_via_smtp()
+
+Explanation of the Code
+
+1. Configuration:
+
+Reads SMTP and email configuration from a config.ini file. This includes server information, credentials, and the .eml file path.
+
+
+
+2. Helper Function send_command:
+
+This function sends a command to the SMTP server and reads the response. It encodes the command with \r\n at the end, sends it to the server, and prints the server's response for debugging purposes.
+
+
+
+3. Connection Handling:
+
+Creates a socket connection to the SMTP server. If the port is 587, it wraps the socket in SSL for a secure connection (STARTTLS).
+
+Reads the initial greeting from the SMTP server and sends the EHLO command to establish communication.
+
+
+
+4. STARTTLS Support:
+
+If using port 587, the script sends the STARTTLS command to initiate a secure connection.
+
+
+
+5. Authentication:
+
+Uses the AUTH LOGIN method for authentication, encoding the username and password in base64.
+
+
+
+6. Sending the Email:
+
+Issues the MAIL FROM and RCPT TO commands to set the envelope sender and recipient, based on the configuration values.
+
+Begins the DATA phase and sends each line of the .eml file exactly as it is, including all headers.
+
+Ends the DATA phase with a period (.) on a line by itself, as required by the SMTP protocol.
+
+
+
+
+7
+
