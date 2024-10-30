@@ -1,0 +1,168 @@
+If the code is executing without errors but no email is received, it could be due to one of several possible issues. Here are some potential reasons and troubleshooting steps to help identify and resolve the problem:
+
+Possible Issues and Solutions
+
+1. SMTP Server Blocking the Message:
+
+Some SMTP servers may block emails if they detect unusual behavior or non-standard commands, especially when using sock.sendall() to send each line manually.
+
+Check the SMTP server logs (if accessible) to see if the email was accepted for delivery.
+
+
+
+2. Missing CRLF After Each Line:
+
+SMTP protocol requires each line to end with \r\n (CRLF). If each line does not have this, the SMTP server might not process it correctly.
+
+Modify the code to ensure each line sent to the SMTP server ends with \r\n:
+
+server.sock.sendall((line.strip() + "\r\n").encode("utf-8"))
+
+
+
+3. Spam Filter or Quarantine:
+
+The email might be flagged as spam or quarantined. Check the recipient's spam/junk folder.
+
+You might also check if there are any quarantine systems on the receiving end.
+
+
+
+4. From and To Headers Consistency:
+
+Ensure that the From and To headers in the .eml file match the from_address and to_address specified in the config.ini. Inconsistent headers may cause the email to be dropped.
+
+Confirm that the from_address has permission to send emails through the SMTP server.
+
+
+
+5. Correct SMTP Server and Port:
+
+Verify that the smtp_server and smtp_port values in config.ini are correct.
+
+Some servers require different ports for secure connections (like 587 for TLS). Ensure the SMTP configuration matches the server’s requirements.
+
+
+
+
+Additional Logging for Troubleshooting
+
+Add additional logging to verify each stage of the email sending process, especially to confirm whether the SMTP server accepts the message.
+
+Here’s an updated version with enhanced logging and the modification to ensure each line ends with \r\n:
+
+import os
+import smtplib
+import logging
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')  # Use this as the "From" address
+to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send raw content of .eml files line-by-line
+def send_raw_eml_files_line_by_line():
+    try:
+        # Establish SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        logging.info("SMTP connection established successfully.")
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logging.info(f"Processing file: {filename}")
+                
+                # Start the SMTP transaction manually
+                server.mail(from_address)
+                server.rcpt(to_address)
+                server.docmd("DATA")  # Begin the DATA phase explicitly
+                logging.info("Started SMTP DATA phase.")
+                
+                # Read and send each line of the .eml file
+                with open(filename, 'r') as eml_file:
+                    for line in eml_file:
+                        # Ensure each line ends with CRLF and send it
+                        server.sock.sendall((line.strip() + "\r\n").encode("utf-8"))
+
+                # End the DATA section with a single period (SMTP requirement)
+                server.sock.sendall(b"\r\n.\r\n")
+                logging.info("Completed sending email data.")
+                
+                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_raw_eml_files_line_by_line()
+
+Explanation of Modifications
+
+1. CRLF After Each Line:
+
+Each line read from the .eml file is sent with \r\n at the end to ensure compliance with SMTP formatting requirements.
+
+
+
+2. Enhanced Logging:
+
+Additional log statements are added to track each stage, such as establishing the SMTP connection, starting the DATA phase, and completing the email transmission. This can help pinpoint where the process might be failing.
+
+
+
+3. Check for Delivery Confirmation:
+
+If possible, check the logs or responses from the SMTP server to see if it provides any delivery confirmation or reason for rejection.
+
+
+
+
+Next Steps
+
+If the email is still not received:
+
+Check the SMTP Server Logs (if you have access) to verify if the email was accepted or rejected and the reason.
+
+Test with a Different SMTP Server (if possible) to see if the issue is specific to the current server’s configuration.
+
+Verify Sender Permissions: Ensure the from_address in config.ini is authorized to send emails via the SMTP server.
+
+
+Let me know if this version helps resolve the issue.
+
