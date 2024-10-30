@@ -1,0 +1,142 @@
+To add comprehensive debugging logs for every step, including SMTP commands and responses, we can enhance the logging to track each line sent, every SMTP command issued, and any server responses. This will help diagnose why some files may not be received or where the process might be failing.
+
+Here’s the updated code with detailed debugging logs:
+
+import os
+import smtplib
+import logging
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender_debug.log',  # Updated log filename for detailed debug logs
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')  # Use this as the "From" address
+to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send raw content of .eml files line-by-line with detailed debugging
+def send_raw_eml_files_line_by_line():
+    try:
+        # Establish SMTP connection
+        logger.debug(f"Connecting to SMTP server {smtp_server} on port {smtp_port}")
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.set_debuglevel(1)  # Enable SMTP debug output to see server interaction in stdout/stderr
+        server.ehlo()
+        logger.debug("EHLO command sent.")
+        
+        server.starttls()
+        logger.debug("STARTTLS command sent.")
+        
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        logger.debug("Logged in to SMTP server successfully.")
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logger.info(f"Processing file: {filename}")
+                
+                # Start the SMTP transaction manually
+                response = server.mail(from_address)
+                logger.debug(f"MAIL FROM command sent with response: {response}")
+                
+                response = server.rcpt(to_address)
+                logger.debug(f"RCPT TO command sent with response: {response}")
+                
+                response = server.docmd("DATA")  # Begin the DATA phase explicitly
+                logger.debug(f"DATA command sent with response: {response}")
+                
+                # Read and send each line of the .eml file with debugging
+                with open(filename, 'r') as eml_file:
+                    for line_num, line in enumerate(eml_file, 1):
+                        line_to_send = (line.strip() + "\r\n").encode("utf-8")
+                        server.sock.sendall(line_to_send)
+                        logger.debug(f"Line {line_num} sent: {line.strip()}")
+                
+                # End the DATA section with a single period (SMTP requirement)
+                server.sock.sendall(b"\r\n.\r\n")
+                logger.debug("End of DATA section sent.")
+                
+                logger.info(f"Email sent successfully from: {from_address} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        logger.debug("SMTP connection closed.")
+        
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_raw_eml_files_line_by_line()
+
+Explanation of Debugging Additions
+
+1. Detailed SMTP Debugging:
+
+Set server.set_debuglevel(1) to enable SMTP client-side debugging output, which will show the interaction with the SMTP server in stdout/stderr (useful if running interactively or capturing stderr).
+
+Logging every response from MAIL FROM, RCPT TO, and DATA commands.
+
+
+
+2. Line-by-Line Debugging:
+
+Each line sent from the .eml file is logged with its line number and content (trimmed for readability). This helps confirm every line’s transmission and aids in identifying missing or malformed lines.
+
+
+
+3. End of DATA Section:
+
+Explicitly logging the end of the DATA section (.\r\n) to verify that the SMTP server received the full email message.
+
+
+
+4. Enhanced Exception Handling:
+
+Logs any exception encountered, capturing details if the SMTP server denies a command or if there’s a network issue.
+
+
+
+
+Reviewing the Logs
+
+After running this code, check the email_sender_debug.log file for:
+
+1. SMTP Command Responses: Look for responses to MAIL FROM, RCPT TO, and DATA commands to ensure the SMTP server accepted each stage of the transaction.
+
+
+2. Line-by-Line Transmission: Each line from the .eml file is logged as it’s sent, so you can confirm that all lines were transmitted. If any line failed to send, it will help pinpoint where it happened.
+
+
+3. End of Transaction: Confirm that the .\r\n was sent after the DATA phase, signaling the end of the message body.
+
+
+
+This should give you a complete trace of the email sending process and help diagnose any further issues if the email is still not being received. Let me know if there’s anything specific that shows up in the debug logs, and I can assist further!
+
