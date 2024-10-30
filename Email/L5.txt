@@ -1,0 +1,168 @@
+Understood. To ensure the email is sent successfully regardless of the envelope sender mismatch, we need to set the envelope sender to a value that the SMTP server accepts, while preserving all headers and content from the .eml file, including X-RCPT-TO. This way, we can avoid permission errors caused by sender mismatch, and the email will be sent exactly as it appears in the .eml file.
+
+Here's the updated code:
+
+import os
+import smtplib
+import logging
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender_debug.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter())
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+smtp_password = config.get('SMTP', 'smtp_password')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')  # Envelope sender
+to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send .eml files with acceptable envelope sender
+def send_eml_files():
+    try:
+        # Establish SMTP connection
+        logger.debug(f"Connecting to SMTP server {smtp_server} on port {smtp_port}")
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.set_debuglevel(1)  # Enable SMTP debug output
+        server.ehlo()
+        logger.debug("EHLO command sent.")
+
+        server.starttls()
+        logger.debug("STARTTLS command sent.")
+
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        logger.debug("Logged in to SMTP server successfully.")
+
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logger.info(f"Processing file: {filename}")
+
+                # Read the entire .eml file as raw content
+                with open(filename, 'r') as eml_file:
+                    raw_content = eml_file.read()
+
+                # Send the email with raw content, using smtp_user as the envelope sender
+                try:
+                    server.sendmail(smtp_user, to_address, raw_content)
+                    logger.info(f"Email sent successfully using file: {filename}")
+                except smtplib.SMTPException as e:
+                    logger.error(f"Failed to send email. Error: {e}")
+                    # Optionally, handle the error or retry
+
+        # Close the SMTP connection
+        server.quit()
+        logger.debug("SMTP connection closed.")
+
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_eml_files()
+
+Explanation of the Updated Code
+
+1. Envelope Sender Set to smtp_user:
+
+We use smtp_user (the authenticated SMTP username) as the envelope sender in server.sendmail(smtp_user, to_address, raw_content).
+
+This ensures the SMTP server accepts the email, bypassing any permission issues caused by envelope sender mismatch.
+
+
+
+2. Preserving All Headers:
+
+The .eml file is read as raw content, including all headers (From, To, Subject, X-RCPT-TO, etc.).
+
+We do not modify any headers, so the email content remains exactly as in the .eml file.
+
+
+
+3. Sending Raw Content:
+
+The entire raw content of the .eml file is sent via server.sendmail().
+
+This method sends the email in a single operation, ensuring that all headers and body content are included as-is.
+
+
+
+4. SMTP Debugging Enabled:
+
+server.set_debuglevel(1) enables SMTP debug output to the console.
+
+This helps trace the SMTP commands and responses for troubleshooting.
+
+
+
+5. Logging:
+
+Detailed logging is included to track the email processing steps and any errors encountered.
+
+The logs are written to email_sender_debug.log with timestamps in Sydney local time.
+
+
+
+
+Why This Works Regardless of Envelope Sender Mismatch
+
+By using the authenticated smtp_user as the envelope sender, we ensure the SMTP server recognizes and permits the sending of emails.
+
+The envelope sender (smtp_user) is acceptable to the SMTP server, even if the From header inside the email (from the .eml file) is different.
+
+The SMTP server typically checks the envelope sender for permission and may allow the From header in the email content to be different.
+
+Since we are not modifying the .eml content, all headers, including X-RCPT-TO, are preserved and sent exactly as they appear in the file.
+
+
+Notes
+
+Possible Discrepancy Between Envelope and Header Sender:
+
+Some mail servers might allow the envelope sender to differ from the From header in the email content.
+
+If the mail server rejects this, additional configuration on the SMTP server may be required.
+
+
+Alternative:
+
+If the SMTP server still rejects the email due to mismatched senders, consider using a trusted SMTP relay that permits sending emails with differing envelope and header senders.
+
+
+Testing:
+
+After implementing this code, test sending an email to verify that it works as expected.
+
+Check both the sender and recipient mailboxes to ensure the email is delivered and the headers are intact.
+
+
+
+Conclusion
+
+This code modification allows you to send the .eml files exactly as they are, including all headers, by using the authenticated SMTP user's email as the envelope sender. This approach should work regardless of envelope sender mismatch issues, satisfying your requirement.
+
+Let me know if this solution works for you or if you need further assistance!
+
