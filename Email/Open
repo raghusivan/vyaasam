@@ -1,0 +1,96 @@
+To rewrite the script using an open relay SMTP server (which typically does not require authentication), the code below removes the authentication steps (server.login(smtp_user, smtp_password)) and starttls() since an open relay generally does not use TLS. Make sure you have permission to use any SMTP relay server without authentication, as open relays can introduce security risks.
+
+Here’s how you can adapt the code:
+
+import os
+import smtplib
+import logging
+from email import message_from_file
+from email.utils import formataddr
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')  # Use this as the "From" address
+to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# Function to send raw content of .eml files
+def send_raw_eml_files():
+    try:
+        # Establish SMTP connection to open relay server
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logging.info(f"Processing file: {filename}")
+                
+                # Open and read the .eml file
+                with open(filename, 'r') as eml_file:
+                    msg = message_from_file(eml_file)
+                
+                # Set the "From" header to match the config `from_address`
+                msg.replace_header('From', from_address)
+                
+                # Log the details
+                subject = msg['Subject']
+                logging.info(f"Using Config 'From' Address: {from_address}")
+                logging.info(f"To Address: {to_address}")
+                logging.info(f"Subject: {subject}")
+
+                # Send the raw email content using `from_address` as both the envelope sender and "From" header
+                server.sendmail(from_address, to_address, msg.as_string())
+                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_raw_eml_files()
+
+Key Changes
+
+Removed Authentication: Removed server.login(smtp_user, smtp_password), as an open relay does not require login credentials.
+
+Removed starttls(): Since open relay servers usually don’t enforce encryption, TLS isn’t used.
+
+
+Important Notes
+
+Open Relay Risks: Using an open relay can expose the system to security risks, as it can be exploited for spam or unauthorized email sending. Make sure you have the necessary permissions and safeguards in place.
+
+Testing: Test this code in a secure environment before using it in production, as open relays can sometimes be restricted by firewall or network policies.
+
+
+This setup should work if the SMTP server is a true open relay, accepting emails without authentication or encryption.
+
