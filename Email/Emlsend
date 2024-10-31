@@ -1,0 +1,106 @@
+# PowerShell Script to Send EML File
+$emlFile = "path_to_your.eml"
+$smtpServer = "smtprelay.lb.macbank"
+$smtpPort = 25
+$from = "commsurv.ops@macquarie.com"
+$to = "Luwb58X520YUQ9enF@smtp-00152.shieldfc.com"
+
+# Read the EML file content
+$emlContent = Get-Content $emlFile -Raw
+
+# Create TCP Client and connect
+$tcpClient = New-Object System.Net.Sockets.TcpClient($smtpServer, $smtpPort)
+$stream = $tcpClient.GetStream()
+$writer = New-Object System.IO.StreamWriter($stream)
+$reader = New-Object System.IO.StreamReader($stream)
+
+# SMTP Communication
+$writer.WriteLine("EHLO smtprelay.lb.macbank")
+$writer.Flush()
+$response = $reader.ReadLine()
+
+$writer.WriteLine("MAIL FROM: <$from>")
+$writer.Flush()
+$response = $reader.ReadLine()
+
+$writer.WriteLine("RCPT TO: <$to>")
+$writer.Flush()
+$response = $reader.ReadLine()
+
+$writer.WriteLine("DATA")
+$writer.Flush()
+$response = $reader.ReadLine()
+
+# Send EML content
+$writer.WriteLine($emlContent)
+$writer.WriteLine(".")
+$writer.Flush()
+$response = $reader.ReadLine()
+
+# Close connection
+$writer.WriteLine("QUIT")
+$writer.Flush()
+$tcpClient.Close()
+
+# Python equivalent script
+import socket
+import base64
+from email import generator
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+import os
+
+def send_email_with_attachment():
+    # SMTP Server details
+    smtp_server = "smtprelay.lb.macbank"
+    smtp_port = 25
+    
+    # Create socket connection
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((smtp_server, smtp_port))
+    
+    # Helper function to send commands and get responses
+    def send_command(command):
+        sock.send(f"{command}\r\n".encode())
+        return sock.recv(1024).decode()
+    
+    # Initial connection response
+    response = sock.recv(1024).decode()
+    print(response)
+    
+    # SMTP Handshake
+    send_command("EHLO smtprelay.lb.macbank")
+    send_command(f"MAIL FROM: <commsurv.ops@macquarie.com>")
+    send_command(f"RCPT TO: <Luwb58X520YUQ9enF@smtp-00152.shieldfc.com>")
+    
+    # Create MIME message
+    msg = MIMEMultipart()
+    msg['From'] = "Karl.Tria@macquarie.com"
+    msg['To'] = "Joseph.Dabo@macquarie.com"
+    msg['Subject'] = "Test Email"
+    
+    # Add text content
+    text_part = MIMEText("This is a test email.", 'plain')
+    msg.attach(text_part)
+    
+    # Add Word document attachment
+    doc_path = "attachment_doc_2024_10_28_10_42_28_145.docx"
+    if os.path.exists(doc_path):
+        with open(doc_path, 'rb') as f:
+            doc_part = MIMEApplication(f.read(), _subtype='docx')
+            doc_part.add_header('Content-Disposition', 'attachment', 
+                              filename=os.path.basename(doc_path))
+            msg.attach(doc_part)
+    
+    # Send the message
+    send_command("DATA")
+    send_command(msg.as_string())
+    send_command(".")
+    
+    # Close connection
+    send_command("QUIT")
+    sock.close()
+
+if __name__ == "__main__":
+    send_email_with_attachment()
