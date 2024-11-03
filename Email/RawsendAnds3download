@@ -1,0 +1,146 @@
+To add the download functionality from S3 before processing each .eml file, I'll integrate the download_file_from_s3 function. This function will attempt to download the .eml file from S3 into the current directory, ensuring that files are available locally before reading and sending them.
+
+Here’s the updated script with the S3 download function added:
+
+import os
+import smtplib
+import logging
+from configparser import ConfigParser
+from datetime import datetime
+import pytz
+import requests
+import boto3
+from botocore.exceptions import ClientError
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+extensions = [ext.strip() for ext in config.get('Email', 'extensions').split(',')]
+
+# S3 Configuration
+bucket_name = config.get('S3', 'bucket_name')  # Ensure bucket_name is added to config.ini
+
+# Function to retrieve SMTP password dynamically
+def get_smtp_password():
+    try:
+        api_config = config['API']
+        ssl_config = config['SSL']
+
+        response = requests.get(
+            api_config['url'],
+            params={
+                'AppID': api_config['app_id'],
+                'Safe': api_config['safe'],
+                'UserName': api_config['username'],
+                'Address': api_config['address']
+            },
+            cert=(ssl_config['cert_path'], ssl_config['key_path']),
+            verify=ssl_config['ca_cert_path'],
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            return response.json().get('Content')
+        else:
+            logger.error(f"Failed to get password. Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        logger.error(f"Error retrieving password: {str(e)}")
+        return None
+
+# Function to download file from S3
+def download_file_from_s3(file_name, bucket, object_name=None):
+    s3_client = boto3.client('s3')
+    try:
+        s3_client.download_file(bucket, object_name or file_name, file_name)
+        logger.info(f"Downloaded {object_name or file_name} from {bucket} to {file_name}")
+        return True
+    except ClientError as e:
+        logger.error(f"Error downloading {object_name or file_name} from S3: {e}")
+        return False
+
+# Function to send raw content of .eml files
+def send_raw_eml_files():
+    try:
+        # Retrieve SMTP password dynamically
+        smtp_password = get_smtp_password()
+        if not smtp_password:
+            logger.error("SMTP password could not be retrieved. Aborting email sending.")
+            return
+
+        # Establish SMTP connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        
+        # Process each .eml file
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logging.info(f"Processing file: {filename}")
+                
+                # Download the file from S3 if necessary
+                if not os.path.exists(filename):
+                    download_file_from_s3(filename, bucket_name, filename)
+
+                # Read the entire .eml file as raw content
+                with open(filename, 'r') as eml_file:
+                    raw_content = eml_file.read()
+
+                # Replace the "From" header in raw content with config from_address if necessary
+                raw_content = raw_content.replace("From: ", f"From: {from_address}\n", 1)
+                
+                # Log the details for verification
+                logging.info(f"Using Config 'From' Address: {from_address}")
+                logging.info(f"To Address (X-RCPT-TO): {to_address}")
+
+                # Send the email with raw content, using `from_address` as the envelope sender
+                server.sendmail(from_address, to_address, raw_content)
+                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
+        
+        # Close the SMTP connection
+        server.quit()
+        
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+
+# Execute the function
+send_raw_eml_files()
+
+Explanation of Changes
+
+1. download_file_from_s3 Function: This function downloads a file from S3 into the local directory if it is not already present.
+
+
+2. Integration in send_raw_eml_files: Before reading each .eml file, the script checks if the file exists locally. If it doesn’t, it calls download_file_from_s3 to retrieve the file from S3.
+
+
+
+This setup ensures each .eml file is available locally before sending it, handling both downloading and processing in one function. Make sure the S3 bucket name is correctly specified in your config.ini. Let me know if you need further adjustments.
+
