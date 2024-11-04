@@ -1,0 +1,113 @@
+Here’s a Linux shell script to create the folder structure in S3 and move existing .eml files from the current directory to the corresponding structure in the S3 bucket.
+
+Prerequisites
+
+AWS CLI installed and configured with appropriate credentials.
+
+Replace your-bucket-name with the actual S3 bucket name.
+
+This script assumes that the .eml files are stored locally in the current directory.
+
+
+Folder Structure in S3
+
+The folder structure to be created:
+
+s3://your-bucket-name/journals/year=YYYY/month=MM/day=DD/
+
+Shell Script
+
+#!/bin/bash
+
+# Set the S3 bucket name
+S3_BUCKET="your-bucket-name"
+
+# Function to create folder structure and upload files
+upload_eml_files() {
+    # Loop over each .eml file in the current directory
+    for file in *.eml; do
+        if [[ -f "$file" ]]; then
+            # Get the current date components
+            YEAR=$(date +%Y)
+            MONTH=$(date +%m)
+            DAY=$(date +%d)
+
+            # Define the S3 path for the folder structure
+            S3_PATH="s3://${S3_BUCKET}/journals/year=${YEAR}/month=${MONTH}/day=${DAY}/"
+
+            # Create the folder structure in S3 (the AWS CLI automatically creates folders as needed)
+            echo "Creating folder structure in ${S3_PATH}"
+            aws s3api put-object --bucket "${S3_BUCKET}" --key "journals/year=${YEAR}/month=${MONTH}/day=${DAY}/"
+
+            # Upload the .eml file to the appropriate S3 folder
+            echo "Uploading ${file} to ${S3_PATH}"
+            aws s3 cp "${file}" "${S3_PATH}"
+
+            # If the upload is successful, remove the file locally
+            if [[ $? -eq 0 ]]; then
+                echo "Successfully uploaded ${file} to ${S3_PATH}. Deleting local file."
+                rm -f "${file}"
+            else
+                echo "Failed to upload ${file}. Keeping it locally."
+            fi
+        else
+            echo "No .eml files found in the current directory."
+        fi
+    done
+}
+
+# Run the upload function
+upload_eml_files
+
+Explanation of the Script
+
+1. Set the S3 Bucket Name: Update S3_BUCKET to your actual S3 bucket name.
+
+
+2. Loop Through .eml Files: The script loops through each .eml file in the current directory. For each file:
+
+It checks if the file exists.
+
+It retrieves the current date components (YEAR, MONTH, DAY) to create the folder structure.
+
+
+
+3. Create Folder Structure in S3:
+
+Using aws s3api put-object, it creates a "dummy" object in each folder path, which effectively creates the folder structure in S3.
+
+This command won’t create any actual file; it only sets up the folders.
+
+
+
+4. Upload the .eml File:
+
+The file is uploaded to the appropriate S3 folder (year=YYYY/month=MM/day=DD) using aws s3 cp.
+
+
+
+5. Remove Local File:
+
+If the upload is successful ($? -eq 0), the local file is deleted. If the upload fails, the file is retained locally.
+
+
+
+
+Running the Script
+
+1. Save the script as upload_eml_to_s3.sh.
+
+
+2. Give it executable permissions:
+
+chmod +x upload_eml_to_s3.sh
+
+
+3. Run the script:
+
+./upload_eml_to_s3.sh
+
+
+
+This script will create the folder structure in S3 based on the current date and upload each .eml file to the appropriate path, cleaning up the local files after a successful upload. Adjust the script if you need a different date structure or other customizations.
+
