@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Set the S3 bucket name
+S3_BUCKET="your-bucket-name"
+
+# Function to create folder structure and upload files
+upload_eml_files() {
+    # Define the S3 paths for new and processed folders
+    NEW_FOLDER_PATH="s3://${S3_BUCKET}/journals/new/"
+    PROCESSED_FOLDER_PATH="s3://${S3_BUCKET}/journals/processed/"
+
+    # Create the 'new' and 'processed' folders in S3
+    echo "Creating folders in S3..."
+    aws s3api put-object --bucket "${S3_BUCKET}" --key "journals/new/"
+    aws s3api put-object --bucket "${S3_BUCKET}" --key "journals/processed/"
+
+    # Loop over each .eml file in the current directory
+    for file in *.eml; do
+        if [[ -f "$file" ]]; then
+            # Upload the .eml file to the 'new' folder in S3
+            echo "Uploading ${file} to ${NEW_FOLDER_PATH}"
+            aws s3 cp "${file}" "${NEW_FOLDER_PATH}"
+
+            # If the upload is successful, remove the file locally
+            if [[ $? -eq 0 ]]; then
+                echo "Successfully uploaded ${file} to ${NEW_FOLDER_PATH}. Deleting local file."
+                rm -f "${file}"
+            else
+                echo "Failed to upload ${file}. Keeping it locally."
+            fi
+        else
+            echo "No .eml files found in the current directory."
+        fi
+    done
+}
+
+# Run the upload function
+upload_eml_files
