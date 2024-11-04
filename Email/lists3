@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Set the S3 bucket name
+S3_BUCKET="your-bucket-name"
+
+# Function to list all files and folders in the S3 bucket
+list_s3_bucket_contents() {
+    echo "Listing all files and folders in the S3 bucket: ${S3_BUCKET}"
+    aws s3 ls "s3://${S3_BUCKET}/" --recursive
+}
+
+# Run the listing function
+list_s3_bucket_contents
