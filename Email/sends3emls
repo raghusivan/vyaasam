@@ -1,11 +1,13 @@
 import smtplib
 import logging
 from configparser import ConfigParser
+from datetime import datetime
+import pytz
 import requests
 import boto3
 from botocore.exceptions import ClientError
 
-# Configure logging
+# Configure logging with timezone-aware formatter
 class SydneyTimeFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         utc_dt = datetime.utcfromtimestamp(record.created)
@@ -26,13 +28,15 @@ config = ConfigParser()
 config.read('config.ini')
 
 # SMTP Configuration
-smtp_server = config.get('SMTP', 'smtp_server')
-smtp_port = config.getint('SMTP', 'smtp_port')
-smtp_user = config.get('SMTP', 'smtp_user')
+smtp_server = config.get('SMTP', 'server')
+smtp_port = config.getint('SMTP', 'port')
+smtp_user = config.get('SMTP', 'username')
 
 # Email Configuration
 from_address = config.get('Email', 'from_address')
 to_address = config.get('Email', 'to_address')
+subject = config.get('Email', 'subject')
+message_body = config.get('Email', 'message_body')
 
 # S3 Configuration
 bucket_name = config.get('S3', 'bucket_name')
@@ -107,7 +111,7 @@ def send_eml_files_from_s3():
                 raw_content = obj['Body'].read().decode('utf-8')  # Assuming .eml files are UTF-8 encoded
 
                 # Replace the "From" header in raw content with config from_address if necessary
-                raw_content = raw_content.replace("From: ", f"From: {from_address}\n", 1)
+                raw_content = f"Subject: {subject}\nFrom: {from_address}\nTo: {to_address}\n\n{message_body}\n\n" + raw_content
 
                 # Send the email
                 try:
