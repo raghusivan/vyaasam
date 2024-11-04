@@ -1,0 +1,90 @@
+To list the latest files modified in the Email folder of your GitHub repository using a Linux command line, you can use the GitHub REST API with curl and jq (for JSON processing).
+
+Here’s a command that fetches the latest commits for the Email folder and lists files modified within those commits:
+
+Requirements
+
+curl: For making HTTP requests.
+
+jq: For parsing JSON data. Install it with sudo apt-get install jq or sudo yum install jq if it’s not already installed.
+
+
+Command
+
+# Set variables
+REPO_OWNER="raghusivan"
+REPO_NAME="vyaasam"
+FOLDER_PATH="Email"
+TIME_FILTER="1 hour ago"  # Customize the time filter if needed
+
+# Fetch latest commits for the specified folder
+curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits?path=$FOLDER_PATH" |
+jq -r '.[] | select(.commit.committer.date >= "'$(date -u --date="$TIME_FILTER" +%Y-%m-%dT%H:%M:%SZ)'") | .commit.committer.date + " " + .commit.message + " " + .sha' |
+while read -r date message sha; do
+    echo "Date: $date"
+    echo "Commit Message: $message"
+    echo "Files modified:"
+    curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$sha" |
+    jq -r '.files[] | select(.filename | startswith("'"$FOLDER_PATH"'")) | .filename'
+    echo "------------------------"
+done
+
+Explanation
+
+1. Variables:
+
+REPO_OWNER: GitHub username or organization name (raghusivan).
+
+REPO_NAME: Name of the repository (vyaasam).
+
+FOLDER_PATH: Folder you want to filter commits for (Email).
+
+TIME_FILTER: Time filter to get commits within the last hour (adjust as needed).
+
+
+
+2. Get Latest Commits:
+
+curl fetches the latest commits for the specified folder from GitHub’s REST API.
+
+The API URL used is https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits?path=$FOLDER_PATH.
+
+
+
+3. Filter Commits by Time:
+
+jq filters commits that were committed within the last hour (based on TIME_FILTER).
+
+It then extracts the commit date, message, and SHA for each relevant commit.
+
+
+
+4. List Files Changed:
+
+For each commit, curl fetches the detailed list of files changed using the commit’s SHA.
+
+It then filters files to only include those in the specified folder (Email).
+
+
+
+5. Output:
+
+The script outputs each commit’s date, message, and the list of modified files.
+
+
+
+
+Running the Command
+
+1. Paste the entire command in your Linux terminal.
+
+
+2. Adjust TIME_FILTER as needed (e.g., "2 hours ago").
+
+
+3. The output will display files modified in the Email folder within the last hour, along with commit details.
+
+
+
+This approach avoids cloning the repository and lists recent changes directly from GitHub.
+
