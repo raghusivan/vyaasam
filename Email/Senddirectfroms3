@@ -1,0 +1,208 @@
+Here’s a complete rewrite of the Python script to handle sending .eml files directly from an S3 bucket via email, without saving the files locally. The script organizes and retrieves files by a specified date, and moves processed files to a processed folder in S3 after sending.
+
+import boto3
+import smtplib
+import logging
+import requests
+from configparser import ConfigParser
+from datetime import datetime
+from botocore.exceptions import ClientError
+
+# Configure logging
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+
+# Load configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+
+# S3 Configuration
+bucket_name = config.get('S3', 'bucket_name')
+
+# Function to retrieve SMTP password dynamically
+def get_smtp_password():
+    try:
+        api_config = config['API']
+        ssl_config = config['SSL']
+        response = requests.get(
+            api_config['url'],
+            params={
+                'AppID': api_config['app_id'],
+                'Safe': api_config['safe'],
+                'UserName': api_config['username'],
+                'Address': api_config['address']
+            },
+            cert=(ssl_config['cert_path'], ssl_config['key_path']),
+            verify=ssl_config['ca_cert_path'],
+            timeout=30
+        )
+        if response.status_code == 200:
+            return response.json().get('Content')
+        else:
+            logger.error(f"Failed to get password. Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        logger.error(f"Error retrieving password: {str(e)}")
+        return None
+
+# Function to move a processed file to the 'processed' folder in S3
+def move_file_to_processed(s3_client, file_key):
+    processed_key = file_key.replace("day=", "day=/processed/")
+    try:
+        s3_client.copy_object(Bucket=bucket_name, CopySource={'Bucket': bucket_name, 'Key': file_key}, Key=processed_key)
+        s3_client.delete_object(Bucket=bucket_name, Key=file_key)
+        logger.info(f"Moved {file_key} to {processed_key}")
+    except ClientError as e:
+        logger.error(f"Error moving file {file_key} to processed folder: {e}")
+
+# Function to send .eml files from S3 directly via email
+def send_journals_from_s3(date):
+    """Send .eml files stored in S3 for a specific date and move them to the processed folder after sending."""
+    s3_client = boto3.client('s3')
+
+    # Define the folder path in S3 based on the specified date
+    folder_path = f"journals/year={date.year}/month={str(date.month).zfill(2)}/day={str(date.day).zfill(2)}/"
+
+    try:
+        # List .eml files in the specified folder
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder_path)
+        if 'Contents' not in response:
+            logger.info("No files found for the specified date.")
+            return
+
+        # Retrieve the SMTP password dynamically
+        smtp_password = get_smtp_password()
+        if not smtp_password:
+            logger.error("SMTP password could not be retrieved. Aborting email sending.")
+            return
+
+        # Establish an SMTP connection
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+
+            # Process each file in the folder
+            for item in response['Contents']:
+                file_key = item['Key']
+                logger.info(f"Processing file: {file_key}")
+
+                # Retrieve the file content directly from S3
+                obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+                raw_content = obj['Body'].read().decode('utf-8')  # Assuming .eml files are UTF-8 encoded
+
+                # Replace the "From" header in raw content if necessary
+                raw_content = raw_content.replace("From: ", f"From: {from_address}\n", 1)
+
+                # Send the email
+                try:
+                    server.sendmail(from_address, to_address, raw_content)
+                    logger.info(f"Email sent successfully from: {from_address} using file: {file_key}")
+
+                    # Move the file to the processed folder
+                    move_file_to_processed(s3_client, file_key)
+                except Exception as e:
+                    logger.error(f"Failed to send email for file {file_key}: {e}")
+
+    except ClientError as e:
+        logger.error(f"Error accessing S3 or sending email: {e}")
+
+# Example usage
+if __name__ == "__main__":
+    # Define the date for which you want to process journal emails
+    date = datetime.now()  # Or specify a specific date like datetime(2024, 11, 4)
+    send_journals_from_s3(date)
+
+Explanation of Each Part
+
+1. Logging: Configured to log both info and error messages to email_sender.log.
+
+
+2. Configuration: Loaded from config.ini to retrieve details such as SMTP server, S3 bucket name, and API for password retrieval.
+
+
+3. get_smtp_password():
+
+Fetches the SMTP password dynamically via an API call, handling any errors gracefully.
+
+
+
+4. move_file_to_processed():
+
+Moves processed files to a processed subfolder under the same date structure in S3.
+
+Replaces the original day= path with day=/processed/ to organize processed files separately.
+
+
+
+5. send_journals_from_s3():
+
+Establishes an SMTP connection and retrieves .eml files from the specified date folder in S3.
+
+Iterates over each file, fetching the content from S3, sending it via email, and moving it to the processed folder upon successful sending.
+
+If an email fails to send, the file remains in its original location in S3 for retry later.
+
+
+
+6. Example Usage:
+
+Set date to the desired day for processing emails (current date or specific date).
+
+Run the script, which will automatically retrieve and process .eml files from S3.
+
+
+
+
+Configuration
+
+In your config.ini, ensure that the following sections and keys are set up:
+
+[SMTP]
+smtp_server = smtp.example.com
+smtp_port = 587
+smtp_user = your_smtp_username
+
+[Email]
+from_address = sender@example.com
+to_address = recipient@example.com
+
+[S3]
+bucket_name = your-bucket-name
+
+[API]
+url = https://api.example.com/get-password
+app_id = your_app_id
+safe = your_safe
+username = your_api_username
+address = your_api_address
+
+[SSL]
+cert_path = /path/to/your/certificate.pem
+key_path = /path/to/your/key.pem
+ca_cert_path = /path/to/ca-cert.pem
+
+Benefits
+
+This version:
+
+Handles files efficiently without storing them locally.
+
+Organizes processed files by moving them to a processed folder.
+
+Provides secure SMTP handling with dynamic password retrieval.
+
+
+This script is designed to be secure, efficient, and organized for handling email sending directly from S3. Let me know if you need any further adjustments!
+
