@@ -1,0 +1,128 @@
+import smtplib
+import logging
+from configparser import ConfigParser
+import requests
+import boto3
+from botocore.exceptions import ClientError
+
+# Configure logging
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logging.basicConfig(
+    filename='email_sender.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger()
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# SMTP Configuration
+smtp_server = config.get('SMTP', 'smtp_server')
+smtp_port = config.getint('SMTP', 'smtp_port')
+smtp_user = config.get('SMTP', 'smtp_user')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+
+# S3 Configuration
+bucket_name = config.get('S3', 'bucket_name')
+
+# Function to retrieve SMTP password dynamically
+def get_smtp_password():
+    try:
+        api_config = config['API']
+        ssl_config = config['SSL']
+        response = requests.get(
+            api_config['url'],
+            params={
+                'AppID': api_config['app_id'],
+                'Safe': api_config['safe'],
+                'UserName': api_config['username'],
+                'Address': api_config['address']
+            },
+            cert=(ssl_config['cert_path'], ssl_config['key_path']),
+            verify=ssl_config['ca_cert_path'],
+            timeout=30
+        )
+        if response.status_code == 200:
+            return response.json().get('Content')
+        else:
+            logger.error(f"Failed to get password. Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        logger.error(f"Error retrieving password: {str(e)}")
+        return None
+
+# Function to move a processed file to the 'processed' folder in S3
+def move_file_to_processed(s3_client, file_key):
+    processed_key = file_key.replace("new/", "processed/")
+    try:
+        s3_client.copy_object(Bucket=bucket_name, CopySource={'Bucket': bucket_name, 'Key': file_key}, Key=processed_key)
+        s3_client.delete_object(Bucket=bucket_name, Key=file_key)
+        logger.info(f"Moved {file_key} to {processed_key}")
+    except ClientError as e:
+        logger.error(f"Error moving file {file_key} to processed folder: {e}")
+
+# Function to send .eml files directly from S3
+def send_eml_files_from_s3():
+    s3_client = boto3.client('s3')
+    folder_path = "journals/new/"
+
+    try:
+        # Retrieve SMTP password dynamically
+        smtp_password = get_smtp_password()
+        if not smtp_password:
+            logger.error("SMTP password could not be retrieved. Aborting email sending.")
+            return
+
+        # Establish SMTP connection
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+
+            # List .eml files in the 'new' folder
+            response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder_path)
+            if 'Contents' not in response:
+                logger.info("No files found in the 'new' folder.")
+                return
+
+            # Process each .eml file
+            for item in response['Contents']:
+                file_key = item['Key']
+                logger.info(f"Processing file: {file_key}")
+
+                # Download the file content directly from S3
+                obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+                raw_content = obj['Body'].read().decode('utf-8')  # Assuming .eml files are UTF-8 encoded
+
+                # Replace the "From" header in raw content with config from_address if necessary
+                raw_content = raw_content.replace("From: ", f"From: {from_address}\n", 1)
+
+                # Send the email
+                try:
+                    server.sendmail(from_address, to_address, raw_content)
+                    logger.info(f"Email sent successfully from: {from_address} using file: {file_key}")
+
+                    # Move the file to the 'processed' folder
+                    move_file_to_processed(s3_client, file_key)
+
+                except Exception as e:
+                    logger.error(f"Failed to send email for file {file_key}: {e}")
+
+    except ClientError as e:
+        logger.error(f"Error accessing S3 or sending email: {e}")
+
+# Execute the function
+if __name__ == "__main__":
+    send_eml_files_from_s3()
