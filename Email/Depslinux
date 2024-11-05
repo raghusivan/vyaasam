@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# install_deps.sh
+
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <python_file.py>"
+    exit 1
+fi
+
+PYTHON_FILE=$1
+
+if [ ! -f "$PYTHON_FILE" ]; then
+    echo "Error: File $PYTHON_FILE not found"
+    exit 1
+fi
+
+# Create virtual environment if it doesn't exist
+if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+fi
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Extract imports from Python file
+echo "Analyzing imports from $PYTHON_FILE..."
+IMPORTS=$(grep -E "^import |^from .* import " "$PYTHON_FILE" | sed 's/from \([^ ]*\).*/\1/' | sed 's/import \([^ ]*\).*/\1/' | sed 's/\..*//' | sort -u)
+
+# Create temporary requirements file
+echo "Generating requirements file..."
+rm -f temp_requirements.txt
+for import in $IMPORTS
+do
+    # Skip standard library modules
+    if ! python3 -c "import $import" 2>/dev/null; then
+        if [ "$import" != "sys" ] && [ "$import" != "pathlib" ] && [ "$import" != "subprocess" ] && [ "$import" != "shutil" ]; then
+            echo "$import" >> temp_requirements.txt
+        fi
+    fi
+done
+
+# Install dependencies if any were found
+if [ -s temp_requirements.txt ]; then
+    echo "Installing dependencies..."
+    pip install -r temp_requirements.txt
+    
+    # Generate complete requirements file with versions
+    pip freeze > requirements.txt
+    echo "Dependencies installed and requirements.txt generated"
+else
+    echo "No external dependencies found or all dependencies are standard library modules"
+fi
+
+# Clean up
+rm -f temp_requirements.txt
+
+# Show installed packages
+echo -e "\nInstalled packages:"
+pip list
+
+# Deactivate virtual environment
+deactivate
+
+echo -e "\nSetup complete! To activate the virtual environment, run: source venv/bin/activate" 
