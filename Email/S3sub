@@ -1,0 +1,67 @@
+To adjust your code as requested, I’ll modify the logic to extract the subject from the email content and not use anything from config.ini for the body. Below is the modified Python code:
+
+import boto3
+import smtplib
+from botocore.exceptions import ClientError
+import logging
+
+# Initialize logger
+logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO)
+
+# Establish SMTP connection
+with smtplib.SMTP(smtp_server, smtp_port) as server:
+    server.ehlo()
+    server.starttls()
+    server.login(smtp_user, smtp_password)
+
+    # List .eml files in the 'new' folder
+    response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder_path)
+    if 'Contents' not in response:
+        logger.info("No files found in the 'new' folder.")
+        return
+
+    # Process each .eml file
+    for item in response['Contents']:
+        file_key = item['Key']
+        logger.info(f"Processing file: {file_key}")
+
+        # Download the file content directly from S3
+        obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+        raw_content = obj['Body'].read().decode('utf-8')  # Assuming .eml files are UTF-8 encoded
+
+        # Extract subject line from the raw content
+        subject = ""
+        for line in raw_content.splitlines():
+            if line.startswith("Subject: "):
+                subject = line[9:]  # Remove "Subject: " prefix
+                break
+
+        # Send the email with the extracted subject and raw content as body
+        try:
+            server.sendmail(from_address, to_address, f"Subject: {subject}\n\n{raw_content}")
+            logger.info(f"Email sent successfully from: {from_address} using file: {file_key}")
+
+            # Move the file to the 'processed' folder
+            move_file_to_processed(s3_client, file_key)
+
+        except Exception as e:
+            logger.error(f"Failed to send email for file {file_key}: {e}")
+
+except ClientError as e:
+    logger.error("Error accessing S3 or sending email: {e}")
+
+Explanation of Changes:
+
+1. Subject Extraction: The subject is now extracted directly from the .eml file content by searching for the line starting with "Subject: ".
+
+
+2. Email Body: The entire raw_content is used as the email body, eliminating any dependency on config.ini for the body.
+
+
+3. File Processing: The code proceeds as before with logging, error handling, and moving the file to the "processed" folder if successfully sent.
+
+
+
+Ensure that the SMTP and S3 parameters (smtp_server, smtp_port, smtp_user, smtp_password, s3_client, bucket_name, folder_path, from_address, and to_address) are correctly configured before running this script.
+
