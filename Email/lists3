@@ -1,13 +1,40 @@
+To modify this script to also download all files from the "new" folder within the S3 bucket, you can add a function to download files. Here’s the updated script:
+
 #!/bin/bash
 
-# Set the S3 bucket name
+# Set the S3 bucket name and the folder path
 S3_BUCKET="your-bucket-name"
+FOLDER_PATH="new"  # Folder path within the S3 bucket
 
 # Function to list all files and folders in the S3 bucket
 list_s3_bucket_contents() {
-    echo "Listing all files and folders in the S3 bucket: ${S3_BUCKET}"
-    aws s3 ls "s3://${S3_BUCKET}/" --recursive
+    echo "Listing all files and folders in the S3 bucket: ${S3_BUCKET}/${FOLDER_PATH}"
+    aws s3 ls "s3://${S3_BUCKET}/${FOLDER_PATH}/" --recursive
+}
+
+# Function to download all files from the specified folder in the S3 bucket
+download_s3_folder() {
+    echo "Downloading all files from the folder: ${S3_BUCKET}/${FOLDER_PATH}"
+    aws s3 cp "s3://${S3_BUCKET}/${FOLDER_PATH}/" ./ --recursive
 }
 
 # Run the listing function
 list_s3_bucket_contents
+
+# Run the download function
+download_s3_folder
+
+Explanation:
+
+1. FOLDER_PATH Variable: Specifies the "new" folder within the S3 bucket.
+
+
+2. download_s3_folder Function: This function uses aws s3 cp with the --recursive option to download all files from the specified folder in the S3 bucket to the current directory (./).
+
+
+3. Execution: First, the script lists the contents of the "new" folder, and then it downloads all files from that folder to the local machine.
+
+
+
+Make sure the AWS CLI is configured correctly with access to the specified bucket before running this script.
+
