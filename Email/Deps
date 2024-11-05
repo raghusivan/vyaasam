@@ -1,0 +1,54 @@
+# get_dependencies.py
+import pkg_resources
+import subprocess
+import sys
+from pathlib import Path
+
+def generate_requirements():
+    """Generate requirements.txt with pinned versions of all installed packages."""
+    # Get all installed distributions
+    packages = [dist for dist in pkg_resources.working_set]
+    
+    # Create requirements with exact versions
+    requirements = []
+    for package in packages:
+        name = package.key
+        version = package.version
+        # Skip any editable installations or local packages
+        if not (package.location.endswith('.egg') or package.location.endswith('.egg-info')):
+            requirements.append(f"{name}=={version}")
+    
+    # Write to requirements.txt
+    with open('requirements.txt', 'w') as f:
+        f.write('\n'.join(sorted(requirements)))
+
+def verify_environment():
+    """Verify all dependencies can be installed in a fresh environment."""
+    # Create a new virtual environment
+    subprocess.run([sys.executable, '-m', 'venv', 'test_env'], check=True)
+    
+    # Determine pip path in new environment
+    if sys.platform.startswith('win'):
+        pip_path = Path('test_env/Scripts/pip')
+    else:
+        pip_path = Path('test_env/bin/pip')
+    
+    try:
+        # Upgrade pip
+        subprocess.run([str(pip_path), 'install', '--upgrade', 'pip'], check=True)
+        
+        # Try installing requirements
+        subprocess.run([str(pip_path), 'install', '-r', 'requirements.txt'], check=True)
+        print("✅ All dependencies installed successfully!")
+        
+    except subprocess.CalledProcessError as e:
+        print("❌ Error during dependency verification:", e)
+        
+    finally:
+        # Clean up test environment
+        import shutil
+        shutil.rmtree('test_env', ignore_errors=True)
+
+if __name__ == "__main__":
+    generate_requirements()
+    verify_environment()
