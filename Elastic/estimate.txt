@@ -1,0 +1,34 @@
+Summary of All Tasks and Estimates:
+
+    Install ES Visualization Tool on Linux: 1 week
+        Install a suitable Elasticsearch (ES) visualization tool on a Linux system to facilitate data exploration and analysis.
+
+    Understand ES Data Structure for Querying Needs: 1 week
+        Analyze the ES index data structure to identify how to query and retrieve the necessary data effectively.
+
+    Reverse Engineer UI Data Retrieval from ES Index: 2 weeks
+        Study how the current User Interface (UI) retrieves data from the ES index to replicate or adapt these methods for data extraction.
+
+    Revisit Communications and Statuses of Closed Alerts from Brie to Query ES Index: 1 week
+        Review previous communications and the list of closed alert statuses provided by Brie to inform the ES index querying process.
+
+    Set Up Airflow Job, Lambda Code, and Connectivity with Shared Folder and SourceOne: 3 weeks
+        Develop and configure an Airflow job and Lambda functions.
+        Establish connectivity with the shared folder and SourceOne for data processing and migration.
+
+    Test and Validate Data Retrieval Methods: 1 week
+        Conduct testing to ensure that data retrieval methods work correctly and efficiently.
+
+    Perform Initial Data Migration in Chunks (from 2019 Onwards): 2 weeks
+        Execute the initial migration of data starting from 2019, handling the data in manageable chunks to optimize performance.
+
+    Ensure Data Integrity and Conduct Quality Assurance: 1 week
+        Verify the accuracy and integrity of the migrated data through thorough quality assurance checks.
+
+    Document Processes and Findings: 1 week
+        Create comprehensive documentation of the processes, methodologies, and findings for future reference and knowledge sharing.
+
+    Monitor and Adjust Migration Process as Needed: 1 week
+        Continuously monitor the migration process and make necessary adjustments to address any issues that arise.
+
+Total Estimated Time: 14 weeks
