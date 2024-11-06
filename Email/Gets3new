@@ -1,0 +1,61 @@
+To download all files from the new folders under the structure you specified (rmg/shield/emails/direct/new and rmg/shield/emails/journals/new), here’s a script that will loop through these paths and download the files to your local machine:
+
+#!/bin/bash
+
+# Set the S3 bucket name
+S3_BUCKET="your-bucket-name"
+
+# Define the folder paths to download files from
+DOWNLOAD_PATHS=(
+    "rmg/shield/emails/direct/new/"
+    "rmg/shield/emails/journals/new/"
+)
+
+# Local directory to store downloaded files
+LOCAL_DIR="./downloaded_files"
+
+# Create local directory if it doesn't exist
+mkdir -p "$LOCAL_DIR"
+
+# Function to download files from specified S3 folder paths
+download_s3_files() {
+    for path in "${DOWNLOAD_PATHS[@]}"; do
+        echo "Downloading files from s3://${S3_BUCKET}/${path} to ${LOCAL_DIR}/${path}"
+        
+        # Create the corresponding local folder structure
+        mkdir -p "${LOCAL_DIR}/${path}"
+
+        # Download files from each S3 folder path to the corresponding local folder
+        aws s3 cp "s3://${S3_BUCKET}/${path}" "${LOCAL_DIR}/${path}" --recursive
+    done
+}
+
+# Run the download function
+download_s3_files
+
+Explanation:
+
+1. DOWNLOAD_PATHS Array: Contains the paths for the new folders in the S3 bucket (rmg/shield/emails/direct/new/ and rmg/shield/emails/journals/new/).
+
+
+2. LOCAL_DIR: The base local directory (./downloaded_files) where files will be downloaded.
+
+
+3. Directory Creation: The script creates the local folder structure to mirror the S3 structure.
+
+
+4. Downloading Files: The aws s3 cp command with --recursive downloads all files from each new folder path in S3 to the corresponding local folder.
+
+
+
+Usage
+
+1. Replace "your-bucket-name" with your actual S3 bucket name.
+
+
+2. Run the script to download all files from the new folders in S3 to the ./downloaded_files directory on your local machine.
+
+
+
+This will ensure that all files in the specified new folders are downloaded while maintaining the folder structure locally.
+
