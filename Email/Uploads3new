@@ -1,0 +1,77 @@
+To modify the script to accept direct or journal as a command-line argument and upload any .eml file from the current directory to the specified S3 folder, here’s how it can be done:
+
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <direct|journal>"
+    exit 1
+fi
+
+# Set the S3 bucket name
+S3_BUCKET="your-bucket-name"
+
+# Determine the target path based on the argument
+if [ "$1" == "direct" ]; then
+    TARGET_PATH="rmg/shield/emails/direct/new/"
+elif [ "$1" == "journal" ]; then
+    TARGET_PATH="rmg/shield/emails/journals/new/"
+else
+    echo "Invalid argument. Please specify 'direct' or 'journal'."
+    exit 1
+fi
+
+# Function to upload .eml files to the specified S3 folder
+upload_eml_files() {
+    for file in *.eml; do
+        # Check if there are any .eml files in the current directory
+        if [ ! -f "$file" ]; then
+            echo "No .eml files found in the current directory."
+            return
+        fi
+
+        # Upload the file to the specified S3 path
+        echo "Uploading $file to s3://${S3_BUCKET}/${TARGET_PATH}"
+        aws s3 cp "$file" "s3://${S3_BUCKET}/${TARGET_PATH}"
+    done
+}
+
+# Run the upload function
+upload_eml_files
+
+Explanation:
+
+1. Command-line Argument: The script expects a single argument (direct or journal) to determine which S3 folder to use.
+
+
+2. Bucket and Folder Paths: Based on the argument, it sets TARGET_PATH to either rmg/shield/emails/direct/new/ or rmg/shield/emails/journals/new/.
+
+
+3. Loop Through .eml Files: Iterates through all .eml files in the current directory.
+
+
+4. AWS CLI cp Command: Uploads each .eml file to the specified TARGET_PATH in S3.
+
+
+5. Usage Message: If the argument is missing or incorrect, it shows a usage message and exits.
+
+
+
+Usage
+
+1. Save the script in the directory where your .eml files are located.
+
+
+2. Run the script with either direct or journal as an argument:
+
+./script_name.sh direct
+
+or
+
+./script_name.sh journal
+
+
+3. The script will upload all .eml files in the current directory to the appropriate new folder in S3 based on the provided argument.
+
+
+
