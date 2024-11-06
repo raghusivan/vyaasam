@@ -1,0 +1,50 @@
+To include the additional folder paths (rmg/shield/emails/journals/new and rmg/shield/emails/journals/processed), you can simply add them to the FOLDER_PATHS array in the script. Here’s the modified script:
+
+#!/bin/bash
+
+# Set the S3 bucket name
+S3_BUCKET="your-bucket-name"
+
+# Folder paths to create in the bucket
+FOLDER_PATHS=(
+    "rmg/shield/emails/direct/new/"
+    "rmg/shield/emails/direct/processed/"
+    "rmg/shield/emails/journals/new/"
+    "rmg/shield/emails/journals/processed/"
+)
+
+# Function to create folder structure
+create_s3_folder_structure() {
+    for folder in "${FOLDER_PATHS[@]}"; do
+        echo "Creating folder: s3://${S3_BUCKET}/${folder}"
+        aws s3api put-object --bucket "$S3_BUCKET" --key "$folder"
+    done
+}
+
+# Run the folder creation function
+create_s3_folder_structure
+
+Explanation of Changes:
+
+1. New Paths in FOLDER_PATHS Array: Added "rmg/shield/emails/journals/new/" and "rmg/shield/emails/journals/processed/" to the array to ensure these additional folders are created.
+
+
+2. Loop for Folder Creation: The loop remains the same, iterating over each folder path and using aws s3api put-object to create the folder structure in S3.
+
+
+
+Usage
+
+Run this script, and it will create the full set of folder paths in your S3 bucket:
+
+rmg/shield/emails/direct/new/
+
+rmg/shield/emails/direct/processed/
+
+rmg/shield/emails/journals/new/
+
+rmg/shield/emails/journals/processed/
+
+
+Make sure your AWS CLI is configured and has the necessary permissions to write to the S3 bucket.
+
