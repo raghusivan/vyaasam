@@ -1,0 +1,22 @@
+ To directly convert the S3 object to a file, you can use BytesIO. Here's the simple modification:
+
+```python
+from io import BytesIO
+
+# Download the file content directly from S3
+obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+email_file = BytesIO(obj['Body'].read())
+
+# Now you can use email_file as a regular file
+msg = email.message_from_binary_file(email_file)
+```
+
+Or even simpler, you can use the Body directly since it's already a file-like object:
+
+```python
+# The obj['Body'] is already file-like, so you can use it directly
+obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+msg = email.message_from_binary_file(obj['Body'])
+```
+
+Both approaches will work - the first one gives you a bit more control if you need to rewind or manipulate the file contents, while the second one is more direct.
