@@ -1,0 +1,74 @@
+Here’s the script with hardcoded paths for either direct or journals, based on the specified input. This will copy two random files from the processed folder to the new folder for the selected path.
+
+#!/bin/bash
+
+# Set the S3 bucket name
+S3_BUCKET="your-bucket-name"
+
+# Path selection (either "direct" or "journals")
+PATH_TYPE=$1
+
+# Determine paths based on input argument
+if [ "$PATH_TYPE" == "direct" ]; then
+    PROCESSED_PATH="rmg/shield/emails/direct/processed/"
+    NEW_PATH="rmg/shield/emails/direct/new/"
+elif [ "$PATH_TYPE" == "journals" ]; then
+    PROCESSED_PATH="rmg/shield/emails/journals/processed/"
+    NEW_PATH="rmg/shield/emails/journals/new/"
+else
+    echo "Invalid argument. Please specify 'direct' or 'journals'."
+    exit 1
+fi
+
+# Function to copy two random files from processed to new
+copy_random_files() {
+    # List files in the processed folder and pick two random ones
+    files=($(aws s3 ls "s3://${S3_BUCKET}/${PROCESSED_PATH}" --recursive | awk '{print $4}' | shuf -n 2))
+    
+    # Copy each selected file to the new folder
+    for file in "${files[@]}"; do
+        echo "Copying $file to s3://${S3_BUCKET}/${NEW_PATH}"
+        aws s3 cp "s3://${S3_BUCKET}/${file}" "s3://${S3_BUCKET}/${NEW_PATH}"
+    done
+}
+
+# Run the copy function
+copy_random_files
+
+Explanation of Changes:
+
+1. Path Selection Based on Argument:
+
+The script accepts one argument (direct or journals) when running.
+
+Based on the argument, it sets PROCESSED_PATH and NEW_PATH to the appropriate folders.
+
+
+
+2. Copying Logic:
+
+The copy_random_files function lists files in the processed folder, picks two random files, and copies them to the new folder.
+
+
+
+3. Usage:
+
+Run the script with either direct or journals as an argument:
+
+./script_name.sh direct
+
+or
+
+./script_name.sh journals
+
+
+
+4. Validation:
+
+If the argument is neither direct nor journals, the script will print an error and exit.
+
+
+
+
+Ensure that your AWS CLI has the necessary permissions to list and copy files within the specified S3 bucket paths.
+
