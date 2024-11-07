@@ -1,0 +1,107 @@
+To modify your code to read the .eml file directly from S3 without saving it locally and send it as raw content, you can use the Body of the S3 object response. Here’s how you can adjust your code:
+
+import boto3
+import smtplib
+import logging
+from botocore.exceptions import ClientError
+
+# Initialize logger
+logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO)
+
+# Function to retrieve SMTP password (stub example here)
+def get_smtp_password():
+    # Retrieve SMTP password dynamically (example placeholder)
+    return "your-smtp-password"
+
+# Function to move the file to the processed folder in S3
+def move_file_to_processed(s3_client, bucket_name, file_key, processed_folder):
+    copy_source = {'Bucket': bucket_name, 'Key': file_key}
+    processed_key = file_key.replace("new", "processed")
+    s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=processed_key)
+    s3_client.delete_object(Bucket=bucket_name, Key=file_key)
+    logger.info(f"Moved file {file_key} to {processed_folder}")
+
+# Function to send emails from S3 folder
+def send_emails_from_folder(folder):
+    logger.info(f"To address: {to_address}")
+    
+    # Retrieve SMTP password dynamically
+    smtp_password = get_smtp_password()
+    if not smtp_password:
+        logger.error("SMTP password could not be retrieved. Aborting email sending.")
+        return
+
+    # Establish SMTP connection
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+
+        # List .eml files in the 'new' folder on S3
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder['new'])
+        if 'Contents' not in response:
+            logger.info(f"No files found in the '{folder['new']}' folder.")
+            return
+
+        # Process each .eml file
+        for item in response['Contents']:
+            file_key = item['Key']
+            logger.info(f"Processing file: {file_key}")
+
+            # Download the file content directly from S3 without saving locally
+            try:
+                obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+                raw_content = obj['Body'].read()  # Read the content as raw bytes
+
+                # Send the email as raw content
+                server.sendmail(from_address, to_address, raw_content)
+                logger.info(f"Email sent successfully from: {from_address} using file: {file_key}")
+
+                # Move the file to the 'processed' folder
+                move_file_to_processed(s3_client, bucket_name, file_key, folder['processed'])
+
+            except Exception as e:
+                logger.error(f"Failed to send email for file {file_key}: {e}")
+
+# Main execution
+if __name__ == "__main__":
+    # Define required variables
+    smtp_server = "smtp.example.com"
+    smtp_port = 587
+    smtp_user = "your-smtp-username"
+    from_address = "your-email@example.com"
+    to_address = "recipient@example.com"
+    bucket_name = "your-bucket-name"
+    s3_client = boto3.client("s3")
+
+    # Folder paths in S3
+    folder = {
+        "new": "rmg/shield/emails/direct/new/",
+        "processed": "rmg/shield/emails/direct/processed/"
+    }
+
+    # Call the function to send emails
+    send_emails_from_folder(folder)
+
+Explanation of Key Changes:
+
+1. Read Raw Content from S3: Instead of saving the file locally, the script reads the .eml file content directly from S3 using obj['Body'].read().
+
+
+2. Send Email with Raw Content: The server.sendmail function uses raw_content directly as the email body, mimicking the behavior as if it was reading from a local file.
+
+
+3. Move to Processed Folder: After sending the email, the file is moved to the processed folder in S3.
+
+
+
+Important Notes:
+
+Replace "your-smtp-password", SMTP server details, from_address, to_address, and bucket_name with actual values.
+
+Ensure AWS permissions allow reading from and writing to the specified S3 bucket.
+
+
+This approach reads the file content directly from S3 without saving it locally and sends it as raw content in the email.
+
