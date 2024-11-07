@@ -1,0 +1,44 @@
+def send_emails_from_folder(folder):
+    logger.info(f"To Address {to_address}:")
+    # Retrieve SMTP password dynamically
+    smtp_password = get_smtp_password()
+    if not smtp_password:
+        logger.error("SMTP password could not be retrieved. Aborting email sending.")
+        return
+
+    # Establish SMTP connection
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        
+        # List .eml files in the 'new' folder
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder['new'])
+        if 'Contents' not in response:
+            logger.info(f"No files found in the '{folder['new']}' folder.")
+            return
+
+        # Process each .eml file
+        for item in response['Contents']:
+            file_key = item['Key']
+            logger.info(f"Processing file: {file_key}")
+
+            # Download the .eml file directly from S3
+            obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+            eml_content = obj['Body'].read()
+            
+            # Create email message from the .eml content
+            msg = email.message_from_bytes(eml_content)
+            
+            # Update the recipients
+            msg.replace_header('To', to_address)
+            
+            # Send the email
+            try:
+                server.send_message(msg)
+                logger.info(f"Email sent successfully to: {to_address} using file: {file_key}")
+                
+                # Move the file to the 'processed' folder
+                move_file_to_processed(s3_client, file_key, folder['processed'])
+                
+            except Exception as e:
+                logger.error(f"Failed to send email for file {file_key}: {e}")
