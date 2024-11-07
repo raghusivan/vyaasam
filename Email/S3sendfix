@@ -1,79 +1,142 @@
-To integrate the above logic solely for the email sending part, let’s focus on processing .eml files in the current directory, modifying the "From" header as needed, and sending the email without saving or retrieving the file from S3. Below is the code snippet that fits within the send_emails_from_folder function's core sending logic:
+ To handle .eml files such that their contents are parsed and sent as a new email, with any attachments in the .eml preserved as attachments in the outgoing email, you can use Python’s email package to parse the .eml file. This code will read each .eml file, parse it, and reconstruct it to send it as an email, including any attachments.
 
-import os
+Here’s the modified code:
+
+import boto3
 import smtplib
 import logging
+from botocore.exceptions import ClientError
+from email import policy
+from email.parser import BytesParser
+from email.message import EmailMessage
 
-# Define the email-sending function
-def send_emails_from_folder():
-    # Set up SMTP server connection
+# Initialize logger
+logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO)
+
+# Function to retrieve SMTP password (stub example here)
+def get_smtp_password():
+    # Retrieve SMTP password dynamically (example placeholder)
+    return "your-smtp-password"
+
+# Function to move the file to the processed folder in S3
+def move_file_to_processed(s3_client, bucket_name, file_key, processed_folder):
+    copy_source = {'Bucket': bucket_name, 'Key': file_key}
+    processed_key = file_key.replace("new", "processed")
+    s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=processed_key)
+    s3_client.delete_object(Bucket=bucket_name, Key=file_key)
+    logger.info(f"Moved file {file_key} to {processed_folder}")
+
+# Function to send emails with .eml files as fully parsed emails
+def send_emails_from_folder(folder):
+    logger.info(f"To address: {to_address}")
+    
+    # Retrieve SMTP password dynamically
+    smtp_password = get_smtp_password()
+    if not smtp_password:
+        logger.error("SMTP password could not be retrieved. Aborting email sending.")
+        return
+
+    # Establish SMTP connection
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+
+        # List .eml files in the 'new' folder on S3
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder['new'])
+        if 'Contents' not in response:
+            logger.info(f"No files found in the '{folder['new']}' folder.")
+            return
+
+        # Process each .eml file
+        for item in response['Contents']:
+            file_key = item['Key']
+            logger.info(f"Processing file: {file_key}")
+
+            try:
+                # Download the .eml file content directly from S3
+                obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+                raw_content = obj['Body'].read()
+
+                # Parse the .eml file
+                original_msg = BytesParser(policy=policy.default).parsebytes(raw_content)
+
+                # Create a new email message to forward the contents of the .eml
+                forward_msg = EmailMessage()
+                forward_msg['From'] = from_address
+                forward_msg['To'] = to_address
+                forward_msg['Subject'] = original_msg['Subject'] if original_msg['Subject'] else "No Subject"
+                
+                # Copy the original email content (text and HTML parts) to the new message
+                if original_msg.is_multipart():
+                    for part in original_msg.iter_parts():
+                        if part.get_content_disposition() == 'attachment':
+                            # Preserve attachment
+                            forward_msg.add_attachment(
+                                part.get_payload(decode=True),
+                                maintype=part.get_content_type().split('/')[0],
+                                subtype=part.get_content_type().split('/')[1],
+                                filename=part.get_filename()
+                            )
+                        else:
+                            # Copy text or HTML content
+                            forward_msg.add_alternative(part.get_payload(decode=True), subtype=part.get_content_subtype())
+                else:
+                    # If it's a single-part email, just add the content
+                    forward_msg.set_content(original_msg.get_payload(decode=True), subtype=original_msg.get_content_subtype())
+
+                # Send the email with the parsed content and preserved attachments
+                server.send_message(forward_msg)
+                logger.info(f"Email sent successfully from: {from_address} with subject: {forward_msg['Subject']}")
+
+                # Move the file to the 'processed' folder
+                move_file_to_processed(s3_client, bucket_name, file_key, folder['processed'])
+
+            except Exception as e:
+                logger.error(f"Failed to send email for file {file_key}: {e}")
+
+# Main execution
+if __name__ == "__main__":
+    # Define required variables
     smtp_server = "smtp.example.com"
     smtp_port = 587
     smtp_user = "your-smtp-username"
     from_address = "your-email@example.com"
     to_address = "recipient@example.com"
+    bucket_name = "your-bucket-name"
+    s3_client = boto3.client("s3")
 
-    # Extensions to check for .eml files
-    extensions = ['.eml']
+    # Folder paths in S3
+    folder = {
+        "new": "rmg/shield/emails/direct/new/",
+        "processed": "rmg/shield/emails/direct/processed/"
+    }
 
-    # Initialize SMTP
-    with smtplib.SMTP(smtp_server, smtp_port) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(smtp_user, "your-smtp-password")
+    # Call the function to send emails
+    send_emails_from_folder(folder)
 
-        # Process each .eml file in the current directory
-        for filename in os.listdir('.'):
-            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
-                logging.info(f"Processing file: {filename}")
-                
-                # Read the entire .eml file as raw content
-                with open(filename, 'r') as eml_file:
-                    raw_content = eml_file.read()
+Explanation of Key Changes:
 
-                # Replace the "From" header in raw content with config from_address if necessary
-                if "From: " in raw_content:
-                    raw_content = raw_content.replace("From: ", f"From: {from_address}\n", 1)
-                
-                # Log the details for verification
-                logging.info(f"Using Config 'From' Address: {from_address}")
-                logging.info(f"To Address (X-RCPT-TO): {to_address}")
-
-                # Send the email with raw content, using `from_address` as the envelope sender
-                server.sendmail(from_address, to_address, raw_content)
-                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
-
-# Run the function
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    send_emails_from_folder()
-
-Explanation:
-
-1. Loop Through .eml Files: The function iterates over all .eml files in the current directory.
+1. Parse .eml File: Uses BytesParser from the email library with policy=policy.default to parse the .eml file content from S3.
 
 
-2. Read .eml File as Raw Content: Opens each .eml file and reads the content as a string (raw_content).
+2. Reconstruct Email with Attachments:
+
+Text and HTML Parts: If the original message has text or HTML content, they are added to the new email.
+
+Attachments: If the original message contains attachments, they are preserved and added to the new email.
 
 
-3. Replace "From" Header: If the "From: " header is present, it’s replaced with the specified from_address.
 
-
-4. Send Email: Sends the email using server.sendmail with raw_content as the email body.
-
-
-5. Logging: Logs details about the process, including the from_address and successful email transmission.
+3. Send the Parsed Email: The new email message (forward_msg) is sent using server.send_message(forward_msg), which includes the original content and attachments as separate parts.
 
 
 
 Important Notes:
 
-SMTP Configuration: Replace "smtp.example.com", "smtp_port", "your-smtp-username", "your-email@example.com", and "recipient@example.com" with your actual SMTP details.
+This code ensures that the email attachments in the .eml file are sent as actual attachments in the outgoing email.
 
-Password: Replace "your-smtp-password" with the actual SMTP password.
+Replace "your-smtp-password", SMTP server details, from_address, to_address, and bucket_name with actual values.
 
-Directory Structure: Make sure .eml files are in the current working directory where this script runs.
-
-
-This code handles .eml files in the current directory, modifies the "From" header as needed, and sends each file's content directly as raw content.
 
