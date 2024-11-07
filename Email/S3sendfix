@@ -1,0 +1,79 @@
+To integrate the above logic solely for the email sending part, let’s focus on processing .eml files in the current directory, modifying the "From" header as needed, and sending the email without saving or retrieving the file from S3. Below is the code snippet that fits within the send_emails_from_folder function's core sending logic:
+
+import os
+import smtplib
+import logging
+
+# Define the email-sending function
+def send_emails_from_folder():
+    # Set up SMTP server connection
+    smtp_server = "smtp.example.com"
+    smtp_port = 587
+    smtp_user = "your-smtp-username"
+    from_address = "your-email@example.com"
+    to_address = "recipient@example.com"
+
+    # Extensions to check for .eml files
+    extensions = ['.eml']
+
+    # Initialize SMTP
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, "your-smtp-password")
+
+        # Process each .eml file in the current directory
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename) and any(filename.endswith(ext) for ext in extensions):
+                logging.info(f"Processing file: {filename}")
+                
+                # Read the entire .eml file as raw content
+                with open(filename, 'r') as eml_file:
+                    raw_content = eml_file.read()
+
+                # Replace the "From" header in raw content with config from_address if necessary
+                if "From: " in raw_content:
+                    raw_content = raw_content.replace("From: ", f"From: {from_address}\n", 1)
+                
+                # Log the details for verification
+                logging.info(f"Using Config 'From' Address: {from_address}")
+                logging.info(f"To Address (X-RCPT-TO): {to_address}")
+
+                # Send the email with raw content, using `from_address` as the envelope sender
+                server.sendmail(from_address, to_address, raw_content)
+                logging.info(f"Email sent successfully from: {from_address} using file: {filename}")
+
+# Run the function
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    send_emails_from_folder()
+
+Explanation:
+
+1. Loop Through .eml Files: The function iterates over all .eml files in the current directory.
+
+
+2. Read .eml File as Raw Content: Opens each .eml file and reads the content as a string (raw_content).
+
+
+3. Replace "From" Header: If the "From: " header is present, it’s replaced with the specified from_address.
+
+
+4. Send Email: Sends the email using server.sendmail with raw_content as the email body.
+
+
+5. Logging: Logs details about the process, including the from_address and successful email transmission.
+
+
+
+Important Notes:
+
+SMTP Configuration: Replace "smtp.example.com", "smtp_port", "your-smtp-username", "your-email@example.com", and "recipient@example.com" with your actual SMTP details.
+
+Password: Replace "your-smtp-password" with the actual SMTP password.
+
+Directory Structure: Make sure .eml files are in the current working directory where this script runs.
+
+
+This code handles .eml files in the current directory, modifies the "From" header as needed, and sends each file's content directly as raw content.
+
