@@ -1,4 +1,4 @@
- To handle .eml files such that their contents are parsed and sent as a new email, with any attachments in the .eml preserved as attachments in the outgoing email, you can use Python’s email package to parse the .eml file. This code will read each .eml file, parse it, and reconstruct it to send it as an email, including any attachments.
+ddddd To handle .eml files such that their contents are parsed and sent as a new email, with any attachments in the .eml preserved as attachments in the outgoing email, you can use Python’s email package to parse the .eml file. This code will read each .eml file, parse it, and reconstruct it to send it as an email, including any attachments.
 
 Here’s the modified code:
 
