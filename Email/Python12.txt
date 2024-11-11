@@ -1,0 +1,49 @@
+To modify the JSON files to install Python 3.12 on an EC2 instance, you can add a UserData script in the EC2 configuration that will run commands to install Python 3.12 upon instance launch. Here's an example of how you might add this to your configuration:
+
+1. Identify the LaunchConfiguration or Instance block in your JSON file where the EC2 instance properties are defined.
+
+
+2. Add the UserData property to install Python 3.12.
+
+
+
+Here's an example modification:
+
+"LaunchConfiguration": {
+    "Type": "AWS::AutoScaling::LaunchTemplate",
+    "Properties": {
+        "InstanceType": "{{component.ec2_instance_type}}",
+        "UserData": {
+            "Fn::Base64": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "#!/bin/bash\n",
+                        "yum update -y\n",
+                        "yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel\n",
+                        "cd /opt\n",
+                        "wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz\n",
+                        "tar xzf Python-3.12.0.tgz\n",
+                        "cd Python-3.12.0\n",
+                        "./configure --enable-optimizations\n",
+                        "make altinstall\n",
+                        "ln -s /usr/local/bin/python3.12 /usr/bin/python3.12\n"
+                    ]
+                ]
+            }
+        },
+        "ImageId": "{{component.ec2_instance_operating_system}}"
+    }
+}
+
+In this example:
+
+The UserData section includes a script to install Python 3.12.
+
+It updates the instance, installs necessary dependencies, downloads Python 3.12, compiles, and installs it.
+
+Finally, it creates a symbolic link to make python3.12 accessible system-wide.
+
+
+You may need to adjust the package manager and commands if your instances are not using Amazon Linux (or a compatible OS).
+
