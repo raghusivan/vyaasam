@@ -4,41 +4,41 @@ import requests
 from configparser import ConfigParser
 from botocore.exceptions import ClientError
 
-# Assume this config object is initialized elsewhere in your Lambda code
+# Initialize config
 config = ConfigParser()
-config.read('/path/to/your/config.ini')  # Update this path if necessary for your Lambda setup
+config.read('/path/to/your/config.ini')  # Ensure this is the correct path for your Lambda setup
 
 def get_smtp_password():
     try:
         # Initialize S3 client
         s3_client = boto3.client('s3')
-        bucket_name = config.get('S3', 'bucket_name')  # Ensure this is set in your config
+        bucket_name = config.get('S3', 'bucket_name')
 
-        # Define the specific folder path in S3 for certificates
-        s3_folder = "rmg/shield/emails/certs/"
+        # Read certificate paths from config.ini
+        cert_file_path = config.get('CertPaths', 'cert_file')
+        key_file_path = config.get('CertPaths', 'key_file')
+        ca_cert_file_path = config.get('CertPaths', 'ca_cert_file')
 
-        # Temporary directory for Lambda is /tmp
+        # Lambda's temporary directory for files
         temp_dir = "/tmp"
 
-        # File names to be downloaded from S3
+        # Download each certificate file from S3 to /tmp
         cert_files = {
-            'cert.pem': 'cert_path',
-            'key.pem': 'key_path',
-            'ca_cert.pem': 'ca_cert_path'
+            'cert_path': cert_file_path,
+            'key_path': key_file_path,
+            'ca_cert_path': ca_cert_file_path
         }
         local_paths = {}
 
-        # Download each certificate file from S3 to /tmp
-        for file_name, config_key in cert_files.items():
-            s3_key = f"{s3_folder}{file_name}"
-            local_path = os.path.join(temp_dir, file_name)
+        for config_key, s3_key in cert_files.items():
+            local_path = os.path.join(temp_dir, os.path.basename(s3_key))
             try:
                 # Download the certificate from S3 to the Lambda temp directory
                 s3_client.download_file(bucket_name, s3_key, local_path)
                 local_paths[config_key] = local_path
-                print(f"Downloaded {file_name} to {local_path}")
+                print(f"Downloaded {s3_key} to {local_path}")
             except ClientError as e:
-                print(f"Failed to download {file_name} from S3: {e}")
+                print(f"Failed to download {s3_key} from S3: {e}")
                 return None
 
         # Prepare API request config
