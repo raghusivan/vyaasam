@@ -1,0 +1,122 @@
+{
+  "ec2": {
+    "type": "auto-scale",
+    "enabled": true,
+    "stage": "10default",
+    "descriptor": {
+      "Resources": {
+        "Certificate": {
+          "Type": "Pipeline::SSLCertificate",
+          "Properties": {
+            "SigningCertificate": {
+              "service": "core",
+              "application": "signingcertificate",
+              "component": "macquariesha2",
+              "branch": "prod"
+            }
+          }
+        },
+        "SecurityGroup": {
+          "Properties": {
+            "EgressRules": [
+              {
+                "targets": ["smtp"],
+                "ports": ["TCP:{{smtp.port}}"]
+              },
+              {
+                "targets": ["smtp-auth"],
+                "ports": ["TCP:{{smtp.auth_port}}"]
+              },
+              {
+                "targets": ["{{cyberark.prn}}"],
+                "ports": ["TCP:{{cyberark.port}}"]
+              }
+            ],
+            "IngressRules": []
+          }
+        },
+        "WaitCondition": {
+          "Type": "AWS::CloudFormation::WaitCondition",
+          "Properties": {
+            "Timeout": 7200
+          }
+        },
+        "LaunchConfiguration": {
+          "Type": "AWS::AutoScaling::LaunchTemplate",
+          "Properties": {
+            "InstanceType": "{{component.ec2.instance.type}}",
+            "UserData": {
+              "Fn::Base64": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "#!/bin/bash\n",
+                    "yum update -y\n",
+                    "yum install -y python3.12\n",
+                    "alternatives --set python3 /usr/bin/python3.12\n"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "Instance": {
+          "Properties": {
+            "InstanceType": "{{component.ec2.instance.operation.system}}"
+          }
+        },
+        "Metadata": {
+          "Pipeline::Dataset": [
+            "{{global.dataset}}",
+            "{{dataset_name}}",
+            "{{last_dataset}}",
+            "{{/global.dataset}}"
+          ],
+          "Pipeline::Agents": {
+            "splunk": {
+              "enabled": true
+            }
+          }
+        },
+        "AutoScalingGroup": {
+          "Type": "AWS::AutoScaling::AutoScalingGroup",
+          "Properties": {
+            "MinSize": "1",
+            "MaxSize": "2",
+            "DesiredCapacity": "1"
+          }
+        },
+        "IAMRole": {
+          "Type": "AWS::IAM::Role",
+          "Properties": {
+            "AssumeRolePolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "ec2.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "Policies": [
+              {
+                "PolicyName": "InvokeFunctionPolicy",
+                "PolicyDocument": {
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": "lambda:InvokeFunction",
+                      "Resource": "arn:aws:lambda:ap-southeast-2:828604310598:function:commsurvey_avatar_dev_avatar"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
