@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Set the S3 bucket name and target path
+S3_BUCKET="commsurv-guardiansh-dev-bucket-25-d28385dd484b"
+TARGET_PATH="rmg/shield/emails/certs"
+
+# Function to upload files to the specified S3 folder
+upload_eml_files() {
+    for file in *; do
+        # Check if it's a file
+        if [[ -f "$file" ]]; then
+            # Print the full AWS command for debugging
+            echo "Executing: aws s3 cp \"$file\" \"s3://${S3_BUCKET}/${TARGET_PATH}/$file\""
+
+            # Upload the file to the specified S3 path
+            aws s3 cp "$file" "s3://${S3_BUCKET}/${TARGET_PATH}/$file"
+            
+            # Check if the command was successful
+            if [[ $? -eq 0 ]]; then
+                echo "Successfully uploaded $file to s3://${S3_BUCKET}/${TARGET_PATH}/"
+            else
+                echo "Failed to upload $file"
+            fi
+        else
+            echo "$file is not a regular file, skipping."
+        fi
+    done
+}
+
+# Run the upload function
+upload_eml_files
+
+# List all files in the S3 target path
+echo "Listing all files in s3://${S3_BUCKET}/${TARGET_PATH}/"
+aws s3 ls "s3://${S3_BUCKET}/${TARGET_PATH}/"
