@@ -51,9 +51,31 @@
                   "",
                   [
                     "#!/bin/bash\n",
+                    "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1\n",
+                    "echo 'Starting Python 3.12 installation...'\n",
                     "yum update -y\n",
-                    "yum install -y python3.12\n",
-                    "alternatives --set python3 /usr/bin/python3.12\n"
+                    "yum groupinstall 'Development Tools' -y\n",
+                    "yum install openssl-devel bzip2-devel libffi-devel sqlite-devel -y\n",
+                    "cd /opt\n",
+                    "wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz\n",
+                    "tar xzf Python-3.12.0.tgz\n",
+                    "cd Python-3.12.0\n",
+                    "./configure --enable-optimizations\n",
+                    "make altinstall\n",
+                    "ln -sf /usr/local/bin/python3.12 /usr/bin/python3\n",
+                    "ln -sf /usr/local/bin/pip3.12 /usr/bin/pip3\n",
+                    "python3 --version > /var/log/python-version.log\n",
+                    "echo 'Python installation completed'\n",
+                    "pip3 install --upgrade pip\n",
+                    "# Verify installation\n",
+                    "if command -v python3.12 > /dev/null; then\n",
+                    "    echo 'Python 3.12 installed successfully' >> /var/log/python-install-success.log\n",
+                    "else\n",
+                    "    echo 'Python 3.12 installation failed' >> /var/log/python-install-error.log\n",
+                    "    /opt/aws/bin/cfn-signal -e 1 --stack ${AWS::StackName} --resource WaitCondition\n",
+                    "    exit 1\n",
+                    "fi\n",
+                    "/opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource WaitCondition\n"
                   ]
                 ]
               }
