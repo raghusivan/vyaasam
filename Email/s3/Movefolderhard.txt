@@ -1,0 +1,91 @@
+To move the folder paths to the config.ini file, update config.ini to include meaningful names for each folder path. Then, modify the Python script to refer to these paths from the configuration file.
+
+1. Update config.ini
+
+Add the following entries in config.ini under a suitable section, such as [Folders]:
+
+[Folders]
+direct_emails_new_folder = rmg/shield/emails/direct/new/
+direct_emails_processed_folder = rmg/shield/emails/direct/processed/
+journal_emails_new_folder = rmg/shield/emails/journals/new/
+journal_emails_processed_folder = rmg/shield/emails/journals/processed/
+
+2. Update the Python Script to Refer to config.ini
+
+Update the folders dictionary to retrieve values from the configuration file instead of hardcoding them:
+
+# Read configuration from config.ini
+config = ConfigParser()
+config.read('config.ini')
+
+# Email Configuration
+from_address = config.get('Email', 'from_address')
+to_address = config.get('Email', 'to_address')
+subject = config.get('Email', 'subject')
+message_body = config.get('Email', 'message_body')
+
+# S3 Configuration
+bucket_name = config.get('S3', 'bucket_name')
+
+# Folder paths from config
+folders = {
+    "direct_new": config.get('Folders', 'direct_emails_new_folder'),
+    "direct_processed": config.get('Folders', 'direct_emails_processed_folder'),
+    "journal_new": config.get('Folders', 'journal_emails_new_folder'),
+    "journal_processed": config.get('Folders', 'journal_emails_processed_folder'),
+}
+
+# Initialize S3 client
+s3_client = boto3.client('s3')
+
+def get_smtp_password_s3():
+    try:
+        # Initialize S3 client
+        bucket_name = config.get('S3', 'bucket_name')  # S3 bucket name from config
+        s3_folder = config.get('SSL', 'certs_s3_path')  # S3 folder path for certs from config
+
+        # Lambda temporary directory for files
+        temp_dir = "/tmp"
+
+        # Map specific file names to local paths in /tmp
+        cert_files = {
+            'FOR-Risk-DigitalReasoning-CyberArk-use.pem': 'cert_path',
+            'private-key.key': 'key_path',
+            'Macquarie-Root-CA.cer': 'ca_cert_path'
+        }
+
+        local_paths = {}
+        for s3_filename, local_key in cert_files.items():
+            local_path = f"{temp_dir}/{s3_filename}"
+            s3_client.download_file(bucket_name, f"{s3_folder}/{s3_filename}", local_path)
+            local_paths[local_key] = local_path
+
+        return local_paths
+    except Exception as e:
+        logger.error(f"Error downloading cert files from S3: {e}")
+        return None
+
+# Example usage of folder paths
+print(folders["direct_new"])  # This will print the folder path from config
+
+Explanation of Changes
+
+1. Folder Paths in Config: All S3 folder paths are now stored in config.ini with meaningful names.
+
+
+2. Dictionary Update: The folders dictionary in the script now retrieves paths from config.ini.
+
+
+3. Meaningful Key Names: folders dictionary uses more descriptive keys like direct_new, direct_processed, etc.
+
+
+
+Summary
+
+With these changes:
+
+All S3 folder paths are configured in config.ini.
+
+The Python script retrieves paths dynamically, making it easier to update folder paths without modifying the code.
+
+
