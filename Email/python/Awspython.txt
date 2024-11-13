@@ -1,28 +1,28 @@
-Here's a simplified AWS::CloudFormation::Init configuration that includes only the commands necessary to install Python 3.12 without any additional packages.
+ Here’s an updated version of the AWS::CloudFormation::Init configuration that adds logging to a file (/var/log/python3_install.log) to capture output and errors during the Python 3.12 installation process.
 
 "AWS::CloudFormation::Init": {
   "app": {
     "commands": {
       "01_install_python3_12_dependencies": {
-        "command": "yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel",
+        "command": "yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel >> /var/log/python3_install.log 2>&1",
         "cwd": "/tmp",
         "waitAfterCompletion": "0",
         "ignoreErrors": "false"
       },
       "02_download_python3_12": {
-        "command": "curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz",
+        "command": "curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
         "cwd": "/tmp",
         "waitAfterCompletion": "0",
         "ignoreErrors": "false"
       },
       "03_extract_python3_12": {
-        "command": "tar xzf Python-3.12.0.tgz",
+        "command": "tar xzf Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
         "cwd": "/tmp",
         "waitAfterCompletion": "0",
         "ignoreErrors": "false"
       },
       "04_install_python3_12": {
-        "command": "./configure --enable-optimizations && make altinstall",
+        "command": "./configure --enable-optimizations >> /var/log/python3_install.log 2>&1 && make altinstall >> /var/log/python3_install.log 2>&1",
         "cwd": "/tmp/Python-3.12.0",
         "waitAfterCompletion": "0",
         "ignoreErrors": "false"
@@ -31,38 +31,24 @@ Here's a simplified AWS::CloudFormation::Init configuration that includes only t
   }
 }
 
-Explanation of Each Step
+Explanation
 
-1. Install Python Build Dependencies:
+Log File: All output and errors are redirected to /var/log/python3_install.log.
 
-Installs the essential dependencies for building Python from source (gcc, openssl-devel, bzip2-devel, libffi-devel, and zlib-devel).
-
-
-
-2. Download Python 3.12 Source:
-
-Downloads the Python 3.12 source tarball from the official Python website.
+>> /var/log/python3_install.log 2>&1 appends both standard output and errors to the log file.
 
 
+Commands:
 
-3. Extract the Tarball:
-
-Unpacks the downloaded tarball to prepare for the build.
+Each command logs its output and errors to /var/log/python3_install.log, providing a complete record of the installation process.
 
 
 
-4. Build and Install Python 3.12:
+Verifying the Log
 
-Configures, compiles, and installs Python 3.12 using make altinstall to avoid overwriting other Python versions.
+After logging into the EC2 instance, you can check the installation log to see if any errors occurred during the setup:
 
+cat /var/log/python3_install.log
 
-
-
-Verification
-
-After deployment, log into the EC2 instance and verify the Python installation with:
-
-python3.12 --version
-
-This configuration is focused solely on installing Python 3.12, without any unnecessary components.
+This will display the contents of the log file, including any errors encountered during the installation of dependencies, downloading, extracting, and compiling Python 3.12. You can also use tail -f /var/log/python3_install.log to monitor the log in real-time if needed.
 
