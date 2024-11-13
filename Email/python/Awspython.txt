@@ -1,0 +1,68 @@
+Here's a simplified AWS::CloudFormation::Init configuration that includes only the commands necessary to install Python 3.12 without any additional packages.
+
+"AWS::CloudFormation::Init": {
+  "app": {
+    "commands": {
+      "01_install_python3_12_dependencies": {
+        "command": "yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel",
+        "cwd": "/tmp",
+        "waitAfterCompletion": "0",
+        "ignoreErrors": "false"
+      },
+      "02_download_python3_12": {
+        "command": "curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz",
+        "cwd": "/tmp",
+        "waitAfterCompletion": "0",
+        "ignoreErrors": "false"
+      },
+      "03_extract_python3_12": {
+        "command": "tar xzf Python-3.12.0.tgz",
+        "cwd": "/tmp",
+        "waitAfterCompletion": "0",
+        "ignoreErrors": "false"
+      },
+      "04_install_python3_12": {
+        "command": "./configure --enable-optimizations && make altinstall",
+        "cwd": "/tmp/Python-3.12.0",
+        "waitAfterCompletion": "0",
+        "ignoreErrors": "false"
+      }
+    }
+  }
+}
+
+Explanation of Each Step
+
+1. Install Python Build Dependencies:
+
+Installs the essential dependencies for building Python from source (gcc, openssl-devel, bzip2-devel, libffi-devel, and zlib-devel).
+
+
+
+2. Download Python 3.12 Source:
+
+Downloads the Python 3.12 source tarball from the official Python website.
+
+
+
+3. Extract the Tarball:
+
+Unpacks the downloaded tarball to prepare for the build.
+
+
+
+4. Build and Install Python 3.12:
+
+Configures, compiles, and installs Python 3.12 using make altinstall to avoid overwriting other Python versions.
+
+
+
+
+Verification
+
+After deployment, log into the EC2 instance and verify the Python installation with:
+
+python3.12 --version
+
+This configuration is focused solely on installing Python 3.12, without any unnecessary components.
+
