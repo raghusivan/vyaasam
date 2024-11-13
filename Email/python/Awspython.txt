@@ -1,4 +1,5 @@
- Here’s an updated version of the AWS::CloudFormation::Init configuration that adds logging to a file (/var/log/python3_install.log) to capture output and errors during the Python 3.12 installation process.
+ Here’s an updated version of the iii
+AWS::CloudFormation::Init configuration that adds logging to a file (/var/log/python3_install.log) to capture output and errors during the Python 3.12 installation process.
 
 "AWS::CloudFormation::Init": {
   "app": {
