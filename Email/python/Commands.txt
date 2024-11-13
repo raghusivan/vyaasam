@@ -1,0 +1,65 @@
+Here's the updated JSON configuration with additional commands (002, 003, 004) to download, extract, and install Python 3.12. Each command is incremented and follows the structure you provided. This configuration includes logging to ensure each step’s output is captured.
+
+"commands": {
+  "001": {
+    "command": "mkdir -p /arturo/",
+    "cwd": "/tmp",
+    "waitAfterCompletion": "0",
+    "ignore_errors": "false"
+  },
+  "002": {
+    "command": "yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel >> /var/log/python3_install.log 2>&1",
+    "cwd": "/tmp",
+    "waitAfterCompletion": "0",
+    "ignore_errors": "false"
+  },
+  "003": {
+    "command": "curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+    "cwd": "/tmp",
+    "waitAfterCompletion": "0",
+    "ignore_errors": "false"
+  },
+  "004": {
+    "command": "tar xzf Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+    "cwd": "/tmp",
+    "waitAfterCompletion": "0",
+    "ignore_errors": "false"
+  },
+  "005": {
+    "command": "./configure --enable-optimizations >> /var/log/python3_install.log 2>&1 && make altinstall >> /var/log/python3_install.log 2>&1",
+    "cwd": "/tmp/Python-3.12.0",
+    "waitAfterCompletion": "0",
+    "ignore_errors": "false"
+  }
+}
+
+Explanation of Each Command
+
+1. 001: Creates the directory /arturo/. This command was already provided and left unchanged.
+
+
+2. 002: Installs the dependencies required to build Python 3.12, such as gcc, openssl-devel, bzip2-devel, libffi-devel, and zlib-devel. Logs output and errors to /var/log/python3_install.log.
+
+
+3. 003: Downloads the Python 3.12 source tarball from the official Python website. Logs output and errors to /var/log/python3_install.log.
+
+
+4. 004: Extracts the downloaded tarball (Python-3.12.0.tgz). Logs output and errors to /var/log/python3_install.log.
+
+
+5. 005: Configures, compiles, and installs Python 3.12 using make altinstall, which installs it as python3.12 to avoid overwriting other versions of Python. Logs output and errors to /var/log/python3_install.log.
+
+
+
+Verifying Installation
+
+After deployment, you can verify that Python 3.12 was installed correctly by checking the log file:
+
+cat /var/log/python3_install.log
+
+Or by running:
+
+python3.12 --version
+
+This setup ensures each step is properly logged and provides a clear path to troubleshoot any issues during the installation process.
+
