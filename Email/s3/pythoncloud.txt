@@ -1,0 +1,37 @@
+"AWS::CloudFormation::Init": {
+  "app": {
+    "packages": {
+      "yum": {
+        "python3.12": []
+      }
+    },
+    "files": {
+      "/var/log/init_script.log": {
+        "content": "",
+        "mode": "000644",
+        "owner": "root",
+        "group": "root"
+      }
+    },
+    "commands": {
+      "01_install_python": {
+        "command": "yum install -y python3.12",
+        "test": "python3.12 --version",
+        "ignoreErrors": "false"
+      },
+      "02_custom_setup": {
+        "command": "/path/to/custom/setup_script.sh > /var/log/custom_setup.log 2>&1",
+        "ignoreErrors": "true"
+      }
+    },
+    "services": {
+      "sysvinit": {
+        "cfn-hup": {
+          "enabled": "true",
+          "ensureRunning": "true",
+          "files": ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]
+        }
+      }
+    }
+  }
+}
