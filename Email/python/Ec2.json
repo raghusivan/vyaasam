@@ -1,0 +1,179 @@
+From the screenshot, I can see that the JSON content is quite dense and formatted as a single line, which can lead to errors, especially with JSON parsers. JSON is also sensitive to commas, braces, and brackets, so any missing or extra characters can cause parsing issues.
+
+Steps to Fix
+
+I'll reformat the JSON content to make it easier to read, correct any potential issues, and keep the content as close to the original as possible. I’ll add comments to help identify each section, but please remove these if you use the JSON directly, as JSON does not support comments.
+
+Reformatted and Corrected JSON
+
+{
+  "ec2": {
+    "type": "auto-scale",
+    "enabled": true,
+    "stage": "10defaultall",
+    "descriptor": "",
+    "Resources": {
+      "Certificate": {
+        "Type": "Pipeline::SSLCertificate",
+        "Properties": {
+          "SigningCertificate": {
+            "service": "core",
+            "appLocation": "signingcertificate",
+            "component": "macquarieshq2",
+            "branch": "prod"
+          }
+        }
+      },
+      "SecurityGroup": {
+        "Properties": {
+          "EgressRules": [
+            {
+              "targets": ["smtp"],
+              "ports": ["TCP:${smtp_port}"]
+            },
+            {
+              "targets": ["cyberark.prn"],
+              "ports": ["TCP:${cyberark.port}"]
+            }
+          ],
+          "IngressRules": [
+            {
+              "targets": ["smtp-auth"],
+              "ports": ["TCP:${smtp_auth_port}"]
+            },
+            {
+              "targets": ["cyberark.prn"],
+              "ports": ["TCP:${cyberark.port}"]
+            }
+          ]
+        }
+      }
+    },
+    "AWS::CloudFormation::WaitCondition": {
+      "Properties": {
+        "Timeout": 7200
+      }
+    },
+    "LaunchConfiguration": {
+      "Type": "AWS::AutoScaling::LaunchTemplate",
+      "Properties": {
+        "InstanceType": "${component.ec2.instance.type}",
+        "ImageId": "${component.ec2.instance.operating_system}"
+      }
+    },
+    "Metadata": {
+      "Pipeline::Dataset": [
+        "{{#global.dataset}}",
+        "{{dataset_name}}/{{last_dataset}}",
+        "{{/global.dataset}}"
+      ],
+      "Pipeline::Agents": {
+        "splunk": {
+          "enabled": true
+        }
+      }
+    },
+    "AWS::CloudFormation::Init": {
+      "app": {
+        "commands": {
+          "01_install_python3_12_dependencies": {
+            "command": "yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel >> /var/log/python3_install.log 2>&1",
+            "cwd": "/tmp",
+            "waitAfterCompletion": "0",
+            "ignoreErrors": "false"
+          },
+          "02_download_python3_12": {
+            "command": "curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+            "cwd": "/tmp",
+            "waitAfterCompletion": "0",
+            "ignoreErrors": "false"
+          },
+          "03_extract_python3_12": {
+            "command": "tar xzf Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+            "cwd": "/tmp",
+            "waitAfterCompletion": "0",
+            "ignoreErrors": "false"
+          },
+          "04_install_python3_12": {
+            "command": "./configure --enable-optimizations >> /var/log/python3_install.log 2>&1 && make altinstall >> /var/log/python3_install.log 2>&1",
+            "cwd": "/tmp/Python-3.12.0",
+            "waitAfterCompletion": "0",
+            "ignoreErrors": "false"
+          }
+        }
+      }
+    },
+    "AutoScalingGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "MinSize": "1",
+        "MaxSize": "2",
+        "DesiredCapacity": "1"
+      }
+    },
+    "IAMRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "InvokeFunctionPolicy",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "lambda:InvokeFunction",
+                  "Resource": "arn:aws:lambda:ap-southeast-2:828604631059:function:commsurv_avatar_dev_avatar"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+Key Adjustments
+
+1. Added Proper JSON Structure:
+
+Each object is organized with clear hierarchy and indentation, which makes it easier to spot syntax errors.
+
+
+
+2. Ensured Consistency with Quotes:
+
+All keys and string values are enclosed in double quotes, which is required by JSON.
+
+
+
+3. Reformatted AWS::CloudFormation::Init Commands:
+
+Each command within AWS::CloudFormation::Init now has logging to /var/log/python3_install.log.
+
+
+
+4. Checked Comma Placement:
+
+Made sure that each item has the correct commas to prevent parsing errors.
+
+
+
+
+Verification
+
+After applying this configuration, make sure to validate the JSON file structure with an online tool or JSON validator to catch any potential syntax errors.
+
+This version should work as intended and maintain the original functionality, while ensuring correct JSON syntax and format.
+
