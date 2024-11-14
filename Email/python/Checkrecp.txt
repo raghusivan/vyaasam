@@ -1,0 +1,82 @@
+To create a script that compares the recipients in the provided list with those in .eml files, here’s an outline for the approach:
+
+1. Extract Recipient List: First, create a list of recipients based on the provided image. This includes names like "Galadriel Forest," "Boromir Gondor," etc.
+
+
+2. Parse .eml Files for Recipients: Open and parse each .eml file to extract the "To" field, which contains the recipient email or name.
+
+
+3. Compare Recipients: Check if each recipient in the provided list has a match in any .eml file. If not, add it to a "no match" list.
+
+
+
+Here’s a Python script that could help:
+
+import os
+import email
+from email.policy import default
+
+# Recipients list from the image
+expected_recipients = [
+    "Galadriel Forest", "Boromir Gondor", "Saruman Tower",
+    "Frodo Ringbearer", "Sauron Eye", "Gandalf White",
+    "Gimli Warrior", "Bilbo.Baggins@test-macquarie.com", "Aaron Aragorn"
+]
+
+# Directory containing the .eml files
+eml_directory = "/path/to/eml/files"
+
+# Function to extract recipient names/emails from .eml file
+def extract_recipients_from_eml(file_path):
+    recipients = []
+    with open(file_path, 'r') as f:
+        msg = email.message_from_file(f, policy=default)
+        if "To" in msg:
+            recipients = msg["To"].split(", ")
+    return [recipient.strip() for recipient in recipients]
+
+# Gather all recipients found in .eml files
+found_recipients = set()
+for filename in os.listdir(eml_directory):
+    if filename.endswith(".eml"):
+        file_path = os.path.join(eml_directory, filename)
+        recipients = extract_recipients_from_eml(file_path)
+        found_recipients.update(recipients)
+
+# Check for missing recipients
+missing_recipients = [recipient for recipient in expected_recipients if recipient not in found_recipients]
+
+# Output results
+if missing_recipients:
+    print("Recipients not found in any .eml files:")
+    for recipient in missing_recipients:
+        print(recipient)
+else:
+    print("All recipients matched in the .eml files.")
+
+Explanation of the Script
+
+1. Define Expected Recipients: This list should be filled based on the provided names from the image.
+
+
+2. Extract Recipients from .eml Files: Opens each .eml file and retrieves the "To" field.
+
+
+3. Comparison: Cross-checks recipients from the .eml files with the expected list and identifies missing entries.
+
+
+4. Output: Prints recipients from the original list that aren’t found in any .eml file.
+
+
+
+Usage
+
+1. Replace "/path/to/eml/files" with the path where the .eml files are stored.
+
+
+2. Run the script. It will print out any names from the expected list that don't match recipients in any .eml files.
+
+
+
+Let me know if you need further help with file paths or customization!
+
