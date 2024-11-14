@@ -1,0 +1,42 @@
+Here's a Unix shell script that lists and moves all files with a timestamp ending in 22:53 to a new folder named analysis. The script assumes the files are in the current directory.
+
+#!/bin/bash
+
+# Define the target folder
+TARGET_FOLDER="analysis"
+
+# Create the analysis folder if it doesn't exist
+mkdir -p "$TARGET_FOLDER"
+
+# List and move files with timestamp ending in "22:53"
+for file in $(ls -l | grep "22:53" | awk '{print $9}'); do
+    echo "Moving file: $file"
+    mv "$file" "$TARGET_FOLDER/"
+done
+
+echo "Files with timestamp ending in 22:53 have been moved to the analysis folder."
+
+Explanation of the Script:
+
+1. Define Target Folder: Sets TARGET_FOLDER to "analysis".
+
+
+2. Create Folder: mkdir -p creates the analysis folder if it doesn't already exist.
+
+
+3. List and Move Files: ls -l | grep "22:53" | awk '{print $9}' finds files with 22:53 in their timestamp, and the loop moves each file to the analysis folder.
+
+
+4. Confirmation Message: After moving, it prints a confirmation.
+
+
+
+Usage:
+
+Save this script to a file, e.g., move_files.sh.
+
+Run with bash move_files.sh.
+
+
+Ensure that you have the necessary permissions to move the files and that the directory structure matches.
+
