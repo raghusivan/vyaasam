@@ -1,0 +1,29 @@
+To create a Python script that prints "Hello" and a cron job to invoke it every minute, follow these steps:
+
+Step 1: Create the Python Script
+
+Save this script as hello.py:
+
+# hello.py
+print("Hello")
+
+Step 2: Make the Script Executable
+
+Run this command to make the script executable:
+
+chmod +x hello.py
+
+Step 3: Set Up the Cron Job
+
+Edit the crontab file by running:
+
+crontab -e
+
+Then add this line to the crontab to run the script every minute:
+
+* * * * * /path/to/python /path/to/hello.py >> /path/to/hello.log 2>&1
+
+Replace /path/to/python with the path to your Python interpreter (e.g., /usr/bin/python3) and /path/to/hello.py with the full path to hello.py. The >> /path/to/hello.log 2>&1 portion saves the output and any errors to a log file.
+
+This setup will ensure that hello.py is executed every minute and logs its output to hello.log.
+
