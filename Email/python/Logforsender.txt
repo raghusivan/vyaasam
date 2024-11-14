@@ -1,0 +1,77 @@
+Here’s the updated script with logging to indicate the start and finish of the email-sending process, rather than the start of folder processing:
+
+import logging
+
+# Configure logging
+logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO)
+
+def send_emails_from_folder(folder):
+    logger.info(f"--- Start email sending process for folder: {folder} ---")
+    
+    # Retrieve SMTP password dynamically
+    smtp_password = get_smtp_password_s3()
+    if not smtp_password:
+        logger.error("SMTP password could not be retrieved. Aborting email sending.")
+        return
+    
+    # Establish SMTP connection
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        
+        # List .eml files in the 'new' folder
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=f"{folder}/new")
+        if 'Contents' not in response:
+            logger.info(f"No files found in the '{folder}/new' folder.")
+            return
+        
+        # Process each .eml file
+        for item in response['Contents']:
+            file_key = item['Key']
+            logger.info(f"Processing file: {file_key}")
+            
+            # Download the file content directly from S3
+            obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+            email_file = BytesIO(obj['Body'].read())
+            msg = email.message_from_binary_file(email_file)
+            
+            # Retrieve the 'To' address from the email message
+            to_address = msg['To']
+            logger.info(f"Sending email to address: {to_address} for file: {file_key}")
+            
+            # Send the email with the extracted subject and raw content as body
+            try:
+                server.sendmail(from_address, to_address, msg.as_string())
+                logger.info(f"Email sent successfully from: {from_address} to: {to_address} using file: {file_key}")
+                
+                # Move the file to the 'processed' folder
+                move_file_to_processed(s3_client, file_key, folder+'/processed')
+            
+            except Exception as e:
+                logger.error(f"Failed to send email for file {file_key} to {to_address}: {e}")
+    
+    logger.info(f"--- Finished email sending process for folder: {folder} ---")
+
+# Main execution
+if __name__ == "__main__":
+    logger.info("=== Program Start ===")
+    
+    # List of folders to process
+    folders = ["folder1", "folder2"]  # Replace with actual folder names
+    for folder in folders:
+        send_emails_from_folder(folder)
+    
+    logger.info("=== Program Finish ===")
+
+Explanation of Changes
+
+1. Start and Finish of Email-Sending Process: Replaced Start processing folder with Start email sending process and Finished processing folder with Finished email sending process. This clarifies in the logs that the focus is on the email-sending part of the process.
+
+
+2. Program-Level Logs: The overall program start and finish logs (Program Start and Program Finish) remain as is for clarity on the program's full execution timeline.
+
+
+
+This structure helps to clearly delineate when the email-sending process begins and ends for each folder, making it easier to identify the email-related sections in the logs.
+
