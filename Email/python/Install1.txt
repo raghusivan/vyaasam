@@ -1,0 +1,58 @@
+ I'll modify the commands to use sudo for root privileges:
+
+```json
+{
+  "ec2": {
+    "descriptor": {
+      "Resources": {
+        "Instance": {
+          "Metadata": {
+            "waitAfterCompletion": "0",
+            "ignore_errors": "false"
+          }
+        }
+      }
+    },
+    "002": {
+      "command": "sudo yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel make",
+      "cwd": "/tmp",
+      "waitAfterCompletion": "0",
+      "ignore_errors": "false"
+    },
+    "003": {
+      "command": "sudo curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz",
+      "cwd": "/tmp",
+      "waitAfterCompletion": "0",
+      "ignore_errors": "false"
+    },
+    "004": {
+      "command": "sudo tar xzf Python-3.12.0.tgz",
+      "cwd": "/tmp",
+      "waitAfterCompletion": "0",
+      "ignore_errors": "false"
+    },
+    "005": {
+      "command": "cd /tmp/Python-3.12.0 && sudo ./configure --enable-optimizations --with-openssl=/usr/include/openssl --with-ssl && sudo make && sudo make altinstall",
+      "cwd": "/tmp",
+      "waitAfterCompletion": "0",
+      "ignore_errors": "false"
+    },
+    "006": {
+      "command": "sudo rm -rf /tmp/Python-3.12.0*",
+      "cwd": "/tmp",
+      "waitAfterCompletion": "0",
+      "ignore_errors": "false"
+    }
+  }
+}
+```
+
+Changes made:
+1. Added `sudo` to all commands requiring root privileges
+2. Added a cleanup step (006) to remove the downloaded and extracted Python files
+3. All commands will now execute with root privileges
+
+After these commands run, Python should be properly installed with SSL support. You can verify the installation with:
+```bash
+python3.12 -c "import ssl; print(ssl.OPENSSL_VERSION)"
+```
