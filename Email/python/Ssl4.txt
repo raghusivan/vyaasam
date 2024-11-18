@@ -1,0 +1,70 @@
+If downloading OpenSSL directly from the source fails, an alternative approach is to install a pre-built OpenSSL package or use a different repository. Below is an updated script that installs OpenSSL 1.1.1 using the amazon-linux-extras repository (for Amazon Linux) or by downloading a precompiled binary.
+
+
+---
+
+Alternative Script: install_openssl_alternative.sh
+
+#!/bin/bash
+
+# Exit on any error
+set -e
+
+# Define OpenSSL version and installation directory
+OPENSSL_DIR="/usr/local/openssl"
+
+echo "Installing OpenSSL using alternative approaches..."
+
+# Step 1: Install required dependencies
+echo "Installing dependencies..."
+sudo yum groupinstall -y "Development Tools"
+sudo yum install -y gcc gcc-c++ make tar zlib-devel wget
+
+# Step 2: Check if Amazon Linux Extras is available (Amazon Linux 2)
+if command -v amazon-linux-extras &> /dev/null; then
+  echo "Using Amazon Linux Extras to install OpenSSL 1.1.1..."
+  sudo amazon-linux-extras enable epel
+  sudo yum install -y openssl11 openssl11-devel
+
+  # Verify OpenSSL installation
+  echo "Verifying OpenSSL installation..."
+  openssl11 version
+
+  # Exit if successful
+  echo "OpenSSL 1.1.1 installed successfully using Amazon Linux Extras!"
+  exit 0
+fi
+
+# Step 3: Use a precompiled OpenSSL binary (Fallback)
+echo "Downloading and installing precompiled OpenSSL binary..."
+cd /usr/local/src || exit 1
+sudo wget https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1v/openssl-1.1.1v-linux-x64.tar.gz -O openssl.tar.gz
+sudo tar -xvzf openssl.tar.gz
+sudo mv openssl-1.1.1v ${OPENSSL_DIR}
+
+# Step 4: Update system paths
+echo "Updating system paths..."
+export PATH=${OPENSSL_DIR}/bin:$PATH
+export LD_LIBRARY_PATH=${OPENSSL_DIR}/lib:$LD_LIBRARY_PATH
+
+# Step 5: Verify OpenSSL installation
+echo "Verifying OpenSSL installation..."
+openssl version
+
+echo "OpenSSL installed successfully using the precompiled binary!"
+
+
+---
+
+Explanation:
+
+1. Amazon Linux Extras:
+
+If you are using Amazon Linux 2, the script installs OpenSSL 1.1.1 via the amazon-linux-extras repository. This is the simplest and most reliable approach.
+
+
+
+2. Precompiled OpenSSL Binary:
+
+
+
