@@ -1,0 +1,214 @@
+import os
+from configparser import ConfigParser
+from typing import Optional, Any
+
+class ConfigHandler:
+    """
+    Handles configuration parameters with strict priority order:
+    1. Airflow Variables (HIGHEST PRIORITY)
+    2. Lambda Environment Variables (MEDIUM PRIORITY)
+    3. config.ini file (LOWEST PRIORITY)
+    """
+    
+    def __init__(self, config_path: str = './config/config.ini'):
+        self.config = ConfigParser()
+        self.config.read(config_path)
+        self.is_airflow = self._check_airflow_environment()
+        
+    def _check_airflow_environment(self) -> bool:
+        """Check if code is running in Airflow environment"""
+        try:
+            from airflow.models import Variable
+            return True
+        except ImportError:
+            return False
+    
+    def _get_from_airflow(self, key: str) -> Optional[str]:
+        """Attempt to get value from Airflow Variables"""
+        if not self.is_airflow:
+            return None
+            
+        try:
+            from airflow.models import Variable
+            return Variable.get(key, default_var=None)
+        except Exception as e:
+            print(f"Warning: Error accessing Airflow variable {key}: {e}")
+            return None
+
+    def _get_from_env(self, key: str) -> Optional[str]:
+        """Attempt to get value from Lambda environment variables"""
+        return os.environ.get(key)
+
+    def _get_from_config(self, section: str, option: str) -> Optional[str]:
+        """Attempt to get value from config.ini"""
+        try:
+            return self.config.get(section=section, option=option)
+        except:
+            return None
+            
+    def get_param(self, airflow_key: str, env_key: str, section: str, option: str, 
+                  default: Optional[Any] = None, required: bool = True) -> Any:
+        """
+        Get parameter value with strict priority order:
+        1. Airflow Variable (HIGHEST)
+        2. Lambda Environment Variable
+        3. config.ini (LOWEST)
+        
+        Args:
+            airflow_key: Airflow variable key (HIGHEST PRIORITY)
+            env_key: Environment variable key (MEDIUM PRIORITY)
+            section: Config section name (LOWEST PRIORITY)
+            option: Config option name (LOWEST PRIORITY)
+            default: Default value if no other source has the parameter
+            required: If True, raises error when parameter not found
+            
+        Returns:
+            Parameter value from highest priority available source
+            
+        Raises:
+            ValueError: If parameter is required but not found in any source
+        """
+        # 1. HIGHEST PRIORITY: Try Airflow Variable first
+        value = self._get_from_airflow(airflow_key)
+        if value is not None:
+            print(f"Using Airflow variable for {airflow_key}")
+            return value
+            
+        # 2. MEDIUM PRIORITY: Try Lambda environment variable
+        value = self._get_from_env(env_key)
+        if value is not None:
+            print(f"Using Lambda environment variable for {env_key}")
+            return value
+            
+        # 3. LOWEST PRIORITY: Try config.ini
+        value = self._get_from_config(section, option)
+        if value is not None:
+            print(f"Using config.ini for {section}.{option}")
+            return value
+            
+        # If we get here, no value was found in any source
+        if default is not None:
+            print(f"Using default value for {airflow_key}/{env_key}")
+            return default
+            
+        if required:
+            raise ValueError(
+                f"Required parameter not found in any source:\n"
+                f"Airflow key: {airflow_key}\n"
+                f"Environment key: {env_key}\n"
+                f"Config path: {section}.{option}"
+            )
+        return None
+
+# Initialize the configuration handler
+config_handler = ConfigHandler()
+
+# SMTP Configuration
+smtp_server = config_handler.get_param(
+    airflow_key="smtp_server",          # HIGHEST PRIORITY
+    env_key="SMTP_SERVER",             # MEDIUM PRIORITY
+    section="SMTP",                    # LOWEST PRIORITY
+    option="server"
+)
+
+smtp_port = config_handler.get_param(
+    airflow_key="smtp_port",
+    env_key="SMTP_PORT",
+    section="SMTP",
+    option="port"
+)
+
+smtp_user = config_handler.get_param(
+    airflow_key="smtp_username",
+    env_key="SMTP_USERNAME",
+    section="SMTP",
+    option="username"
+)
+
+# Email Configuration
+from_address = config_handler.get_param(
+    airflow_key="email_from",
+    env_key="EMAIL_FROM",
+    section="Email",
+    option="from_address"
+)
+
+to_address = config_handler.get_param(
+    airflow_key="email_to",
+    env_key="EMAIL_TO",
+    section="Email",
+    option="to_address"
+)
+
+subject = config_handler.get_param(
+    airflow_key="email_subject",
+    env_key="EMAIL_SUBJECT",
+    section="Email",
+    option="subject"
+)
+
+message_body = config_handler.get_param(
+    airflow_key="email_body",
+    env_key="EMAIL_BODY",
+    section="Email",
+    option="message_body"
+)
+
+# S3 Configuration
+bucket_name = config_handler.get_param(
+    airflow_key="s3_bucket_name",
+    env_key="S3_BUCKET_NAME",
+    section="S3",
+    option="bucket_name"
+)
+
+# Folder paths configuration
+folders = {
+    "new": {
+        "direct_emails": config_handler.get_param(
+            airflow_key="direct_emails_new_folder",
+            env_key="DIRECT_EMAILS_NEW_FOLDER",
+            section="Folders",
+            option="direct_emails_new_folder"
+        ),
+        "processed": config_handler.get_param(
+            airflow_key="direct_emails_processed_folder",
+            env_key="DIRECT_EMAILS_PROCESSED_FOLDER",
+            section="Folders",
+            option="direct_emails_processed_folder"
+        )
+    },
+    "journal": {
+        "new": config_handler.get_param(
+            airflow_key="journal_emails_new_folder",
+            env_key="JOURNAL_EMAILS_NEW_FOLDER",
+            section="Folders",
+            option="journal_emails_new_folder"
+        ),
+        "processed": config_handler.get_param(
+            airflow_key="journal_emails_processed_folder",
+            env_key="JOURNAL_EMAILS_PROCESSED_FOLDER",
+            section="Folders",
+            option="journal_emails_processed_folder"
+        )
+    }
+}
+
+# Initialize S3 client
+s3_client = boto3.client('s3')
+
+def get_smtp_password_s3():
+    try:
+        bucket_name = config_handler.get_param(
+            airflow_key="s3_bucket_name",
+            env_key="S3_BUCKET_NAME",
+            section="S3",
+            option="bucket_name"
+        )
+        s3_folder = config_handler.get_param(
+            airflow_key="s3_certs_path",
+            env_key="S3_CERTS_PATH",
+            section="S3",
+            option="certs_s3_path"
+        )
+        # Rest of your function implementation...
