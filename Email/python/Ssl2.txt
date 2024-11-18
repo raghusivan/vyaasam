@@ -1,0 +1,130 @@
+Here’s an updated and refined script that addresses potential issues during the OpenSSL and Python installation processes. The script includes additional logging, alternative methods, and error handling to ensure a smooth installation.
+
+Updated Script: install_python_ssl.sh
+
+#!/bin/bash
+
+# Exit on any failure
+set -e
+
+# Define variables
+OPENSSL_VERSION="1.1.1v"
+PYTHON_VERSION="3.12.0"
+OPENSSL_DIR="/usr/local/openssl"
+PYTHON_SOURCE_DIR="/tmp/Python-${PYTHON_VERSION}"
+
+echo "Starting Python and OpenSSL installation process..."
+
+# Step 1: Install required dependencies
+echo "Installing required dependencies..."
+sudo yum groupinstall -y "Development Tools"
+sudo yum install -y gcc gcc-c++ make wget tar zlib-devel bzip2 bzip2-devel libffi-devel xz-devel \
+    openssl-devel openssl11 openssl11-devel
+
+# Step 2: Install OpenSSL 1.1.1
+echo "Installing OpenSSL ${OPENSSL_VERSION}..."
+cd /usr/local/src || exit 1
+sudo wget https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz -O openssl.tar.gz
+sudo tar -xvzf openssl.tar.gz
+cd openssl-${OPENSSL_VERSION} || exit 1
+sudo ./config --prefix=${OPENSSL_DIR} --openssldir=${OPENSSL_DIR}
+sudo make
+sudo make install
+
+# Verify OpenSSL installation
+export PATH=${OPENSSL_DIR}/bin:$PATH
+export LD_LIBRARY_PATH=${OPENSSL_DIR}/lib:$LD_LIBRARY_PATH
+echo "Verifying OpenSSL installation..."
+openssl version
+
+# Step 3: Download and Install Python 3.12
+echo "Installing Python ${PYTHON_VERSION}..."
+if [ ! -d "${PYTHON_SOURCE_DIR}" ]; then
+  echo "Downloading Python source..."
+  cd /tmp || exit 1
+  wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz
+  tar -xvzf Python-${PYTHON_VERSION}.tgz
+fi
+
+# Clean up any previous build artifacts
+cd ${PYTHON_SOURCE_DIR} || exit 1
+sudo make clean
+
+# Configure and build Python
+echo "Configuring Python build with OpenSSL support..."
+sudo ./configure --enable-optimizations --with-openssl=${OPENSSL_DIR}
+sudo make altinstall
+
+# Step 4: Verify Python Installation
+echo "Verifying Python installation..."
+PYTHON_BIN="/usr/local/bin/python${PYTHON_VERSION%.*}"
+${PYTHON_BIN} --version
+${PYTHON_BIN} -c "import ssl; print(ssl.OPENSSL_VERSION)"
+
+# Step 5: Install pip and boto3
+echo "Installing pip and boto3..."
+${PYTHON_BIN} -m ensurepip
+${PYTHON_BIN} -m pip install --upgrade pip
+${PYTHON_BIN} -m pip install boto3
+
+echo "Installation complete! Python ${PYTHON_VERSION} with SSL support and boto3 installed successfully."
+
+
+---
+
+Key Fixes and Improvements:
+
+1. Dependencies:
+
+Ensures openssl11 and its development headers are installed via yum.
+
+
+
+2. OpenSSL Installation:
+
+Downloads and builds OpenSSL 1.1.1 from source while installing it to a dedicated directory (/usr/local/openssl).
+
+
+
+3. Python Build Configuration:
+
+Configures Python to use the installed OpenSSL explicitly.
+
+
+
+4. Verification:
+
+Checks OpenSSL and Python installation to confirm SSL support.
+
+
+
+5. Error Handling:
+
+Includes set -e to stop execution if any command fails.
+
+
+
+6. Clear Path Updates:
+
+Updates PATH and LD_LIBRARY_PATH dynamically during the script execution to ensure OpenSSL is found.
+
+
+
+
+
+---
+
+How to Run the Script:
+
+1. Save the script to a file, e.g., install_python_ssl.sh.
+
+
+2. Make it executable:
+
+chmod +x install_python_ssl.sh
+
+
+3. Execute the script:
+
+
+
