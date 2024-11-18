@@ -1,4 +1,8 @@
- To fix the code snippet and ensure it installs as the root user with SSL installation included, you can adjust the commands as follows:
+ The issue you're facing, ModuleNotFoundError: No module named '_ssl', suggests that Python was compiled without SSL support. This usually happens because the necessary libraries for SSL (such as OpenSSL) were not available at build time. To resolve this, follow these steps:
+
+Fixed Commands for JSON
+
+Here’s the updated set of commands in your JSON configuration to ensure Python is built with SSL support:
 
 {
     "Resources": {
@@ -18,24 +22,36 @@
                         "ignore_errors": "false"
                     },
                     "003": {
-                        "command": "sudo curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+                        "command": "sudo yum install -y libuuid-devel xz-devel >> /var/log/python3_install.log 2>&1",
                         "cwd": "/tmp",
                         "waitAfterCompletion": "0",
                         "ignore_errors": "false"
                     },
                     "004": {
-                        "command": "sudo tar xzf Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+                        "command": "sudo curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
                         "cwd": "/tmp",
                         "waitAfterCompletion": "0",
                         "ignore_errors": "false"
                     },
                     "005": {
-                        "command": "cd /tmp/Python-3.12.0 && sudo ./configure --enable-optimizations >> /var/log/python3_install.log 2>&1 && sudo make altinstall >> /var/log/python3_install.log 2>&1",
+                        "command": "sudo tar xzf Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
                         "cwd": "/tmp",
                         "waitAfterCompletion": "0",
                         "ignore_errors": "false"
                     },
                     "006": {
+                        "command": "cd /tmp/Python-3.12.0 && sudo ./configure --enable-optimizations --with-openssl=/usr/lib/ssl >> /var/log/python3_install.log 2>&1",
+                        "cwd": "/tmp",
+                        "waitAfterCompletion": "0",
+                        "ignore_errors": "false"
+                    },
+                    "007": {
+                        "command": "cd /tmp/Python-3.12.0 && sudo make altinstall >> /var/log/python3_install.log 2>&1",
+                        "cwd": "/tmp",
+                        "waitAfterCompletion": "0",
+                        "ignore_errors": "false"
+                    },
+                    "008": {
                         "command": "sudo yum install -y mod_ssl >> /var/log/python3_install.log 2>&1",
                         "cwd": "/tmp",
                         "waitAfterCompletion": "0",
@@ -47,20 +63,31 @@
     }
 }
 
-Key Adjustments:
+Key Fixes:
 
-1. sudo: Added sudo to all commands to ensure they run as root user.
-
-
-2. SSL Installation: Added a new command (006) to install mod_ssl or any other relevant SSL dependencies.
+1. Install OpenSSL Development Libraries: The command sudo yum install -y openssl-devel ensures the required libraries are available.
 
 
-3. Ensure Directories and Logs Are Accessible: Used sudo mkdir to handle potential permission issues.
+2. Explicit SSL Path in Configuration: The --with-openssl=/usr/lib/ssl flag ensures Python's configure script can locate OpenSSL.
 
 
-4. Logging: Redirected all logs to /var/log/python3_install.log for troubleshooting.
+3. Added Dependencies: Added libuuid-devel and xz-devel, which are commonly required for modern Python builds.
+
+
+4. Ensure Proper Logging: All outputs are redirected to /var/log/python3_install.log for debugging.
 
 
 
-Let me know if you need further customizations!
+Verification Steps
+
+1. After installation, verify that _ssl is working:
+
+python3.12 -c "import ssl; print(ssl.OPENSSL_VERSION)"
+
+
+2. If successful, it should print the OpenSSL version.
+
+
+
+If this doesn't resolve the issue, let me know, and we can debug further!
 
