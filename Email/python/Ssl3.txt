@@ -1,0 +1,92 @@
+Here’s a simplified script that installs the latest version of OpenSSL (e.g., 1.1.1v) on your Linux system:
+
+
+---
+
+Script: install_openssl.sh
+
+#!/bin/bash
+
+# Exit on any error
+set -e
+
+# Define OpenSSL version and installation directories
+OPENSSL_VERSION="1.1.1v"
+OPENSSL_DIR="/usr/local/openssl"
+
+echo "Installing OpenSSL ${OPENSSL_VERSION}..."
+
+# Step 1: Install required dependencies
+echo "Installing required dependencies..."
+sudo yum groupinstall -y "Development Tools"
+sudo yum install -y wget gcc gcc-c++ make tar zlib-devel
+
+# Step 2: Download and extract OpenSSL source
+echo "Downloading OpenSSL source..."
+cd /usr/local/src || exit 1
+sudo wget https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz -O openssl.tar.gz
+sudo tar -xvzf openssl.tar.gz
+cd openssl-${OPENSSL_VERSION} || exit 1
+
+# Step 3: Build and install OpenSSL
+echo "Configuring and building OpenSSL..."
+sudo ./config --prefix=${OPENSSL_DIR} --openssldir=${OPENSSL_DIR}
+sudo make
+sudo make install
+
+# Step 4: Update system paths
+echo "Updating system paths..."
+export PATH=${OPENSSL_DIR}/bin:$PATH
+export LD_LIBRARY_PATH=${OPENSSL_DIR}/lib:$LD_LIBRARY_PATH
+
+# Step 5: Verify OpenSSL installation
+echo "Verifying OpenSSL installation..."
+openssl version
+
+echo "OpenSSL ${OPENSSL_VERSION} installed successfully!"
+
+
+---
+
+How to Use the Script:
+
+1. Save the script to a file, e.g., install_openssl.sh.
+
+
+2. Make the script executable:
+
+chmod +x install_openssl.sh
+
+
+3. Run the script:
+
+./install_openssl.sh
+
+
+
+
+---
+
+What the Script Does:
+
+1. Installs dependencies required for building OpenSSL.
+
+
+2. Downloads and extracts the specified version of OpenSSL from the official source.
+
+
+3. Compiles and installs OpenSSL to /usr/local/openssl.
+
+
+4. Updates PATH and LD_LIBRARY_PATH to use the new OpenSSL binaries and libraries.
+
+
+5. Verifies the OpenSSL installation by printing its version.
+
+
+
+
+---
+
+Let me know if you need further customization!
+
