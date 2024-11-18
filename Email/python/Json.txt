@@ -1,0 +1,117 @@
+Here’s how you can update the JSON configuration to include the new OpenSSL version and Python 3.12 installation process together:
+
+"Resources": {
+  "Instance": {
+    "Metadata": {
+      "commands": {
+        "001": {
+          "command": "sudo yum install -y gcc gcc-c++ make zlib-devel bzip2 bzip2-devel libffi-devel xz-devel wget tar >> /var/log/python3_install.log 2>&1",
+          "cwd": "/tmp",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "002": {
+          "command": "cd /usr/local/src && sudo wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz -O openssl.tar.gz >> /var/log/python3_install.log 2>&1",
+          "cwd": "/usr/local/src",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "003": {
+          "command": "cd /usr/local/src && sudo tar -xvzf openssl.tar.gz >> /var/log/python3_install.log 2>&1",
+          "cwd": "/usr/local/src",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "004": {
+          "command": "cd /usr/local/src/openssl-1.1.1v && sudo ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl >> /var/log/python3_install.log 2>&1",
+          "cwd": "/usr/local/src/openssl-1.1.1v",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "005": {
+          "command": "cd /usr/local/src/openssl-1.1.1v && sudo make && sudo make install >> /var/log/python3_install.log 2>&1",
+          "cwd": "/usr/local/src/openssl-1.1.1v",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "006": {
+          "command": "sudo export PATH=/usr/local/openssl/bin:$PATH && sudo export LD_LIBRARY_PATH=/usr/local/openssl/lib:$LD_LIBRARY_PATH",
+          "cwd": "/tmp",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "007": {
+          "command": "cd /tmp && sudo wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+          "cwd": "/tmp",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "008": {
+          "command": "cd /tmp && sudo tar -xvzf Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+          "cwd": "/tmp",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "009": {
+          "command": "cd /tmp/Python-3.12.0 && sudo ./configure --enable-optimizations --with-openssl=/usr/local/openssl >> /var/log/python3_install.log 2>&1",
+          "cwd": "/tmp/Python-3.12.0",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "010": {
+          "command": "cd /tmp/Python-3.12.0 && sudo make altinstall >> /var/log/python3_install.log 2>&1",
+          "cwd": "/tmp/Python-3.12.0",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "011": {
+          "command": "/usr/local/bin/python3.12 -m ensurepip && /usr/local/bin/python3.12 -m pip install --upgrade pip >> /var/log/python3_install.log 2>&1",
+          "cwd": "/tmp",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        },
+        "012": {
+          "command": "/usr/local/bin/python3.12 -c \"import ssl; print(ssl.OPENSSL_VERSION)\" >> /var/log/python3_install.log 2>&1",
+          "cwd": "/tmp",
+          "waitAfterCompletion": "0",
+          "ignore_errors": "false"
+        }
+      }
+    }
+  }
+}
+
+
+---
+
+Explanation:
+
+1. Commands for OpenSSL:
+
+Downloads and installs OpenSSL 1.1.1v from the official source.
+
+Configures and compiles OpenSSL to /usr/local/openssl.
+
+Sets the PATH and LD_LIBRARY_PATH to use the newly installed OpenSSL.
+
+
+
+2. Commands for Python 3.12:
+
+Downloads and extracts Python 3.12 source code.
+
+Configures Python to link with the newly installed OpenSSL.
+
+Compiles and installs Python 3.12 using altinstall to avoid overwriting the system Python.
+
+
+
+3. Validation:
+
+Ensures pip is installed and upgraded.
+
+Checks the OpenSSL version used by Python 3.12 with `
+
+
+
+
