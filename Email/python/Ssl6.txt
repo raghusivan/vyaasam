@@ -1,0 +1,85 @@
+If the precompiled binary download or direct installation from source isn't working, here is another reliable alternative using the GitHub releases archive for OpenSSL or leveraging an alternative mirror for OpenSSL binaries.
+
+
+---
+
+Updated Script: Use Alternative Download Sources for OpenSSL
+
+This script uses a mirror download and alternative installation methods:
+
+#!/bin/bash
+
+# Exit on any failure
+set -e
+
+# Define OpenSSL version and installation directory
+OPENSSL_VERSION="1.1.1v"
+OPENSSL_DIR="/usr/local/openssl"
+MIRROR_URL="https://www.openssl.org/source/"
+
+echo "Installing OpenSSL ${OPENSSL_VERSION} using an alternative method..."
+
+# Step 1: Install required dependencies
+echo "Installing dependencies..."
+sudo yum groupinstall -y "Development Tools"
+sudo yum install -y gcc gcc-c++ make wget tar zlib-devel
+
+# Step 2: Attempt download from primary mirror
+echo "Attempting to download OpenSSL from primary mirror..."
+if ! wget ${MIRROR_URL}openssl-${OPENSSL_VERSION}.tar.gz -O /tmp/openssl-${OPENSSL_VERSION}.tar.gz; then
+    echo "Primary mirror failed, using an alternative..."
+    # Use an alternative mirror if the primary fails
+    wget https://ftp.pcre.org/pub/openssl/openssl-${OPENSSL_VERSION}.tar.gz -O /tmp/openssl-${OPENSSL_VERSION}.tar.gz
+fi
+
+# Step 3: Extract OpenSSL source
+echo "Extracting OpenSSL source..."
+cd /tmp || exit 1
+tar -xvzf openssl-${OPENSSL_VERSION}.tar.gz
+cd openssl-${OPENSSL_VERSION} || exit 1
+
+# Step 4: Configure and build OpenSSL
+echo "Configuring and building OpenSSL..."
+sudo ./config --prefix=${OPENSSL_DIR} --openssldir=${OPENSSL_DIR}
+sudo make
+sudo make install
+
+# Step 5: Update system paths
+echo "Updating system paths..."
+export PATH=${OPENSSL_DIR}/bin:$PATH
+export LD_LIBRARY_PATH=${OPENSSL_DIR}/lib:$LD_LIBRARY_PATH
+
+# Step 6: Verify OpenSSL installation
+echo "Verifying OpenSSL installation..."
+if openssl version; then
+    echo "OpenSSL ${OPENSSL_VERSION} installed successfully!"
+else
+    echo "OpenSSL installation failed. Please check logs."
+    exit 1
+fi
+
+
+---
+
+Alternative Download URLs
+
+If the default OpenSSL source download fails, you can try:
+
+1. GitHub Release Archives:
+
+wget https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1v/openssl-1.1.1v.tar.gz -O /tmp/openssl-1.1.1v.tar.gz
+
+
+2. Other Mirrors: Use alternative mirrors like ftp.pcre.org or other trusted sources.
+
+
+
+
+---
+
+Running the Script
+
+1. Save the script as `install_openssl_al
+
+
+
