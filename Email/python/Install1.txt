@@ -1,69 +1,66 @@
-  I'll modify the commands while keeping the same structure and making it coexist with other Python versions:
+ To fix the code snippet and ensure it installs as the root user with SSL installation included, you can adjust the commands as follows:
 
-```json
 {
-  "ec2": {
-    "descriptor": {
-      "Resources": {
+    "Resources": {
         "Instance": {
-          "Metadata": {
-            "waitAfterCompletion": "0",
-            "ignore_errors": "false"
-          }
+            "Metadata": {
+                "commands": {
+                    "001": {
+                        "command": "sudo mkdir -p /arturo/",
+                        "cwd": "/tmp",
+                        "waitAfterCompletion": "0",
+                        "ignore_errors": "false"
+                    },
+                    "002": {
+                        "command": "sudo yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel make wget >> /var/log/python3_install.log 2>&1",
+                        "cwd": "/tmp",
+                        "waitAfterCompletion": "0",
+                        "ignore_errors": "false"
+                    },
+                    "003": {
+                        "command": "sudo curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+                        "cwd": "/tmp",
+                        "waitAfterCompletion": "0",
+                        "ignore_errors": "false"
+                    },
+                    "004": {
+                        "command": "sudo tar xzf Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
+                        "cwd": "/tmp",
+                        "waitAfterCompletion": "0",
+                        "ignore_errors": "false"
+                    },
+                    "005": {
+                        "command": "cd /tmp/Python-3.12.0 && sudo ./configure --enable-optimizations >> /var/log/python3_install.log 2>&1 && sudo make altinstall >> /var/log/python3_install.log 2>&1",
+                        "cwd": "/tmp",
+                        "waitAfterCompletion": "0",
+                        "ignore_errors": "false"
+                    },
+                    "006": {
+                        "command": "sudo yum install -y mod_ssl >> /var/log/python3_install.log 2>&1",
+                        "cwd": "/tmp",
+                        "waitAfterCompletion": "0",
+                        "ignore_errors": "false"
+                    }
+                }
+            }
         }
-      }
-    },
-    "002": {
-      "command": "sudo yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel >> /var/log/python3_install.log 2>&1",
-      "cwd": "/tmp",
-      "waitAfterCompletion": "0",
-      "ignore_errors": "false"
-    },
-    "003": {
-      "command": "sudo curl -O https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
-      "cwd": "/tmp",
-      "waitAfterCompletion": "0",
-      "ignore_errors": "false"
-    },
-    "004": {
-      "command": "sudo tar xzf Python-3.12.0.tgz >> /var/log/python3_install.log 2>&1",
-      "cwd": "/tmp",
-      "waitAfterCompletion": "0",
-      "ignore_errors": "false"
-    },
-    "005": {
-      "command": "cd /tmp/Python-3.12.0 && sudo ./configure --enable-optimizations --with-openssl=/usr/include/openssl --with-ssl >> /var/log/python3_install.log 2>&1 && sudo make altinstall >> /var/log/python3_install.log 2>&1",
-      "cwd": "/tmp/Python-3.12.0",
-      "waitAfterCompletion": "0",
-      "ignore_errors": "false"
-    },
-    "006": {
-      "command": "sudo yum install -y openssl >> /var/log/python3_install.log 2>&1",
-      "cwd": "/tmp",
-      "waitAfterCompletion": "0",
-      "ignore_errors": "false"
     }
-  },
-  "services": {
-    "tuned": {
-      "enabled": "false"
-    }
-  }
 }
-```
 
-Key changes made:
-1. Added `sudo` to all commands
-2. Kept the same log file path `/var/log/python3_install.log`
-3. Added explicit OpenSSL installation step (006)
-4. Used `make altinstall` instead of regular install to avoid conflicts
-5. Added `--with-openssl` and `--with-ssl` flags to configure
-6. Maintained the original structure while adding root privileges
-7. Using `2>&1` to capture both standard output and errors in the log file
+Key Adjustments:
 
-This configuration should:
-- Install Python with SSL support
-- Not interfere with existing Python installations
-- Run all commands as root
-- Log all output for debugging
-- Fix the SSL module error you were encountering
+1. sudo: Added sudo to all commands to ensure they run as root user.
+
+
+2. SSL Installation: Added a new command (006) to install mod_ssl or any other relevant SSL dependencies.
+
+
+3. Ensure Directories and Logs Are Accessible: Used sudo mkdir to handle potential permission issues.
+
+
+4. Logging: Redirected all logs to /var/log/python3_install.log for troubleshooting.
+
+
+
+Let me know if you need further customizations!
+
