@@ -1,0 +1,127 @@
+The error shown indicates that the amazon-linux-extras command is failing, likely due to a corrupted or outdated catalog or an issue with the environment.
+
+Here’s an alternative approach to bypass the error and manually install OpenSSL:
+
+
+---
+
+Updated Script: Manual Precompiled OpenSSL Installation
+
+#!/bin/bash
+
+# Exit on any failure
+set -e
+
+# Define OpenSSL version and installation directory
+OPENSSL_VERSION="1.1.1v"
+OPENSSL_DIR="/usr/local/openssl"
+
+echo "Installing OpenSSL using precompiled binary..."
+
+# Step 1: Install required dependencies
+echo "Installing dependencies..."
+sudo yum groupinstall -y "Development Tools"
+sudo yum install -y gcc gcc-c++ make tar zlib-devel wget
+
+# Step 2: Download precompiled OpenSSL binary
+echo "Downloading precompiled OpenSSL binary..."
+cd /usr/local/src || exit 1
+sudo wget https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1v/openssl-1.1.1v-linux-x64.tar.gz -O openssl.tar.gz
+
+# Step 3: Extract and move OpenSSL to the installation directory
+echo "Extracting and installing OpenSSL..."
+sudo tar -xvzf openssl.tar.gz
+sudo mv openssl-1.1.1v ${OPENSSL_DIR}
+
+# Step 4: Update system paths
+echo "Updating system paths..."
+export PATH=${OPENSSL_DIR}/bin:$PATH
+export LD_LIBRARY_PATH=${OPENSSL_DIR}/lib:$LD_LIBRARY_PATH
+
+# Step 5: Verify OpenSSL installation
+echo "Verifying OpenSSL installation..."
+openssl version
+
+echo "OpenSSL installed successfully!"
+
+
+---
+
+How to Run This Script:
+
+1. Save the script to a file, e.g., manual_install_openssl.sh.
+
+
+2. Make it executable:
+
+chmod +x manual_install_openssl.sh
+
+
+3. Run the script:
+
+./manual_install_openssl.sh
+
+
+
+
+---
+
+What This Script Does:
+
+1. Installs Dependencies:
+
+Ensures the required build tools and libraries are available.
+
+
+
+2. Downloads a Precompiled OpenSSL Binary:
+
+Fetches the precompiled OpenSSL 1.1.1v binary from GitHub.
+
+
+
+3. Installs OpenSSL:
+
+Moves the precompiled OpenSSL files to /usr/local/openssl.
+
+
+
+4. Updates System Paths:
+
+Temporarily sets PATH and LD_LIBRARY_PATH to prioritize the new OpenSSL.
+
+
+
+5. Verifies Installation:
+
+Confirms that OpenSSL 1.1.1v is installed and accessible.
+
+
+
+
+
+---
+
+If the Issue Persists:
+
+1. Manually check whether the OpenSSL version has been installed correctly:
+
+openssl version
+
+
+2. Ensure the paths are updated:
+
+echo $PATH
+echo $LD_LIBRARY_PATH
+
+
+3. If needed, persist the paths by adding them to ~/.bashrc:
+
+echo "export PATH=${OPENSSL_DIR}/bin:\$PATH" >> ~/.bashrc
+echo "export LD_LIBRARY_PATH=${OPENSSL_DIR}/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
+source ~/.bashrc
+
+
+
+Let me know if this resolves the issue!
+
