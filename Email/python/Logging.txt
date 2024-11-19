@@ -1,0 +1,46 @@
+To display the logs on the console, you can modify the logging configuration in your Python script. Here's how you can do it:
+
+Update the Logger Configuration
+
+Add a StreamHandler to your logger to output the logs to the console:
+
+import logging
+import pytz
+from datetime import datetime
+
+# Configure logging with timezone-aware formatter
+class SydneyTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        utc_dt = datetime.utcfromtimestamp(record.created)
+        sydney_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Australia/Sydney'))
+        return sydney_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Console handler to display logs
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(SydneyTimeFormatter("%(asctime)s - %(levelname)s - %(message)s"))
+logger.addHandler(console_handler)
+
+# Optional: Retain file or other handlers if needed
+for handler in logger.handlers:
+    handler.setFormatter(SydneyTimeFormatter("%(asctime)s - %(levelname)s - %(message)s"))
+
+# Example log message
+logger.info("Logging setup complete. Logs will now be displayed on the console.")
+
+Explanation
+
+1. StreamHandler: This outputs the logs to the console (standard output).
+
+
+2. setFormatter: Ensures that the log messages include a timestamp in Sydney timezone.
+
+
+3. setLevel: Ensures logs with level INFO and above are displayed.
+
+
+
+Integrate the updated logging code into your script. If your logger configuration includes multiple handlers, ensure this StreamHandler is added to output logs to the console.
+
