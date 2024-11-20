@@ -1,0 +1,98 @@
+Here’s the script updated to convert all logging timestamps to UTC:
+
+import boto3
+import smtplib
+from botocore.exceptions import ClientError
+import logging
+from datetime import datetime, timezone
+
+# Initialize logger
+logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Function to log in UTC
+class UTCFormatter(logging.Formatter):
+    converter = datetime.fromtimestamp
+    def formatTime(self, record, datefmt=None):
+        utc_time = datetime.fromtimestamp(record.created, tz=timezone.utc)
+        return utc_time.strftime(datefmt or "%Y-%m-%d %H:%M:%S %Z")
+
+# Apply UTC formatter
+for handler in logging.getLogger().handlers:
+    handler.setFormatter(UTCFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# S3 bucket name and folder paths
+bucket_name = "your-bucket-name"
+folders = [
+    {"new": "rmg/shield/emails/direct/new/", "processed": "rmg/shield/emails/direct/processed/"},
+    {"new": "rmg/shield/emails/journals/new/", "processed": "rmg/shield/emails/journals/processed/"}
+]
+
+# Initialize S3 client
+s3_client = boto3.client('s3')
+
+def move_file_to_processed(s3_client, file_key, processed_folder):
+    copy_source = {'Bucket': bucket_name, 'Key': file_key}
+    processed_key = file_key.replace("new/", "processed/")
+    s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=processed_key)
+    s3_client.delete_object(Bucket=bucket_name, Key=file_key)
+    logger.info(f"Moved file {file_key} to {processed_folder}")
+
+def send_emails_from_folder(folder):
+    # Establish SMTP connection
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+
+        # List .eml files in the 'new' folder
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder['new'])
+        if 'Contents' not in response:
+            logger.info(f"No files found in the '{folder['new']}' folder.")
+            return
+
+        # Process each .eml file
+        for item in response['Contents']:
+            file_key = item['Key']
+            logger.info(f"Processing file: {file_key}")
+
+            # Download the file content directly from S3
+            obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+            raw_content = obj['Body'].read().decode('utf-8')  # Assuming .eml files are UTF-8 encoded
+
+            # Extract subject line from the raw content
+            subject = ""
+            for line in raw_content.splitlines():
+                if line.startswith("Subject: "):
+                    subject = line[9:]  # Remove "Subject: " prefix
+                    break
+
+            # Send the email with the extracted subject and raw content as body
+            try:
+                server.sendmail(from_address, to_address, f"Subject: {subject}\n\n{raw_content}")
+                logger.info(f"Email sent successfully from: {from_address} using file: {file_key}")
+
+                # Move the file to the 'processed' folder
+                move_file_to_processed(s3_client, file_key, folder['processed'])
+
+            except Exception as e:
+                logger.error(f"Failed to send email for file {file_key}: {e}")
+
+# Iterate over each folder to send emails and move files
+for folder in folders:
+    send_emails_from_folder(folder)
+
+Key Updates:
+
+1. UTCFormatter Class: Overrides the default timestamp format for log records to use UTC.
+
+
+2. Log Time Conversion: The UTCFormatter ensures all log timestamps are displayed in UTC, regardless of the server's local time.
+
+
+3. Formatting Applied: Applied the formatter globally to all handlers.
+
+
+
+This ensures that all timestamps in logs are consistently in UTC, which is helpful for debugging and aligning with cloud-native practices. Let me know if you need further modifications!
+
