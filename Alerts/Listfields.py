@@ -1,3 +1,88 @@
+Yes, the script requires the following dependencies:
+
+
+---
+
+Dependencies
+
+1. Python Version:
+
+The script is compatible with Python 3.6 or later.
+
+
+
+2. Elasticsearch Python Client:
+
+The script uses the elasticsearch library to interact with the Elasticsearch cluster.
+
+Install it using pip:
+
+pip install elasticsearch==7.17.0
+
+Replace 7.17.0 with the appropriate version compatible with your Elasticsearch cluster. For example:
+
+Use elasticsearch==6.x.x for Elasticsearch 6.x.
+
+Use elasticsearch==7.x.x for Elasticsearch 7.x.
+
+
+
+
+
+
+
+---
+
+How to Install Dependencies
+
+Run the following command to install the elasticsearch library:
+
+pip install elasticsearch
+
+
+---
+
+How to Check Python and Library Versions
+
+1. Check Python Version:
+
+python3.6 --version
+
+Ensure the version is 3.6 or later.
+
+
+2. Check Installed Elasticsearch Library Version:
+
+pip show elasticsearch
+
+Output:
+
+Name: elasticsearch
+Version: 7.17.0
+Location: /your/python/site-packages
+
+
+
+
+---
+
+No Additional Dependencies
+
+The script does not require any other libraries beyond Python and the elasticsearch library.
+
+
+
+---
+
+Optional Tools
+
+If you want to export the fields to a file (e.g., JSON), the built-in json library is used, which is part of Python’s standard library and does not require installation.
+
+Let me know if you encounter any issues while setting up!
+
+
+#----
+
 Below is a Python script that lists all fields and their types from a specific Elasticsearch index. This script uses Python 3.6 and the elasticsearch library.
 
 
