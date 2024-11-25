@@ -1,0 +1,127 @@
+import requests
+import json
+from urllib.parse import quote_plus
+from typing import Dict, Any
+
+def get_index_mapping(base_url: str, index_name: str) -> Dict[str, Any]:
+    """Get the mapping of the index to see available fields"""
+    try:
+        response = requests.get(
+            f"{base_url}/{index_name}/_mapping",
+            headers={"Content-Type": "application/json"},
+            verify=False
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Error getting mapping: {response.text}")
+            return {}
+    except Exception as e:
+        print(f"Error accessing mapping: {e}")
+        return {}
+
+def basic_search(
+    es_host: str,
+    index_name: str,
+    search_text: str,
+    username: str,
+    password: str,
+    size: int = 10
+) -> None:
+    """
+    Perform a basic search and list available fields.
+    
+    Args:
+        es_host: Elasticsearch host URL
+        index_name: Index name to search
+        search_text: Text to search
+        username: Elasticsearch username
+        password: Password
+        size: Number of results to return
+    """
+    try:
+        # URL encode the username and password
+        encoded_username = quote_plus(username)
+        encoded_password = quote_plus(password)
+        
+        # Construct the base URL with encoded credentials
+        if '://' in es_host:
+            protocol, host = es_host.split('://')
+            base_url = f"{protocol}://{encoded_username}:{encoded_password}@{host}"
+        else:
+            base_url = f"http://{encoded_username}:{encoded_password}@{es_host}"
+
+        # First, get the mapping to see available fields
+        print("\nGetting index mapping...")
+        mapping = get_index_mapping(base_url, index_name)
+        
+        if mapping:
+            # Extract and print field names
+            print("\nAvailable fields in the index:")
+            properties = mapping.get(index_name, {}).get('mappings', {}).get('properties', {})
+            for field_name, field_info in properties.items():
+                print(f"- {field_name} ({field_info.get('type', 'unknown type')})")
+        
+        # Perform a simple search
+        print("\nPerforming search...")
+        search_url = f"{base_url}/{index_name}/_search"
+        
+        # Start with a simple match query
+        query = {
+            "size": size,
+            "query": {
+                "query_string": {
+                    "query": search_text,
+                    "default_operator": "AND"
+                }
+            }
+        }
+
+        response = requests.get(
+            search_url,
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(query),
+            verify=False
+        )
+
+        if response.status_code == 200:
+            results = response.json()
+            total_hits = results.get('hits', {}).get('total', {})
+            if isinstance(total_hits, dict):
+                total_count = total_hits.get('value', 0)
+            else:
+                total_count = total_hits or 0
+                
+            print(f"\nFound {total_count} matching documents")
+            
+            # Print the first few results
+            hits = results.get('hits', {}).get('hits', [])
+            for hit in hits:
+                print("\nDocument ID:", hit.get('_id'))
+                print("Score:", hit.get('_score'))
+                print("Source:", json.dumps(hit.get('_source', {}), indent=2))
+                print("-" * 80)
+        else:
+            print(f"Search failed: {response.text}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def main():
+    """Main function to handle command line arguments and execute the search."""
+    if len(sys.argv) != 6:
+        print("Usage: python search_es_index.py <es_host> <index_name> <search_text> <username> <password>")
+        sys.exit(1)
+
+    es_host = sys.argv[1]
+    index_name = sys.argv[2]
+    search_text = sys.argv[3]
+    username = sys.argv[4]
+    password = sys.argv[5]
+
+    basic_search(es_host, index_name, search_text, username, password)
+
+if __name__ == "__main__":
+    import sys
+    main()
