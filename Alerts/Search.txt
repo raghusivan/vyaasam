@@ -1,0 +1,119 @@
+Here's the Python script equivalent of the Bash script provided in the screenshot. This script uses the requests library to perform the Elasticsearch query.
+
+
+---
+
+Python Script: Search Elasticsearch Index
+
+import requests
+import json
+import sys
+
+def search_elasticsearch(es_host, index_name, search_text, username, password):
+    """
+    Performs a search query on the specified Elasticsearch index.
+    :param es_host: Elasticsearch host URL
+    :param index_name: Index name to search
+    :param search_text: Text to search across fields
+    :param username: Elasticsearch username
+    :param password: Elasticsearch password
+    """
+    try:
+        # Elasticsearch search endpoint
+        search_url = f"{es_host}/{index_name}/_search"
+
+        # Elasticsearch query to search for text across all fields
+        query = {
+            "size": 10000,
+            "query": {
+                "multi_match": {
+                    "query": search_text,
+                    "fields": ["*"]
+                }
+            }
+        }
+
+        # Perform the search request
+        response = requests.get(
+            search_url,
+            auth=(username, password),
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(query)
+        )
+
+        # Check if the response is successful
+        if response.status_code == 200:
+            results = response.json()
+            print(json.dumps(results, indent=4))
+        else:
+            print(f"Error: Failed to connect to Elasticsearch. Status code: {response.status_code}")
+            print(response.text)
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+if __name__ == "__main__":
+    # Ensure correct arguments are passed
+    if len(sys.argv) != 5:
+        print("Usage: python search_es_index.py <es_host> <index_name> <search_text> <username> <password>")
+        sys.exit(1)
+
+    # Command-line arguments
+    es_host = sys.argv[1]
+    index_name = sys.argv[2]
+    search_text = sys.argv[3]
+    username = sys.argv[4]
+    password = sys.argv[5]
+
+    # Call the search function
+    search_elasticsearch(es_host, index_name, search_text, username, password)
+
+
+---
+
+How to Use the Script
+
+1. Save this script as search_es_index.py.
+
+
+2. Run the script with the following command:
+
+python3 search_es_index.py <es_host> <index_name> <search_text> <username> <password>
+
+Replace <es_host>, <index_name>, <search_text>, <username>, and <password> with appropriate values.
+
+
+
+
+---
+
+Example Execution
+
+python3 search_es_index.py http://localhost:9200 my_index "example_text" my_user my_password
+
+Explanation of the Script
+
+Query: The multi_match query searches for the search_text across all fields ("fields": ["*"]).
+
+Authentication: Basic HTTP authentication is added using auth=(username, password).
+
+Error Handling: Handles errors such as invalid host or credentials.
+
+Output: The results of the search are printed in a formatted JSON structure.
+
+
+
+---
+
+Advantages
+
+Dynamic Input: The script accepts the Elasticsearch host, index name, search text, and credentials as inputs from the command line.
+
+Customizable: Modify the query or add additional parameters as needed.
+
+Secure: Credentials can also be passed securely via environment variables for better security.
+
+
+Let me know if you need further enhancements!
+
