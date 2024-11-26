@@ -1,0 +1,40 @@
+To modify your script to run in 30-day spans from January to October, here's the updated script. It will iterate through the months, automatically setting the start and end dates in the required format:
+
+#!/bin/bash
+
+# Authorization header
+AUTH_HEADER="Authorization: Basic YWRtaW46dGVzdHBhc3N3b3Jk"
+
+# Base URL
+URL="https://coral.ust.com.coresvcsnuc.syd.nocn.csl.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages"
+
+# Loop through months from January to October
+for MONTH in {01..10}; do
+  # Generate 30-day spans for the current month
+  START_DATE="2024-${MONTH}-01T12:31:17.123"
+  if [[ "$MONTH" == "10" ]]; then
+    END_DATE="2024-${MONTH}-31T12:31:17.123"
+  else
+    END_DATE=$(date -d "2024-${MONTH}-01 +30 days" +%Y-%m-%dT12:31:17.123)
+  fi
+  
+  # Construct the full URL with query parameters
+  FULL_URL="${URL}?start-datetime=${START_DATE}&end-datetime=${END_DATE}&status=${STATUS}"
+
+  # Execute the curl command
+  curl "${FULL_URL}" -H "${AUTH_HEADER}"
+done
+
+Key Points:
+
+This script loops through months from January to October ({01..10}).
+
+It sets the START_DATE for the 1st of each month.
+
+For months other than October, the script calculates a 30-day span.
+
+For October, the END_DATE is hardcoded as the 31st to account for the specific month length.
+
+
+You can save this script and execute it. Adjust the STATUS value if required before running. Let me know if you'd like further enhancements.
+
