@@ -1,0 +1,127 @@
+import requests
+import json
+import configparser
+import urllib.parse
+from typing import Dict, Any
+
+
+def fetch_mapping(base_url: str, index_name: str) -> None:
+    """
+    Fetch and display the field mappings for the given Elasticsearch index.
+
+    Args:
+        base_url: Elasticsearch URL with authentication included.
+        index_name: Name of the index to fetch mappings from.
+    """
+    try:
+        url = f"{base_url}/{index_name}/_mapping"
+        response = requests.get(url, headers={"Content-Type": "application/json"}, verify=False)
+        
+        if response.status_code == 200:
+            mappings = response.json()
+            properties = mappings.get(index_name, {}).get("mappings", {}).get("properties", {})
+            print("\nIndex Field Mappings:")
+            for field, details in properties.items():
+                print(f"- {field}: {details.get('type', 'unknown type')}")
+        else:
+            print(f"Failed to fetch mapping: {response.status_code}, {response.text}")
+    except Exception as e:
+        print(f"Error fetching mapping: {e}")
+
+
+def execute_query(base_url: str, index_name: str, query: Dict[str, Any], size: int) -> None:
+    """
+    Execute a search query against the Elasticsearch index.
+
+    Args:
+        base_url: Elasticsearch URL with authentication included.
+        index_name: Name of the index to query.
+        query: Query JSON to execute.
+        size: Number of results to fetch.
+    """
+    try:
+        url = f"{base_url}/{index_name}/_search"
+        query["size"] = size  # Ensure the query size is respected
+        response = requests.get(
+            url, headers={"Content-Type": "application/json"}, data=json.dumps(query), verify=False
+        )
+        
+        if response.status_code == 200:
+            results = response.json()
+            hits = results.get("hits", {}).get("hits", [])
+            
+            print(f"\nQuery executed successfully. Found {len(hits)} results.")
+            for hit in hits:
+                print(f"\nDocument ID: {hit.get('_id')}")
+                print(f"Score: {hit.get('_score')}")
+                print(f"Source: {json.dumps(hit.get('_source', {}), indent=2)}")
+                print("-" * 80)
+        else:
+            print(f"Query failed: {response.status_code}, {response.text}")
+    except Exception as e:
+        print(f"Error executing query: {e}")
+
+
+def main():
+    """
+    Main function to parse the configuration and execute the query or action.
+    """
+    # Load configuration
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+
+    # Read Elasticsearch connection details
+    es_host = config["elasticsearch"]["host"]
+    index_name = config["elasticsearch"]["index"]
+    username = config["elasticsearch"]["username"]
+    password = config["elasticsearch"]["password"]
+    size = int(config["elasticsearch"].get("size", 10))
+    query_type = config["elasticsearch"]["query_type"]
+
+    # URL encode username and password
+    encoded_username = urllib.parse.quote_plus(username)
+    encoded_password = urllib.parse.quote_plus(password)
+
+    # Build base URL with encoded credentials
+    base_url = f"http://{encoded_username}:{encoded_password}@{es_host}"
+
+    # Define predefined queries
+    queries = {
+        "list_fields": None,  # Will trigger the mapping function
+        "top_10_rows": {"query": {"match_all": {}}},  # Basic query to fetch rows
+        "custom_query": json.loads(config["elasticsearch"].get("query", "{}")),  # Custom query
+    }
+
+    # Handle actions based on query_type
+    if query_type == "list_fields":
+        fetch_mapping(base_url, index_name)
+    elif query_type in queries:
+        query = queries[query_type]
+        if query:
+            execute_query(base_url, index_name, query, size)
+        else:
+            print("No query found for the selected query type.")
+    else:
+        print(f"Unsupported query type: {query_type}")
+
+
+if __name__ == "__main__":
+    main()
+
+
+====================
+
+[elasticsearch]
+host = localhost:9200
+index = my_index
+username = my_user
+password = my_password_with_special_chars!@#
+size = 10
+query_type = custom_query  # Options: list_fields, top_10_rows, custom_query
+query = {
+    "query": {
+        "match": {
+            "field_name": "value"
+        }
+    }
+}
