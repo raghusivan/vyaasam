@@ -1,0 +1,121 @@
+import requests
+import json
+import configparser
+from urllib.parse import quote_plus
+from typing import Dict, Any
+
+def get_index_mapping(base_url: str, index_name: str) -> Dict[str, Any]:
+    """Get the mapping of the index to see available fields"""
+    try:
+        response = requests.get(
+            f"{base_url}/{index_name}/_mapping",
+            headers={"Content-Type": "application/json"},
+            verify=False
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Error getting mapping: {response.text}")
+            return {}
+    except Exception as e:
+        print(f"Error accessing mapping: {e}")
+        return {}
+
+def basic_search(config: configparser.ConfigParser) -> None:
+    """
+    Perform a basic search and list available fields.
+    
+    Args:
+        config: ConfigParser object with configuration values
+    """
+    try:
+        # Read parameters from the config
+        es_host = config['elasticsearch']['host']
+        index_name = config['elasticsearch']['index']
+        username = config['elasticsearch']['username']
+        password = config['elasticsearch']['password']
+        size = int(config['elasticsearch']['size'])
+        query = json.loads(config['elasticsearch']['query'])
+
+        # URL encode the username and password
+        encoded_username = quote_plus(username)
+        encoded_password = quote_plus(password)
+        
+        # Construct the base URL with encoded credentials
+        if '://' in es_host:
+            protocol, host = es_host.split('://')
+            base_url = f"{protocol}://{encoded_username}:{encoded_password}@{host}"
+        else:
+            base_url = f"http://{encoded_username}:{encoded_password}@{es_host}"
+
+        # First, get the mapping to see available fields
+        print("\nGetting index mapping...")
+        mapping = get_index_mapping(base_url, index_name)
+        
+        if mapping:
+            # Extract and print field names
+            print("\nAvailable fields in the index:")
+            properties = mapping.get(index_name, {}).get('mappings', {}).get('properties', {})
+            for field_name, field_info in properties.items():
+                print(f"- {field_name} ({field_info.get('type', 'unknown type')})")
+        
+        # Perform a search
+        print("\nPerforming search...")
+        search_url = f"{base_url}/{index_name}/_search"
+
+        response = requests.get(
+            search_url,
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(query),
+            verify=False
+        )
+
+        if response.status_code == 200:
+            results = response.json()
+            total_hits = results.get('hits', {}).get('total', {})
+            if isinstance(total_hits, dict):
+                total_count = total_hits.get('value', 0)
+            else:
+                total_count = total_hits or 0
+                
+            print(f"\nFound {total_count} matching documents")
+            
+            # Print the first few results
+            hits = results.get('hits', {}).get('hits', [])
+            for hit in hits:
+                print("\nDocument ID:", hit.get('_id'))
+                print("Score:", hit.get('_score'))
+                print("Source:", json.dumps(hit.get('_source', {}), indent=2))
+                print("-" * 80)
+        else:
+            print(f"Search failed: {response.text}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def main():
+    """Main function to execute the script using config.ini"""
+    # Read configuration from config.ini
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
+    basic_search(config)
+
+if __name__ == "__main__":
+    main()
+
+
+======config file ====
+
+[elasticsearch]
+host = http://localhost:9200
+index = my_index
+username = my_username
+password = my_password
+size = 10
+query = {
+    "query": {
+        "match_all": {}
+    }
+}
