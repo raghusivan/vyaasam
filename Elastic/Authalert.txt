@@ -1,0 +1,95 @@
+If the password contains special characters like !, it is essential to properly encode the credentials. The requests library handles this automatically if you pass the username and password directly in the auth parameter. Here's the revised script:
+
+Updated Code
+
+import configparser
+import urllib.parse
+import requests
+from datetime import datetime
+
+# Load configuration from config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Extract configurations
+start_datetime = config['settings']['start_datetime']
+end_datetime = config['settings']['end_datetime']
+status = config['settings']['status']
+username = config['settings']['username']
+password = config['settings']['password']
+url = config['settings']['url']
+
+# Encode the status parameter for URL safety
+encoded_status = urllib.parse.quote(status)
+print(f"Encoded Status: {encoded_status}")
+
+# Construct the full URL with query parameters
+full_url = (
+    f"{url}?start-datetime={start_datetime}&end-datetime={end_datetime}&status={encoded_status}"
+)
+print(f"Full URL: {full_url}")
+
+# Execute the GET request with Basic Authentication
+try:
+    response = requests.get(full_url, auth=(username, password))
+
+    # Print response status code and text
+    print(f"Response Status Code: {response.status_code}")
+    if response.status_code == 200:
+        print("Response Text:")
+        print(response.text)
+    else:
+        print(f"Error: {response.text}")
+except requests.exceptions.RequestException as e:
+    print(f"Error occurred while making the request: {e}")
+
+Key Fixes:
+
+1. Using auth Parameter: The requests.get() function accepts an auth parameter that properly handles special characters in the username and password.
+
+response = requests.get(full_url, auth=(username, password))
+
+
+2. No Manual Encoding for Credentials: Avoided manually constructing the Basic Auth header to prevent issues with special characters in the password.
+
+
+3. Password with !: Since the auth parameter automatically escapes and encodes credentials, passwords containing special characters like ! are now supported without manual changes.
+
+
+
+Usage Instructions:
+
+1. Ensure the config.ini file contains the following:
+
+[settings]
+start_datetime = 2024-09-09T12:31:17.123
+end_datetime = 2024-10-09T12:31:17.123
+status = Completed
+username = your_username
+password = your!password
+url = https://your.api.endpoint/conduct_surveillance/api/ecomm_production_20200929/case_management/messages
+
+
+2. Run the script:
+
+python3 a2.py
+
+
+
+Why This Works:
+
+The requests library automatically escapes special characters in the username and password when passed through the auth parameter.
+
+No need to manually encode the credentials, reducing complexity and errors.
+
+
+Example Output:
+
+If successful, the script will print:
+
+Encoded Status: Completed
+Full URL: https://your.api.endpoint/conduct_surveillance/api/ecomm_production_20200929/case_management/messages?start-datetime=2024-09-09T12:31:17.123&end-datetime=2024-10-09T12:31:17.123&status=Completed
+Response Status Code: 200
+Response Text:
+<JSON response from the server>
+
