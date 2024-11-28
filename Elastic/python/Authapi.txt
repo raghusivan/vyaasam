@@ -1,0 +1,130 @@
+To properly authenticate with a username and password, including encoding any special characters, you can use requests.auth.HTTPBasicAuth. This approach ensures the credentials are handled securely and special characters in the password won't break the authentication.
+
+Here’s the updated Python script:
+
+Updated Script
+
+import configparser
+import urllib.parse
+import requests
+from requests.auth import HTTPBasicAuth
+
+# Read config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Extract configurations
+start_datetime = config['settings']['start_datetime']
+end_datetime = config['settings']['end_datetime']
+status = config['settings']['status']
+username = config['settings']['username']
+password = config['settings']['password']
+url = config['settings']['url']
+
+# Print extracted configurations for debugging
+print("Start Datetime:", start_datetime)
+print("End Datetime:", end_datetime)
+print("Status:", status)
+print("Username:", username)
+print("URL:", url)
+
+# Encode the status parameter
+encoded_status = urllib.parse.quote(status)
+print("Encoded Status:", encoded_status)
+
+# Construct the full URL with query parameters
+full_url = f"{url}?start-datetime={start_datetime}&end-datetime={end_datetime}&status={encoded_status}"
+print("Full URL:", full_url)
+
+# Set headers
+headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+}
+
+# Use HTTPBasicAuth for username and password
+auth = HTTPBasicAuth(username, password)
+
+# Execute the request
+try:
+    response = requests.get(full_url, headers=headers, auth=auth)
+
+    # Print the response status code and text for debugging
+    print("Response Status Code:", response.status_code)
+    print("Response Text:", response.text)
+
+    if response.status_code == 200:
+        print("Successfully retrieved data!")
+    else:
+        print(f"Error: {response.status_code} - {response.reason}")
+
+except Exception as e:
+    print(f"An error occurred: {e}")
+
+
+---
+
+Key Details:
+
+1. HTTPBasicAuth:
+
+The script uses requests.auth.HTTPBasicAuth to manage Basic Authentication securely.
+
+
+
+2. URL Encoding:
+
+The status parameter is URL-encoded using urllib.parse.quote, ensuring special characters in the query string are handled correctly.
+
+
+
+3. Debugging:
+
+Debugging print statements are included to validate configurations and the constructed URL.
+
+
+
+
+
+---
+
+Example config.ini File:
+
+Make sure your config.ini is formatted correctly and includes the required settings:
+
+[settings]
+start_datetime = 2024-09-09T12:31:17.123
+end_datetime = 2024-10-09T12:31:17.123
+status = Incorrect Closure
+username = your_username
+password = your_password_with_special_chars
+url = https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages
+
+
+---
+
+Testing the Script:
+
+1. Save the script and config.ini in the same directory.
+
+
+2. Run the script:
+
+python3 your_script.py
+
+
+3. If credentials are correct and the API is reachable, the script should retrieve the desired data.
+
+
+
+Troubleshooting:
+
+If the response code is 401 Unauthorized, verify the username and password in the config.ini.
+
+Test the URL with curl:
+
+curl -u "your_username:your_password" "https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages?start-datetime=2024-09-09T12:31:17.123&end-datetime=2024-10-09T12:31:17.123&status=Incorrect%20Closure"
+
+
+This ensures the API and credentials work independently of the script.
+
