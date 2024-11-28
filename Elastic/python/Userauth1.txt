@@ -1,0 +1,166 @@
+To fetch a token using the username and password and use it to make a subsequent API request, you can follow the steps below. This script will first authenticate using the username and password to get the token and then use the token for the API request.
+
+Here’s the updated script:
+
+Updated Script
+
+import configparser
+import requests
+import urllib.parse
+
+# Read config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Extract configurations
+auth_url = config['settings']['auth_url']
+api_url = config['settings']['api_url']
+username = config['settings']['username']
+password = config['settings']['password']
+start_datetime = config['settings']['start_datetime']
+end_datetime = config['settings']['end_datetime']
+status = config['settings']['status']
+
+# Step 1: Authenticate and get the token
+def get_token(auth_url, username, password):
+    try:
+        response = requests.post(
+            auth_url,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={"username": username, "password": password}
+        )
+        if response.status_code == 200:
+            token = response.json().get("access_token")
+            print("Token:", token)
+            return token
+        else:
+            print(f"Failed to get token: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error while getting token: {e}")
+        return None
+
+# Step 2: Use the token to make an API request
+def make_api_request(api_url, token, start_datetime, end_datetime, status):
+    try:
+        encoded_status = urllib.parse.quote(status)
+        full_url = f"{api_url}?start-datetime={start_datetime}&end-datetime={end_datetime}&status={encoded_status}"
+        print("Full URL:", full_url)
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        response = requests.get(full_url, headers=headers)
+        print("Response Status Code:", response.status_code)
+        print("Response Text:", response.text)
+
+        if response.status_code == 200:
+            print("Successfully retrieved data!")
+        else:
+            print(f"API Request Failed: {response.status_code} - {response.reason}")
+    except Exception as e:
+        print(f"Error while making API request: {e}")
+
+# Main Execution
+if __name__ == "__main__":
+    token = get_token(auth_url, username, password)
+    if token:
+        make_api_request(api_url, token, start_datetime, end_datetime, status)
+
+
+---
+
+config.ini Example:
+
+[settings]
+auth_url = https://example.com/auth/token
+api_url = https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages
+username = your_username
+password = your_password_with_special_chars
+start_datetime = 2024-09-09T12:31:17.123
+end_datetime = 2024-10-09T12:31:17.123
+status = Incorrect Closure
+
+
+---
+
+How It Works:
+
+1. Step 1: Authenticate and Get Token:
+
+The get_token function makes a POST request to the authentication endpoint with the username and password.
+
+The token is extracted from the response and printed.
+
+
+
+2. Step 2: Use Token for API Request:
+
+The make_api_request function takes the token and uses it in the Authorization header (Bearer <token>).
+
+The API request is made with the required query parameters and headers.
+
+
+
+3. Configuration File:
+
+auth_url: The URL for the authentication endpoint.
+
+api_url: The main API URL for retrieving data.
+
+username and password: Credentials for authentication.
+
+start_datetime, end_datetime, status: Parameters for the API request.
+
+
+
+
+
+---
+
+Output:
+
+1. The token will be printed after successful authentication.
+
+
+2. If the token is valid, the API request will be made and the response will be displayed.
+
+
+
+
+---
+
+Example Run:
+
+python3 script.py
+
+Output:
+
+Token: eyJhbGciOiJIUzI1...
+Full URL: https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages?start-datetime=2024-09-09T12:31:17.123&end-datetime=2024-10-09T12:31:17.123&status=Incorrect%20Closure
+Response Status Code: 200
+Response Text: {...}
+
+
+---
+
+Troubleshooting:
+
+1. 401 Unauthorized:
+
+Verify the username, password, and auth_url endpoint.
+
+Ensure the token is included in the Authorization header.
+
+
+
+2. Token Parsing:
+
+Confirm the authentication endpoint response format. If access_token is not the key for the token, adjust the script accordingly.
+
+
+
+
