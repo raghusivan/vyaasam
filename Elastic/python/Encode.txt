@@ -1,0 +1,123 @@
+To handle special characters in the username or password, they must be URL-encoded properly. Here's the updated Python script that ensures proper encoding of both username and password:
+
+
+---
+
+Updated Script
+
+import configparser
+import requests
+import urllib.parse
+
+# Read config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Extract configurations
+api_url = config['settings']['api_url']
+username = config['settings']['username']
+password = config['settings']['password']
+start_datetime = config['settings']['start_datetime']
+end_datetime = config['settings']['end_datetime']
+status = config['settings']['status']
+
+# Function to make the API request
+def make_api_request(api_url, username, password, start_datetime, end_datetime, status):
+    try:
+        # Encode the username, password, and status parameter
+        encoded_username = urllib.parse.quote(username, safe="")
+        encoded_password = urllib.parse.quote(password, safe="")
+        encoded_status = urllib.parse.quote(status)
+
+        # Construct the full URL with query parameters
+        full_url = f"{api_url}?start-datetime={start_datetime}&end-datetime={end_datetime}&status={encoded_status}"
+        print("Full URL:", full_url)
+
+        # Construct the Authorization header for Basic Authentication
+        auth_header_value = f"{encoded_username}:{encoded_password}"
+        encoded_auth_header = urllib.parse.quote(auth_header_value)
+        headers = {
+            "Authorization": f"Basic {encoded_auth_header}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+
+        # Execute the request with the Authorization header
+        response = requests.get(full_url, headers=headers)
+
+        # Print the response status code and text
+        print("Response Status Code:", response.status_code)
+        if response.status_code == 200:
+            print("Response Text:", response.text)
+        else:
+            print(f"API Request Failed: {response.status_code} - {response.reason}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Main Execution
+if __name__ == "__main__":
+    make_api_request(api_url, username, password, start_datetime, end_datetime, status)
+
+
+---
+
+Example config.ini
+
+[settings]
+api_url = https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages
+username = your_username_with_special_chars
+password = your_password_with_special_chars!
+start_datetime = 2024-09-09T12:31:17.123
+end_datetime = 2024-10-09T12:31:17.123
+status = Incorrect Closure
+
+
+---
+
+Key Changes:
+
+1. Username and Password Encoding:
+
+Used urllib.parse.quote to encode the username and password fields to handle special characters like !, @, #, etc.
+
+
+
+2. Authorization Header:
+
+Constructed the Authorization header manually to ensure proper encoding.
+
+
+
+3. Request Execution:
+
+Included the properly encoded Authorization header in the requests.get call.
+
+
+
+
+
+---
+
+Expected Output:
+
+When you run the script:
+
+python3 script.py
+
+Expected Output:
+
+Full URL: https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages?start-datetime=2024-09-09T12:31:17.123&end-datetime=2024-10-09T12:31:17.123&status=Incorrect%20Closure
+Response Status Code: 200
+Response Text: {...}
+
+
+---
+
+Debugging Steps:
+
+If this still doesn't work, test the API using curl:
+
+curl -u "your_username_with_special_chars:your_password_with_special_chars!" "https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages?start-datetime=2024-09-09T12:31:17.123&end-datetime=2024-10-09T12:31:17.123&status=Incorrect%20Closure"
+
+If the curl command works but the script fails, we can further debug the Python request. Let me know if this doesn't resolve your issue!
+
