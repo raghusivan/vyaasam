@@ -1,0 +1,133 @@
+If Chrome is able to authenticate with a username and password dialog, it likely means the server is expecting Basic Authentication directly in the request headers. Below is the updated Python script to handle Basic Authentication.
+
+
+---
+
+Updated Script
+
+import configparser
+import requests
+import urllib.parse
+
+# Read config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Extract configurations
+api_url = config['settings']['api_url']
+username = config['settings']['username']
+password = config['settings']['password']
+start_datetime = config['settings']['start_datetime']
+end_datetime = config['settings']['end_datetime']
+status = config['settings']['status']
+
+# Function to make the API request
+def make_api_request(api_url, username, password, start_datetime, end_datetime, status):
+    try:
+        # Encode the status parameter
+        encoded_status = urllib.parse.quote(status)
+
+        # Construct the full URL with query parameters
+        full_url = f"{api_url}?start-datetime={start_datetime}&end-datetime={end_datetime}&status={encoded_status}"
+        print("Full URL:", full_url)
+
+        # Set up Basic Authentication using requests
+        response = requests.get(
+            full_url,
+            auth=(username, password),  # Basic Authentication
+            headers={"Accept": "application/json", "Content-Type": "application/json"}
+        )
+
+        # Print the response status code and text
+        print("Response Status Code:", response.status_code)
+        if response.status_code == 200:
+            print("Response Text:", response.text)
+        else:
+            print(f"API Request Failed: {response.status_code} - {response.reason}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Main Execution
+if __name__ == "__main__":
+    make_api_request(api_url, username, password, start_datetime, end_datetime, status)
+
+
+---
+
+Example config.ini
+
+[settings]
+api_url = https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages
+username = your_username
+password = your_password_with_special_chars!
+start_datetime = 2024-09-09T12:31:17.123
+end_datetime = 2024-10-09T12:31:17.123
+status = Incorrect Closure
+
+
+---
+
+Key Changes:
+
+1. Basic Authentication:
+
+Used the auth=(username, password) argument in the requests.get call to handle Basic Authentication.
+
+
+
+2. Configuration:
+
+All parameters, including the API URL, username, and password, are loaded from config.ini.
+
+
+
+3. URL Encoding:
+
+The status parameter is encoded using urllib.parse.quote.
+
+
+
+
+
+---
+
+Output:
+
+When you run the script:
+
+python3 script.py
+
+Expected Output:
+
+Full URL: https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages?start-datetime=2024-09-09T12:31:17.123&end-datetime=2024-10-09T12:31:17.123&status=Incorrect%20Closure
+Response Status Code: 200
+Response Text: {...}
+
+
+---
+
+If It Still Doesn't Work:
+
+1. Verify URL in Browser:
+
+Confirm the exact API URL is working in Chrome.
+
+
+
+2. Use curl to Debug:
+
+Test the same URL with curl:
+
+curl -u "username:password" "https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages?start-datetime=2024-09-09T12:31:17.123&end-datetime=2024-10-09T12:31:17.123&status=Incorrect%20Closure"
+
+
+
+3. Network Restrictions:
+
+Ensure the machine running the script has access to the URL and no firewall is blocking it.
+
+
+
+
+Let me know if further troubleshooting is needed!
+
