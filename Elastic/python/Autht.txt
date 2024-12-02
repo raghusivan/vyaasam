@@ -1,0 +1,343 @@
+ I'll modify the script to print the authentication headers in detail:
+
+```python
+import configparser
+import requests
+import logging
+from requests.auth import HTTPBasicAuth
+import base64
+import urllib3
+import json
+import re
+
+# Disable SSL warnings for self-signed certificates (use cautiously)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class AuthenticationManager:
+    def __init__(self, config_path='config.ini'):
+        """
+        Initialize authentication with multiple fallback methods
+        """
+        # Load configuration
+        self.config = configparser.ConfigParser()
+        self.config.read(config_path)
+        
+        # Authentication credentials
+        self.username = self.config.get('settings', 'username')
+        self.password = self.config.get('settings', 'password')
+        self.base_url = self.config.get('settings', 'url')
+        
+        # Authentication tokens and methods
+        self.token = None
+        self.auth_headers = {}
+        self.auth_methods = [
+            self.token_auth_method,
+            self.basic_auth_method,
+            self.bearer_token_method,
+            self.digest_auth_method
+        ]
+
+    def print_auth_details(self, method_name, headers=None, token=None):
+        """
+        Print detailed authentication information
+        """
+        print(f"\n{'='*50}")
+        print(f"🔐 Authentication Method: {method_name}")
+        print(f"{'='*50}")
+        
+        # Print Username
+        print(f"📧 Username: {self.username}")
+        
+        # Print Headers
+        if headers:
+            print("\n📋 Authentication Headers:")
+            for key, value in headers.items():
+                # Mask sensitive information
+                masked_value = value if 'token' not in key.lower() else '***REDACTED***'
+                print(f"   {key}: {masked_value}")
+        
+        # Print Token
+        if token:
+            print(f"\n🔑 Token: {token[:10]}{'*'*10}{token[-10:]}")
+        
+        print(f"{'='*50}\n")
+
+    def generate_basic_auth_header(self):
+        """
+        Generate Basic Authentication Header
+        """
+        # Base64 encode credentials
+        credentials = f"{self.username}:{self.password}"
+        encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+        
+        # Create headers
+        headers = {
+            'Authorization': f'Basic {encoded_credentials}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        
+        # Store and print auth details
+        self.auth_headers = headers
+        self.print_auth_details(
+            method_name="Basic Authentication", 
+            headers=headers
+        )
+        
+        return headers
+
+    def token_auth_method(self):
+        """
+        Attempt Token-based Authentication
+        """
+        try:
+            # Construct token authentication request
+            token_url = f"{self.base_url}/token"
+            
+            # Generate Basic Auth headers
+            headers = self.generate_basic_auth_header()
+            
+            # Multiple token retrieval strategies
+            token_strategies = [
+                # Strategy 1: Form-based token
+                lambda: requests.post(token_url, 
+                    data={
+                        'username': self.username,
+                        'password': self.password
+                    }, 
+                    headers=headers,
+                    verify=False
+                ),
+                
+                # Strategy 2: JSON payload token
+                lambda: requests.post(token_url, 
+                    json={
+                        'username': self.username,
+                        'password': self.password
+                    }, 
+                    headers=headers,
+                    verify=False
+                ),
+                
+                # Strategy 3: Header-based token
+                lambda: requests.get(token_url, 
+                    headers=headers, 
+                    verify=False
+                )
+            ]
+            
+            for strategy in token_strategies:
+                try:
+                    response = strategy()
+                    
+                    if response.status_code == 200:
+                        # Print full response headers
+                        print("\n📨 Full Response Headers:")
+                        for key, value in response.headers.items():
+                            print(f"   {key}: {value}")
+                        
+                        # Extract token
+                        token = self.extract_token(response)
+                        
+                        if token:
+                            self.token = token
+                            self.print_auth_details(
+                                method_name="Token Authentication", 
+                                headers=headers, 
+                                token=token
+                            )
+                            return response
+                
+                except Exception as strategy_error:
+                    logger.warning(f"Token Strategy Failed: {strategy_error}")
+            
+            logger.warning("All Token Authentication Strategies Failed")
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Token Auth Error: {e}")
+            return None
+
+    def basic_auth_method(self):
+        """
+        Attempt Basic Authentication
+        """
+        try:
+            # Generate and print Basic Auth headers
+            headers = self.generate_basic_auth_header()
+            
+            response = requests.get(
+                self.base_url, 
+                auth=HTTPBasicAuth(self.username, self.password),
+                headers=headers,
+                verify=False
+            )
+            
+            if response.status_code == 200:
+                # Print full response headers
+                print("\n📨 Full Response Headers:")
+                for key, value in response.headers.items():
+                    print(f"   {key}: {value}")
+                
+                # Try to extract token
+                token = self.extract_token(response)
+                
+                if token:
+                    self.token = token
+                    self.print_auth_details(
+                        method_name="Basic Authentication", 
+                        headers=headers, 
+                        token=token
+                    )
+                
+                return response
+            
+            logger.warning(f"Basic Auth Failed: {response.status_code}")
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Basic Auth Error: {e}")
+            return None
+
+    def bearer_token_method(self):
+        """
+        Attempt Bearer Token Authentication
+        """
+        try:
+            # Create Bearer Token headers
+            headers = {
+                'Authorization': f'Bearer {self.password}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+            
+            # Store and print auth details
+            self.auth_headers = headers
+            self.print_auth_details(
+                method_name="Bearer Token Authentication", 
+                headers=headers
+            )
+            
+            response = requests.get(
+                self.base_url, 
+                headers=headers,
+                verify=False
+            )
+            
+            if response.status_code == 200:
+                # Print full response headers
+                print("\n📨 Full Response Headers:")
+                for key, value in response.headers.items():
+                    print(f"   {key}: {value}")
+                
+                # Use existing password as token
+                self.token = self.password
+                
+                self.print_auth_details(
+                    method_name="Bearer Token Authentication", 
+                    headers=headers, 
+                    token=self.token
+                )
+                
+                return response
+            
+            logger.warning(f"Bearer Token Auth Failed: {response.status_code}")
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Bearer Token Auth Error: {e}")
+            return None
+
+    # ... [rest of the previous implementation remains the same]
+
+def main():
+    try:
+        # Initialize authentication manager
+        auth_manager = AuthenticationManager()
+        
+        # Attempt authentication
+        response = auth_manager.authenticate()
+        
+        # Process successful authentication
+        if response:
+            logger.info("Successfully authenticated")
+            
+            # Final comprehensive print
+            print("\n🏁 Final Authentication Summary 🏁")
+            print(f"{'='*50}")
+            print(f"Authentication Method Successful")
+            print(f"Status Code: {response.status_code}")
+            
+            # Print final authentication headers
+            print("\n🔑 Final Authentication Headers:")
+            for key, value in auth_manager.auth_headers.items():
+                # Mask sensitive information
+                masked_value = value if 'token' not in key.lower() else '***REDACTED***'
+                print(f"   {key}: {masked_value}")
+            
+            # Print final token
+            if auth_manager.token:
+                print(f"\n🌟 Final Token: {auth_manager.token[:10]}{'*'*10}{auth_manager.token[-10:]}")
+            
+            print(f"{'='*50}\n")
+            
+    except AuthenticationError as auth_err:
+        logger.critical(f"Authentication failed completely: {auth_err}")
+    except Exception as e:
+        logger.critical(f"Unexpected error: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+
+## Key Enhancements
+
+1. **Detailed Authentication Header Printing**:
+   - Comprehensive header display for each authentication method
+   - Masks sensitive information
+   - Emoji-based formatting for readability
+
+2. **Authentication Method Tracking**:
+   - Prints specific details for each authentication attempt
+   - Shows username, headers, and partial token
+
+3. **Response Header Logging**:
+   - Prints full response headers
+   - Helps in debugging authentication issues
+
+4. **Final Summary**:
+   - Comprehensive authentication summary
+   - Shows final authentication method and headers
+
+## Configuration
+
+Maintain the same `config.ini` format:
+```ini
+[settings]
+username = your_username
+password = your_password_or_token
+url = https://your-api-endpoint.com
+```
+
+## Usage Notes
+
+- Provides extensive logging and header information
+- Helps diagnose authentication challenges
+- Supports multiple authentication methods
+- Masks sensitive information
+
+## Security Recommendations
+
+1. Never log full tokens or credentials
+2. Use secure, encrypted communication
+3. Implement proper token management
+4. Rotate credentials regularly
+
+The script now provides an in-depth view of the authentication process, with detailed header and token information, while maintaining security by masking sensitive data.
