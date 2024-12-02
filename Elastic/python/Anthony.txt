@@ -1,0 +1,260 @@
+ I'll provide a comprehensive approach to authentication and token retrieval with multiple fallback methods:
+
+```python
+import configparser
+import requests
+import logging
+from requests.auth import HTTPBasicAuth
+import base64
+import urllib3
+
+# Disable SSL warnings for self-signed certificates (use cautiously)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class AuthenticationManager:
+    def __init__(self, config_path='config.ini'):
+        """
+        Initialize authentication with multiple fallback methods
+        """
+        # Load configuration
+        self.config = configparser.ConfigParser()
+        self.config.read(config_path)
+        
+        # Authentication credentials
+        self.username = self.config.get('settings', 'username')
+        self.password = self.config.get('settings', 'password')
+        self.base_url = self.config.get('settings', 'url')
+        
+        # Authentication tokens and methods
+        self.token = None
+        self.auth_methods = [
+            self.basic_auth_method,
+            self.token_auth_method,
+            self.bearer_token_method,
+            self.digest_auth_method
+        ]
+
+    def basic_auth_method(self):
+        """
+        Attempt Basic Authentication
+        """
+        try:
+            response = requests.get(
+                self.base_url, 
+                auth=HTTPBasicAuth(self.username, self.password),
+                verify=False  # Disable SSL verification (use cautiously)
+            )
+            
+            if response.status_code == 200:
+                logger.info("Basic Authentication Successful")
+                return response
+            
+            logger.warning(f"Basic Auth Failed: {response.status_code}")
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Basic Auth Error: {e}")
+            return None
+
+    def token_auth_method(self):
+        """
+        Attempt Token-based Authentication
+        """
+        try:
+            # Construct token authentication request
+            token_url = f"{self.base_url}/token"
+            
+            # Multiple token retrieval strategies
+            token_strategies = [
+                # Strategy 1: Form-based token
+                lambda: requests.post(token_url, data={
+                    'username': self.username,
+                    'password': self.password
+                }),
+                
+                # Strategy 2: JSON payload token
+                lambda: requests.post(token_url, json={
+                    'username': self.username,
+                    'password': self.password
+                }),
+                
+                # Strategy 3: Header-based token
+                lambda: requests.get(token_url, headers={
+                    'Authorization': f'Basic {base64.b64encode(f"{self.username}:{self.password}".encode()).decode()}'
+                })
+            ]
+            
+            for strategy in token_strategies:
+                try:
+                    response = strategy()
+                    
+                    if response.status_code == 200:
+                        # Extract token (adjust based on actual API response)
+                        token_data = response.json()
+                        self.token = token_data.get('token') or token_data.get('access_token')
+                        
+                        if self.token:
+                            logger.info("Token Authentication Successful")
+                            return response
+                
+                except Exception as strategy_error:
+                    logger.warning(f"Token Strategy Failed: {strategy_error}")
+            
+            logger.warning("All Token Authentication Strategies Failed")
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Token Auth Error: {e}")
+            return None
+
+    def bearer_token_method(self):
+        """
+        Attempt Bearer Token Authentication
+        """
+        try:
+            headers = {
+                'Authorization': f'Bearer {self.password}',  # Assuming password is actually a bearer token
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.get(
+                self.base_url, 
+                headers=headers,
+                verify=False
+            )
+            
+            if response.status_code == 200:
+                logger.info("Bearer Token Authentication Successful")
+                return response
+            
+            logger.warning(f"Bearer Token Auth Failed: {response.status_code}")
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Bearer Token Auth Error: {e}")
+            return None
+
+    def digest_auth_method(self):
+        """
+        Attempt Digest Authentication
+        """
+        try:
+            response = requests.get(
+                self.base_url, 
+                auth=requests.auth.HTTPDigestAuth(self.username, self.password),
+                verify=False
+            )
+            
+            if response.status_code == 200:
+                logger.info("Digest Authentication Successful")
+                return response
+            
+            logger.warning(f"Digest Auth Failed: {response.status_code}")
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Digest Auth Error: {e}")
+            return None
+
+    def authenticate(self):
+        """
+        Attempt authentication using multiple methods
+        """
+        for method in self.auth_methods:
+            try:
+                response = method()
+                
+                if response and response.status_code == 200:
+                    return response
+            
+            except Exception as e:
+                logger.error(f"Authentication method failed: {e}")
+        
+        # If all methods fail
+        raise AuthenticationError("All authentication methods failed")
+
+class AuthenticationError(Exception):
+    """Custom exception for authentication failures"""
+    pass
+
+def main():
+    try:
+        # Initialize authentication manager
+        auth_manager = AuthenticationManager()
+        
+        # Attempt authentication
+        response = auth_manager.authenticate()
+        
+        # Process successful authentication
+        if response:
+            logger.info("Successfully authenticated")
+            
+            # Optional: Extract and use token if available
+            if auth_manager.token:
+                logger.info(f"Token retrieved: {auth_manager.token}")
+            
+            # Further API interactions can use the response or token
+            
+    except AuthenticationError as auth_err:
+        logger.critical(f"Authentication failed completely: {auth_err}")
+    except Exception as e:
+        logger.critical(f"Unexpected error: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+
+Recommended `config.ini`:
+```ini
+[settings]
+username = your_username
+password = your_password_or_token
+url = https://your-api-endpoint.com
+```
+
+## Key Features
+
+1. **Multiple Authentication Methods**:
+   - Basic Authentication
+   - Token-based Authentication
+   - Bearer Token Authentication
+   - Digest Authentication
+
+2. **Flexible Token Retrieval**:
+   - Multiple strategies for token acquisition
+   - Supports different API token response formats
+
+3. **Comprehensive Error Handling**:
+   - Detailed logging
+   - Fallback mechanisms
+   - Custom authentication error
+
+4. **Security Considerations**:
+   - Configurable via config file
+   - Supports different authentication scenarios
+
+5. **Extensibility**:
+   - Easy to add new authentication methods
+   - Modular design
+
+## Usage Notes
+
+- Replace placeholders in `config.ini` with actual credentials
+- Adjust authentication methods based on specific API requirements
+- Implement additional error handling as needed
+
+## Recommendations
+
+1. Use environment variables for sensitive credentials
+2. Implement proper token management (expiration, refresh)
+3. Add more specific authentication methods if needed
+4. Consider using OAuth 2.0 for more complex authentication scenarios
+
+This script provides a robust, flexible approach to authentication with multiple fallback methods, suitable for various API authentication requirements.
