@@ -1,0 +1,45 @@
+Here's a Python script to authenticate with the provided URL using Basic Authentication:
+
+import requests
+import base64
+
+# Define the URL and credentials
+url = "https://core1.uat.core.commsurv.syd.non.c1.macquarie.com"
+username = "admin"  # Replace with your username
+password = "your_password"  # Replace with your password (special characters are fine)
+
+# Encode the credentials in Base64
+credentials = f"{username}:{password}"
+encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+
+# Set up the headers with the Basic Auth token
+headers = {
+    "Authorization": f"Basic {encoded_credentials}",
+    "Content-Type": "application/json"
+}
+
+# Make the GET request to authenticate
+response = requests.get(url, headers=headers, verify=False)  # Use verify=False for self-signed certificates
+
+# Check and print the response
+if response.status_code == 200:
+    print("Authentication successful!")
+    print("Response:", response.text)
+else:
+    print(f"Authentication failed with status code {response.status_code}")
+    print("Error:", response.text)
+
+Key Notes:
+
+1. Base64 Encoding: The username and password are encoded as Base64(username:password) and sent in the Authorization header.
+
+
+2. Special Characters: Ensure the password is correctly handled; Base64 encoding takes care of special characters.
+
+
+3. SSL Verification: If the URL uses a self-signed certificate, verify=False disables SSL certificate verification. Otherwise, provide the path to a trusted certificate.
+
+
+
+Replace the placeholders with actual credentials and test this script. It mimics the Basic Authentication process your browser performs when you use the dialog box.
+
