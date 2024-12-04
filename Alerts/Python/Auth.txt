@@ -1,0 +1,80 @@
+Here’s a minimal and straightforward Python script to handle authentication using Basic Auth and retrieve a token:
+
+import base64
+import requests
+
+def get_auth_token(url, username, password):
+    """
+    Authenticate using Basic Auth and retrieve the token.
+    """
+    # Combine username and password and encode in Base64
+    credentials = f"{username}:{password}"
+    encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+    
+    # Build the headers with the Authorization field
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}"
+    }
+    
+    # Send the request to get the token
+    response = requests.get(url, headers=headers, verify=False)
+    
+    # Handle the response
+    if response.status_code == 200:
+        print("Authentication successful.")
+        print("Response:", response.text)  # Replace with JSON parsing if response contains token as JSON
+        return response.text
+    else:
+        print(f"Authentication failed. Status Code: {response.status_code}")
+        print("Response Text:", response.text)
+        return None
+
+# Example usage
+if __name__ == "__main__":
+    # Replace with your actual details
+    auth_url = "https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/auth_endpoint"  # Replace 'auth_endpoint' with actual token endpoint
+    username = "admin"
+    password = "your_password"  # Replace with actual password
+    
+    # Retrieve the token
+    token = get_auth_token(auth_url, username, password)
+    print("Token:", token)
+
+Explanation:
+
+1. Base64 Encoding:
+
+The username and password are combined and Base64-encoded to create the Authorization header.
+
+
+
+2. Headers:
+
+The Authorization header is constructed using the encoded credentials.
+
+
+
+3. Request:
+
+A GET request is made to the authentication endpoint.
+
+
+
+4. Response Handling:
+
+If the response status code is 200, it prints the response body as the token (you may need to adjust this if the token is returned as JSON).
+
+If the status code is not 200, it prints an error message.
+
+
+
+
+Notes:
+
+Replace auth_url with the actual URL endpoint where the token is provided.
+
+Replace your_password with the actual password.
+
+Ensure that verify=False is only used for testing to bypass SSL verification; otherwise, use True or provide the proper CA certificates.
+
+
