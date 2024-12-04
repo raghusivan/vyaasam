@@ -1,0 +1,120 @@
+import base64
+import requests
+from requests.auth import HTTPBasicAuth
+from urllib.parse import urlparse
+import tkinter as tk
+from tkinter import simpledialog
+import keyring
+import json
+from datetime import datetime
+
+class ChromeStyleAuthClient:
+    def __init__(self, base_url):
+        """Initialize the client with base URL."""
+        self.base_url = base_url
+        self.session = requests.Session()
+        self.session.verify = False  # Similar to Chrome accepting self-signed certs
+        self.auth_cache = {}
+
+    def _show_auth_dialog(self, realm=None):
+        """Display a Chrome-style authentication dialog."""
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        
+        # Format title like Chrome
+        title = f"Authentication Required - {urlparse(self.base_url).netloc}"
+        
+        # Show username dialog
+        username = simpledialog.askstring(
+            title=title,
+            prompt="Please enter your username:",
+            parent=root
+        )
+        
+        if username is None:  # User clicked Cancel
+            return None, None
+            
+        # Show password dialog
+        password = simpledialog.askstring(
+            title=title,
+            prompt="Please enter your password:",
+            parent=root,
+            show='*'  # Mask password with asterisks
+        )
+        
+        root.destroy()
+        return username, password
+
+    def _handle_401_response(self, response, retry_count=0):
+        """Handle 401 responses like Chrome."""
+        if retry_count >= 3:  # Chrome typically tries 3 times
+            return None
+            
+        auth_header = response.headers.get('WWW-Authenticate', '')
+        
+        # Get cached credentials first
+        domain = urlparse(self.base_url).netloc
+        cached_auth = self.auth_cache.get(domain)
+        
+        if cached_auth is None:
+            username, password = self._show_auth_dialog(auth_header)
+            if username and password:
+                self.auth_cache[domain] = (username, password)
+                return username, password
+        return cached_auth
+
+    def make_request(self, endpoint, method='GET', params=None, data=None):
+        """Make an authenticated request with Chrome-like behavior."""
+        url = f"{self.base_url}{endpoint}"
+        retry_count = 0
+        
+        while retry_count < 3:  # Chrome typically tries 3 times
+            try:
+                response = self.session.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    data=json.dumps(data) if data else None,
+                    headers={'Content-Type': 'application/json'}
+                )
+                
+                if response.status_code == 401:
+                    credentials = self._handle_401_response(response, retry_count)
+                    if credentials:
+                        username, password = credentials
+                        # Use HTTPBasicAuth like Chrome
+                        self.session.auth = HTTPBasicAuth(username, password)
+                        retry_count += 1
+                        continue
+                    else:
+                        raise Exception("Authentication failed")
+                        
+                response.raise_for_status()
+                return response.json() if response.text else None
+                
+            except requests.exceptions.RequestException as e:
+                if retry_count >= 2:  # Final attempt failed
+                    raise Exception(f"Request failed after 3 attempts: {str(e)}")
+                retry_count += 1
+
+# Example usage
+if __name__ == "__main__":
+    client = ChromeStyleAuthClient(
+        "https://core1.uat.core.commsurv.syd.non.c1.macquarie.com"
+    )
+    
+    # Example request
+    params = {
+        "start-datetime": datetime.now().isoformat(),
+        "end-datetime": datetime.now().isoformat(),
+        "status": "QA – Incorrect Closure"
+    }
+    
+    try:
+        response = client.make_request(
+            endpoint="/conduct_surveillance/api/ecomm_production_20200929/case_management/messages",
+            params=params
+        )
+        print("Success:", response)
+    except Exception as e:
+        print("Error:", str(e))
