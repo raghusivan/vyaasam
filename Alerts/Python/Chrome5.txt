@@ -1,0 +1,99 @@
+import requests
+import base64
+import urllib3
+import json
+
+# Disable SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+class ChromeExactAuth:
+    def __init__(self, username, password):
+        self.session = requests.Session()
+        self.session.verify = False
+        
+        # Create the exact Authorization header that Chrome uses
+        credentials = f"{username}:{password}"
+        b64_credentials = base64.b64encode(credentials.encode()).decode()
+        self.auth_header = f"Basic {b64_credentials}"
+
+    def make_request(self, url, method='GET', params=None):
+        """Make request with exact Chrome headers"""
+        headers = {
+            'Authorization': self.auth_header,
+            'Accept': '*/*',  # Chrome's default Accept header
+            'Accept-Encoding': 'gzip, deflate, br',  # Chrome's encoding
+            'Accept-Language': 'en-US,en;q=0.9',  # Chrome's language header
+            'Connection': 'keep-alive',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+
+        try:
+            response = self.session.request(
+                method=method,
+                url=url,
+                headers=headers,
+                params=params
+            )
+            
+            print(f"\nRequest Details:")
+            print(f"URL: {response.url}")
+            print(f"Method: {method}")
+            print(f"Headers Sent: {headers}")
+            print(f"\nResponse Details:")
+            print(f"Status Code: {response.status_code}")
+            print(f"Response Headers: {dict(response.headers)}")
+            
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                return response.text
+                
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed: {str(e)}")
+            return None
+
+# Usage example
+if __name__ == "__main__":
+    # Your credentials
+    USERNAME = "your_username"
+    PASSWORD = "your_password"
+    
+    # Initialize client
+    client = ChromeExactAuth(USERNAME, PASSWORD)
+    
+    # Your request parameters
+    params = {
+        "start-datetime": "2024-07-09T12:31:17.123",
+        "end-datetime": "2024-08-09T12:31:17.123",
+        "status": "QA – Incorrect Closure"
+    }
+    
+    # Make request to your URL
+    response = client.make_request(
+        url="https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages",
+        params=params
+    )
+    
+    if response:
+        print("\nAPI Response:")
+        print(json.dumps(response, indent=2) if isinstance(response, (dict, list)) else response)
+    else:
+        print("\nNo valid response received")
+
+# Test function to check exact request/response cycle
+def test_chrome_headers(url, username, password):
+    """Test with Chrome's exact header structure"""
+    client = ChromeExactAuth(username, password)
+    
+    print("\nTesting with Chrome's exact headers...")
+    print(f"URL: {url}")
+    
+    response = client.make_request(url)
+    
+    print("\nComplete Response Details:")
+    if response:
+        print(f"Response Type: {type(response)}")
+        print("Response Content:")
+        print(response)
+    
+    return response
