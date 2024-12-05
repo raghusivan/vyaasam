@@ -1,0 +1,254 @@
+[authentication]
+username = your_username
+password = your_password
+
+[settings]
+# API endpoint URL (required)
+url = https://your-api-endpoint.com/api/v1/alerts
+
+# Number of days to look back for alerts (required)
+days_to_retrieve = 30
+
+# Timezone for date calculations (optional, defaults to UTC)
+# Use IANA timezone names like: America/New_York, Europe/London, Asia/Tokyo
+timezone = UTC
+
+# Request timeout in seconds (optional, defaults to 30)
+timeout = 30
+
+[statuses]
+# Quality Assurance Statuses
+QA_ISSUE = QA - Issue - Incorrect Closure
+QA_NO_ISSUE = QA - No Issue
+QA_ACTION = QA - Action Completed
+
+# CSM Related Statuses
+CSM_CLOSED_NOT_APPLICABLE = CSM Closed - Not Applicable
+CSM_CLOSED_NO_ACTION = CSM Closed - No Further Action
+CSM_CLOSED_ACTION = CSM Closed - Action Taken
+
+# L3 Resolution Statuses
+RESOLVED_L3_NO_ISSUE = Resolved L3 - No Issue
+RESOLVED_L3_ISSUE = Resolved L3 - Issue Found
+
+# No Further Action (NFA) Statuses
+NFA_BAU = NFA - BAU Conversation
+NFA_PERSONAL = NFA - Personal
+NFA_NO_MARKET = NFA - No Market Concerns
+NFA_PTA = NFA - PTA Declaration
+NFA_I_COMPLY = NFA - I-Comply Declaration
+NFA_CONCUR = NFA - Concur Declaration
+NFA_NO_VENUE = NFA - No Change of Venue
+NFA_NO_GRE = NFA - No GRE Concerns
+NFA_NO_SHARING = NFA - No Sharing Concerns
+NFA_NOT_RELEVANT = NFA - Complaint Not Relevant
+NFA_SPAM = NFA - Spam / News
+NFA_TARGETED = NFA - Targeted Search
+
+# Closed Statuses
+CLOSED_NO_ISSUE = Closed - No Issue
+CLOSED_BREACH = Closed - Breach Recorded
+CLOSED_POLICY = Closed - Reminded of Policy
+
+# Error and Special Statuses
+PROCESSING_ERROR = Processing Error
+NO_ACTION = No Further Action
+SPAM = Spam
+
+===============
+
+
+import configparser
+import urllib.parse
+from datetime import datetime, timedelta
+import requests
+import json
+import sys
+import os
+import logging
+import base64
+from zoneinfo import ZoneInfo
+from typing import Dict, List, Any, Optional, Tuple
+
+class AlertProcessor:
+    def __init__(self, config_path: str = 'config.ini'):
+        self.config = self._load_config(config_path)
+        self.logger = self._setup_logging()
+        self.timezone = self._setup_timezone()
+        self.session = self._init_session()
+
+    def _load_config(self, config_path: str) -> Dict:
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(f"Config file not found: {config_path}")
+            
+        config = configparser.ConfigParser()
+        config.read(config_path)
+        
+        required_sections = ['authentication', 'settings', 'statuses']
+        missing_sections = [sect for sect in required_sections if sect not in config.sections()]
+        if missing_sections:
+            raise ValueError(f"Missing required sections: {', '.join(missing_sections)}")
+
+        return {section: dict(config[section]) for section in config.sections()}
+
+    def _setup_logging(self) -> logging.Logger:
+        logger = logging.getLogger('AlertProcessor')
+        logger.setLevel(logging.INFO)
+
+        # Console handler only
+        console_handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s',
+                                    datefmt='%Y-%m-%d %H:%M:%S')
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+        # Prevent logging from propagating to the root logger
+        logger.propagate = False
+
+        return logger
+
+    def _setup_timezone(self) -> ZoneInfo:
+        tz_name = self.config['settings'].get('timezone', 'UTC')
+        try:
+            return ZoneInfo(tz_name)
+        except Exception as e:
+            self.logger.error(f"Invalid timezone {tz_name}, using UTC: {str(e)}")
+            return ZoneInfo('UTC')
+
+    def _init_session(self) -> requests.Session:
+        session = requests.Session()
+        auth = self.config['authentication']
+        auth_str = f"{auth['username']}:{auth['password']}"
+        auth_header = base64.b64encode(auth_str.encode()).decode()
+        
+        session.headers.update({
+            'Authorization': f'Basic {auth_header}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        })
+        
+        return session
+
+    def get_current_time(self) -> datetime:
+        return datetime.now(self.timezone)
+
+    def format_datetime(self, dt: datetime) -> str:
+        return dt.isoformat()
+
+    def _get_date_range(self) -> Tuple[str, str]:
+        days = int(self.config['settings']['days_to_retrieve'])
+        end_time = self.get_current_time()
+        start_time = end_time - timedelta(days=days)
+        return self.format_datetime(start_time), self.format_datetime(end_time)
+
+    def _filter_resolved_alerts(self, alerts: List[Dict]) -> List[Dict]:
+        return [
+            alert for alert in alerts
+            if (
+                alert.get('resolved') is True and
+                alert.get('status', '').lower().startswith('closed') and
+                alert.get('state', '').lower() == 'closed' and
+                alert.get('resolutionState', '').lower() == 'resolved'
+            )
+        ]
+
+    def _build_url(self, status: str, start_date: str, end_date: str) -> str:
+        base_url = self.config['settings']['url'].rstrip('/')
+        encoded_status = urllib.parse.quote(status)
+        return f"{base_url}?start_datetime={start_date}&end_datetime={end_date}&status={encoded_status}"
+
+    def process_alerts(self, response_data: Dict) -> Dict:
+        if not isinstance(response_data, dict) or 'alerts' not in response_data:
+            self.logger.warning("Invalid response format received")
+            return {'alerts': [], 'total': 0, 'filtered': 0}
+
+        all_alerts = response_data['alerts']
+        filtered_alerts = self._filter_resolved_alerts(all_alerts)
+
+        self.logger.info(f"Filtered {len(filtered_alerts)} resolved alerts from {len(all_alerts)} total")
+        return {
+            'alerts': filtered_alerts,
+            'total': len(all_alerts),
+            'filtered': len(filtered_alerts)
+        }
+
+    def execute_request(self, status: str) -> Dict:
+        try:
+            start_date, end_date = self._get_date_range()
+            url = self._build_url(status, start_date, end_date)
+            
+            self.logger.info(f"Requesting alerts for status: {status}")
+            response = self.session.get(
+                url, 
+                timeout=int(self.config['settings'].get('timeout', 30))
+            )
+            
+            response.raise_for_status()
+            return self.process_alerts(response.json())
+
+        except requests.exceptions.Timeout:
+            self.logger.error(f"Request timed out for status: {status}")
+            return {'error': 'Request timed out'}
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Request failed for status {status}: {str(e)}")
+            return {'error': str(e)}
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON response for status {status}: {str(e)}")
+            return {'error': 'Invalid response format'}
+        except Exception as e:
+            self.logger.error(f"Unexpected error processing status {status}: {str(e)}")
+            return {'error': str(e)}
+
+    def run(self) -> Dict[str, Any]:
+        self.logger.info(f"Starting alert processing in timezone: {self.timezone}")
+        results = {}
+        totals = {'alerts': 0, 'resolved': 0, 'errors': 0}
+
+        start_date, end_date = self._get_date_range()
+        self.logger.info(f"Processing period: {start_date} to {end_date}")
+
+        for status_key, status_value in self.config['statuses'].items():
+            result = self.execute_request(status_value)
+            
+            if 'error' not in result:
+                totals['alerts'] += result['total']
+                totals['resolved'] += result['filtered']
+                self.logger.info(
+                    f"Status {status_key}: {result['filtered']} resolved out of {result['total']}"
+                )
+            else:
+                totals['errors'] += 1
+                self.logger.error(f"Failed processing {status_key}: {result['error']}")
+                
+            results[status_key] = result
+
+        results['summary'] = {
+            'total_alerts': totals['alerts'],
+            'total_resolved': totals['resolved'],
+            'total_errors': totals['errors'],
+            'date_range': {'start': start_date, 'end': end_date},
+            'timezone': str(self.timezone)
+        }
+
+        self.logger.info(
+            f"Processing complete - Total: {totals['alerts']}, "
+            f"Resolved: {totals['resolved']}, Errors: {totals['errors']}"
+        )
+        
+        return results
+
+def main():
+    try:
+        processor = AlertProcessor()
+        results = processor.run()
+        
+        # Exit with error if any requests failed
+        if results.get('summary', {}).get('total_errors', 0) > 0:
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f"Critical error: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
