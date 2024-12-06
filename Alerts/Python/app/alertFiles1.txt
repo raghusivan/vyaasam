@@ -1,0 +1,356 @@
+[logging]
+level = INFO         # DEBUG, INFO, WARNING, ERROR, CRITICAL
+format = [%(asctime)s] %(levelname)-8s [%(name)s] - %(message)s
+date_format = %Y-%m-%d %H:%M:%S
+
+[authentication]
+username = your_username
+password = your_password
+
+[settings]
+url = https://core1.uat.core.commsurv.syd.non.c1.macquarie.com
+start_datetime = 2024-07-09T12:31:17.123
+days_to_retrieve = 30
+
+[statuses]
+# Your statuses here
+QA_ISSUE = QA - Issue - Incorrect Closure
+# ... other statuses
+
+
+=====================logger_config.py
+
+import logging
+import sys
+from typing import Dict
+
+class LoggerManager:
+    _config = {
+        'level': 'INFO',
+        'format': '[%(asctime)s] %(levelname)-8s [%(name)s] - %(message)s',
+        'date_format': '%Y-%m-%d %H:%M:%S'
+    }
+
+    @classmethod
+    def configure(cls, config: Dict) -> None:
+        """Configure logging from config dictionary"""
+        if 'logging' in config:
+            cls._config.update(config['logging'])
+
+    @classmethod
+    def get_logger(cls, name: str) -> logging.Logger:
+        """Get or create a logger with current configuration"""
+        logger = logging.getLogger(name)
+
+        if not logger.handlers:
+            # Set level
+            level = getattr(logging, cls._config['level'].upper())
+            logger.setLevel(level)
+
+            # Create console handler
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setLevel(level)
+
+            # Create formatter
+            formatter = logging.Formatter(
+                cls._config['format'],
+                datefmt=cls._config['date_format']
+            )
+            console_handler.setFormatter(formatter)
+
+            # Add handler
+            logger.addHandler(console_handler)
+            logger.propagate = False
+
+        return logger
+
+    @staticmethod
+    def log_section(logger: logging.Logger, title: str) -> None:
+        """Print a section header"""
+        logger.info("="*80)
+        logger.info(title.center(80))
+        logger.info("="*80)
+
+def setup_logger(name: str) -> logging.Logger:
+    """Convenience function to get a logger"""
+    return LoggerManager.get_logger(name)
+
+==============================config_handler.py
+
+import configparser
+from typing import Dict
+from logger_config import LoggerManager, setup_logger
+from datetime import datetime
+
+class ConfigHandler:
+    def __init__(self):
+        self.logger = setup_logger('ConfigHandler')
+
+    def load_config(self, config_path: str) -> Dict:
+        """Load and validate configuration"""
+        self.logger.info(f"Loading configuration from: {config_path}")
+
+        try:
+            config = configparser.ConfigParser(interpolation=None)
+            config.read(config_path)
+
+            # Convert to dictionary
+            config_dict = {
+                'logging': dict(config['logging']) if 'logging' in config else {},
+                'authentication': dict(config['authentication']),
+                'settings': dict(config['settings']),
+                'statuses': dict(config['statuses'])
+            }
+
+            # Configure logging first
+            LoggerManager.configure(config_dict)
+            self.logger = setup_logger('ConfigHandler')  # Reinitialize with new config
+            
+            self._validate_config(config_dict)
+            self.logger.debug("Configuration loaded successfully")
+            return config_dict
+
+        except Exception as e:
+            self.logger.error(f"Failed to load configuration: {str(e)}")
+            raise
+
+    def _validate_config(self, config: Dict) -> None:
+        """Validate configuration values"""
+        self.logger.debug("Validating configuration")
+        
+        # Required sections and keys
+        required = {
+            'authentication': ['username', 'password'],
+            'settings': ['url', 'start_datetime', 'days_to_retrieve'],
+            'statuses': []
+        }
+
+        for section, keys in required.items():
+            if section not in config:
+                raise ValueError(f"Missing required section: {section}")
+            for key in keys:
+                if key not in config[section]:
+                    raise ValueError(f"Missing required key '{key}' in {section}")
+
+        # Validate datetime format
+        try:
+            datetime.strptime(
+                config['settings']['start_datetime'],
+                '%Y-%m-%dT%H:%M:%S.%f'
+            )
+        except ValueError as e:
+            raise ValueError(f"Invalid datetime format: {str(e)}")
+
+        self.logger.debug("Configuration validation complete")
+
+=======================================url_builder.py
+
+import urllib.parse
+from datetime import datetime, timedelta
+from logger_config import setup_logger
+
+class UrlBuilder:
+    def __init__(self, base_url: str):
+        self.logger = setup_logger('UrlBuilder')
+        self.base_url = base_url.rstrip('/')
+        self.path = "/conduct_surveillance/api/ecomm_production_20200929/case_management/messages"
+        self.logger.debug(f"Initialized with base URL: {self.base_url}")
+
+    def build_url(self, start_date: str, days: int, status: str) -> str:
+        """Build URL with unencoded dates and encoded status"""
+        self.logger.debug(f"Building URL for status: {status}")
+        
+        try:
+            # Calculate end date
+            start_dt = datetime.strptime(start_date, '%Y-%m-%dT%H:%M:%S.%f')
+            end_dt = start_dt + timedelta(days=days)
+            
+            start_str = start_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            end_str = end_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            
+            # Build URL with unencoded dates
+            url = (
+                f"{self.base_url}{self.path}"
+                f"?start_datetime={start_str}"
+                f"&end_datetime={end_str}"
+                f"&status={urllib.parse.quote(status)}"
+            )
+            
+            self.logger.debug(f"Constructed URL: {url}")
+            return url
+            
+        except Exception as e:
+            self.logger.error(f"URL construction failed: {str(e)}")
+            raise
+
+============================================http_client.py
+
+import requests
+import base64
+import json
+from logger_config import setup_logger, LoggerManager
+
+class HttpClient:
+    def __init__(self, username: str, password: str):
+        self.logger = setup_logger('HttpClient')
+        self.session = self._init_session(username, password)
+
+    def _init_session(self, username: str, password: str) -> requests.Session:
+        """Initialize HTTP session with auth"""
+        self.logger.debug("Initializing HTTP session")
+        
+        session = requests.Session()
+        session.verify = False
+        
+        credentials = f"{username}:{password}"
+        auth_header = base64.b64encode(credentials.encode()).decode()
+        
+        session.headers.update({
+            'Authorization': f'Basic {auth_header}',
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        })
+        
+        self.logger.debug("Session initialized with headers")
+        return session
+
+    def get(self, url: str) -> dict:
+        """Make GET request with logging"""
+        self.logger.info("Making GET request")
+        self.logger.debug(f"URL: {url}")
+        
+        try:
+            response = self.session.get(url, timeout=30)
+            self.logger.debug(f"Response status: {response.status_code}")
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            self.logger.debug(f"Response keys: {list(data.keys())}")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Request failed: {str(e)}")
+            raise
+
+=======================================================alert_processor.py
+
+from config_handler import ConfigHandler
+from url_builder import UrlBuilder
+from http_client import HttpClient
+from logger_config import setup_logger, LoggerManager
+from datetime import datetime
+import sys
+import json
+
+class AlertProcessor:
+    def __init__(self, config_path: str = 'config.ini'):
+        # Load config first to set up logging
+        config_handler = ConfigHandler()
+        self.config = config_handler.load_config(config_path)
+        
+        # Initialize logger with configured settings
+        self.logger = setup_logger('AlertProcessor')
+        LoggerManager.log_section(self.logger, "STARTING ALERT PROCESSOR")
+        
+        # Initialize components
+        self.url_builder = UrlBuilder(self.config['settings']['url'])
+        self.http_client = HttpClient(
+            self.config['authentication']['username'],
+            self.config['authentication']['password']
+        )
+        
+        self.logger.info("Initialization complete")
+
+    def process_status(self, status_key: str, status_value: str) -> dict:
+        """Process single status"""
+        LoggerManager.log_section(self.logger, f"Processing: {status_key}")
+        
+        try:
+            url = self.url_builder.build_url(
+                self.config['settings']['start_datetime'],
+                int(self.config['settings']['days_to_retrieve']),
+                status_value
+            )
+            
+            response_data = self.http_client.get(url)
+            
+            if 'alerts' in response_data:
+                all_alerts = response_data['alerts']
+                self.logger.info(f"Retrieved {len(all_alerts)} alerts")
+                return {
+                    'status': status_key,
+                    'total': len(all_alerts),
+                    'success': True
+                }
+            
+            raise ValueError("No alerts in response")
+            
+        except Exception as e:
+            self.logger.error(f"Processing failed: {str(e)}")
+            return {
+                'status': status_key,
+                'error': str(e),
+                'success': False
+            }
+
+    def run(self) -> dict:
+        """Main execution method"""
+        LoggerManager.log_section(self.logger, "STARTING PROCESSING")
+        start_time = datetime.now()
+        
+        results = {
+            'processed': 0,
+            'successful': 0,
+            'failed': 0,
+            'details': []
+        }
+
+        try:
+            for status_key, status_value in self.config['statuses'].items():
+                result = self.process_status(status_key, status_value)
+                
+                if result['success']:
+                    results['successful'] += 1
+                else:
+                    results['failed'] += 1
+                    
+                results['processed'] += 1
+                results['details'].append(result)
+                
+                self.logger.info(
+                    f"Progress: {results['processed']}/{len(self.config['statuses'])} "
+                    f"(Success: {results['successful']}, Failed: {results['failed']})"
+                )
+                
+        finally:
+            duration = (datetime.now() - start_time).total_seconds()
+            results['duration'] = duration
+            
+            LoggerManager.log_section(self.logger, "PROCESSING COMPLETE")
+            self.logger.info(f"Total Processed: {results['processed']}")
+            self.logger.info(f"Successful: {results['successful']}")
+            self.logger.info(f"Failed: {results['failed']}")
+            self.logger.info(f"Duration: {duration:.2f} seconds")
+            
+        return results
+
+def main():
+    try:
+        processor = AlertProcessor()
+        results = processor.run()
+        
+        if results['failed'] > 0:
+            sys.exit(1)
+            
+    except Exception as e:
+        logger = setup_logger('Main')
+        logger.error(f"Critical error: {str(e)}", exc_info=True)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
