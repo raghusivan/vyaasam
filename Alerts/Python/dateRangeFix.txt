@@ -1,0 +1,76 @@
+def _build_url(self, status: str, start_date: str, end_date: str) -> str:
+    """
+    Construct URL in format:
+    https://core1.uat.core.commsurv.syd.non.c1.macquarie.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages
+    with query parameters: start_datetime, end_datetime, status
+    """
+    base_url = self.config['settings']['url'].rstrip('/')
+    path = "/conduct_surveillance/api/ecomm_production_20200929/case_management/messages"
+    
+    params = {
+        'start_datetime': start_date,
+        'end_datetime': end_date,
+        'status': urllib.parse.quote(status)  # Ensure status is properly encoded
+    }
+    
+    query_string = urllib.parse.urlencode(params)
+    full_url = f"{base_url}{path}?{query_string}"
+    
+    self.logger.debug(f"Constructed URL: {full_url}")
+    return full_url
+
+def _get_date_range(self) -> Tuple[str, str]:
+    """
+    Get date range using exact format:
+    2024-07-09T12:31:17.123 to 2024-08-09T12:31:17.123
+    """
+    try:
+        start_datetime = datetime.strptime(
+            self.config['settings']['start_datetime'],
+            '%Y-%m-%dT%H:%M:%S.%f'
+        )
+        
+        days = int(self.config['settings']['days_to_retrieve'])
+        end_datetime = start_datetime + timedelta(days=days)
+        
+        # Format with milliseconds (.123)
+        return (
+            start_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3],
+            end_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+        )
+    except Exception as e:
+        self.logger.error(f"Error calculating date range: {str(e)}")
+        raise
+
+def execute_request(self, status: str) -> Dict:
+    """
+    Execute request with properly formatted dates and URL
+    """
+    try:
+        start_date, end_date = self._get_date_range()
+        url = self._build_url(status, start_date, end_date)
+        
+        self.logger.info(f"Executing request for status: {status}")
+        self.logger.debug(f"Request URL: {url}")
+        
+        response = self.session.get(url, timeout=30)
+        response.raise_for_status()
+        
+        data = response.json()
+        if isinstance(data, dict) and 'alerts' in data:
+            all_alerts = data['alerts']
+            filtered_alerts = self._filter_resolved_alerts(all_alerts)
+            return {
+                'alerts': filtered_alerts,
+                'total': len(all_alerts),
+                'filtered': len(filtered_alerts)
+            }
+        
+        return {'error': 'Invalid response format'}
+        
+    except requests.exceptions.RequestException as e:
+        self.logger.error(f"Request failed for status {status}: {str(e)}")
+        return {'error': str(e)}
+    except Exception as e:
+        self.logger.error(f"Error processing status {status}: {str(e)}")
+        return {'error': str(e)}
