@@ -1,0 +1,201 @@
+import configparser
+import urllib.parse
+from datetime import datetime, timedelta
+import requests
+import json
+import sys
+import os
+import logging
+import base64
+from zoneinfo import ZoneInfo
+from typing import Dict, List, Any, Optional, Tuple
+
+class AlertProcessor:
+    def __init__(self, config_path: str = 'config.ini'):
+        self.config_path = config_path
+        self.config = self._load_config()
+        self.logger = self._setup_logging()
+        self.session = None
+        self._init_session()
+
+    def _load_config(self) -> Dict:
+        if not os.path.exists(self.config_path):
+            raise FileNotFoundError(f"Config file not found: {self.config_path}")
+            
+        config = configparser.ConfigParser(interpolation=None)
+        config.optionxform = str
+        config.read(self.config_path)
+        
+        return {
+            'authentication': dict(config['authentication']),
+            'settings': dict(config['settings']),
+            'statuses': dict(config['statuses'])
+        }
+
+    def _setup_logging(self) -> logging.Logger:
+        logger = logging.getLogger('AlertProcessor')
+        logger.setLevel(logging.INFO)
+        console_handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        logger.propagate = False
+        return logger
+
+    def _init_session(self) -> None:
+        self.session = requests.Session()
+        self.session.verify = False
+        
+        username = self.config['authentication']['username']
+        password = str(self.config['authentication']['password'])
+        
+        credentials = f"{username}:{password}"
+        b64_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+        auth_header = f"Basic {b64_credentials}"
+        
+        self.session.headers.update({
+            'Authorization': auth_header,
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        })
+
+    def _get_date_range(self) -> Tuple[str, str]:
+        """Get exact date format without URL encoding"""
+        try:
+            start_datetime = datetime.strptime(
+                self.config['settings']['start_datetime'],
+                '%Y-%m-%dT%H:%M:%S.%f'
+            )
+            
+            days = int(self.config['settings']['days_to_retrieve'])
+            end_datetime = start_datetime + timedelta(days=days)
+            
+            # Return exact format without any modifications
+            return (
+                start_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3],
+                end_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            )
+        except Exception as e:
+            self.logger.error(f"Error calculating date range: {str(e)}")
+            raise
+
+    def _build_url(self, status: str) -> str:
+        """Build URL with exact format for dates and encoded status"""
+        start_date, end_date = self._get_date_range()
+        
+        base_url = self.config['settings']['url'].rstrip('/')
+        path = "/conduct_surveillance/api/ecomm_production_20200929/case_management/messages"
+        
+        # Only encode the status parameter
+        encoded_status = urllib.parse.quote(status)
+        
+        # Construct URL with unencoded dates
+        url = (
+            f"{base_url}{path}"
+            f"?start_datetime={start_date}"
+            f"&end_datetime={end_date}"
+            f"&status={encoded_status}"
+        )
+        
+        self.logger.debug(f"URL constructed: {url}")
+        return url
+
+    def _filter_resolved_alerts(self, alerts: List[Dict]) -> List[Dict]:
+        return [
+            alert for alert in alerts
+            if (
+                alert.get('resolved') is True and
+                alert.get('status', '').lower().startswith('closed') and
+                alert.get('state', '').lower() == 'closed' and
+                alert.get('resolutionState', '').lower() == 'resolved'
+            )
+        ]
+
+    def process_status(self, status: str) -> Dict:
+        """Process single status with error handling"""
+        try:
+            url = self._build_url(status)
+            self.logger.info(f"Processing status: {status}")
+            
+            response = self.session.get(url, timeout=30)
+            
+            if response.status_code == 404:
+                self.logger.error(f"404 Error for status {status}")
+                return {'error': 'URL not found'}
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            if isinstance(data, dict) and 'alerts' in data:
+                all_alerts = data['alerts']
+                filtered_alerts = self._filter_resolved_alerts(all_alerts)
+                return {
+                    'alerts': filtered_alerts,
+                    'total': len(all_alerts),
+                    'filtered': len(filtered_alerts)
+                }
+            
+            return {'error': 'Invalid response format'}
+            
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Request failed for status {status}: {str(e)}")
+            return {'error': str(e)}
+        except Exception as e:
+            self.logger.error(f"Error processing status {status}: {str(e)}")
+            return {'error': str(e)}
+
+    def run(self) -> Dict[str, Any]:
+        """Main execution method"""
+        self.logger.info("Starting alert processing")
+        results = {}
+        totals = {'alerts': 0, 'resolved': 0, 'errors': 0}
+        
+        try:
+            for status_key, status_value in self.config['statuses'].items():
+                result = self.process_status(status_value)
+                
+                if 'error' not in result:
+                    totals['alerts'] += result['total']
+                    totals['resolved'] += result['filtered']
+                    self.logger.info(
+                        f"Status {status_key}: {result['filtered']} resolved out of {result['total']}"
+                    )
+                else:
+                    totals['errors'] += 1
+                    self.logger.error(f"Failed processing {status_key}: {result['error']}")
+                    
+                results[status_key] = result
+
+            start_date, end_date = self._get_date_range()
+            results['summary'] = {
+                'total_alerts': totals['alerts'],
+                'total_resolved': totals['resolved'],
+                'total_errors': totals['errors'],
+                'date_range': {'start': start_date, 'end': end_date}
+            }
+
+            self.logger.info(
+                f"Processing complete - Total: {totals['alerts']}, "
+                f"Resolved: {totals['resolved']}, Errors: {totals['errors']}"
+            )
+            return results
+            
+        except Exception as e:
+            self.logger.error(f"Critical error during processing: {str(e)}")
+            raise
+
+def main():
+    try:
+        processor = AlertProcessor()
+        results = processor.run()
+        if results.get('summary', {}).get('total_errors', 0) > 0:
+            sys.exit(1)
+    except Exception as e:
+        print(f"Critical error: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
