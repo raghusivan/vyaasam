@@ -1,0 +1,179 @@
+import logging
+import sys
+from datetime import datetime
+from typing import Dict, Any
+
+class LoggerManager:
+    # Default configuration
+    _config = {
+        'level': 'INFO',  # Default level if not specified
+        'format': '[%(asctime)s] %(levelname)-8s [%(name)s] %(message)s',
+        'date_format': '%Y-%m-%d %H:%M:%S.%f'
+    }
+    
+    @classmethod
+    def configure(cls, config: Dict) -> None:
+        """Configure logging settings"""
+        if 'logging' in config and 'level' in config['logging']:
+            cls._config['level'] = config['logging']['level'].upper()
+
+    @classmethod
+    def get_logger(cls, name: str, level: str = None) -> logging.Logger:
+        """Get or create a logger"""
+        logger = logging.getLogger(name)
+        
+        if not logger.handlers:
+            # Use passed level, configured level, or default
+            log_level = level or cls._config['level']
+            if isinstance(log_level, str):
+                numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+            else:
+                numeric_level = log_level
+                
+            logger.setLevel(numeric_level)
+
+            # Create console handler
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setLevel(numeric_level)
+            
+            # Create formatter
+            formatter = logging.Formatter(
+                cls._config['format'],
+                datefmt=cls._config['date_format']
+            )
+            console_handler.setFormatter(formatter)
+            logger.addHandler(console_handler)
+            logger.propagate = False
+            
+        return logger
+
+    @staticmethod
+    def log_section(logger: logging.Logger, title: str) -> None:
+        """Print a section header"""
+        logger.info("\n" + "="*80)
+        logger.info(f"[{datetime.now().isoformat()}] {title}")
+        logger.info("="*80)
+
+    @staticmethod
+    def log_debug_info(logger: logging.Logger, message: str, data: Any = None) -> None:
+        """Log detailed debug information"""
+        if logger.isEnabledFor(logging.DEBUG):
+            debug_info = [
+                f"\nDEBUG INFO: {message}"
+            ]
+            if data is not None:
+                debug_info.append("Data:")
+                if isinstance(data, dict):
+                    for k, v in data.items():
+                        debug_info.append(f"  {k}: {v}")
+                else:
+                    debug_info.append(f"  {str(data)}")
+            logger.debug("\n".join(debug_info))
+
+def setup_logger(name: str, level: str = None) -> logging.Logger:
+    """Convenience function to get a logger"""
+    return LoggerManager.get_logger(name, level)
+
+=============================config_handler.py
+
+import configparser
+from typing import Dict
+from logger_config import LoggerManager, setup_logger
+
+class ConfigHandler:
+    def __init__(self):
+        # Initialize with default INFO level
+        self.logger = setup_logger('ConfigHandler', 'INFO')
+
+    def load_config(self, config_path: str) -> Dict:
+        """Load configuration with proper logging"""
+        self.logger.info(f"Loading configuration from: {config_path}")
+        
+        try:
+            config = configparser.ConfigParser(interpolation=None)
+            config.read(config_path)
+            
+            # Convert to dictionary
+            config_dict = {
+                'logging': dict(config['logging']) if 'logging' in config else {'level': 'INFO'},
+                'authentication': dict(config['authentication']),
+                'settings': dict(config['settings']),
+                'statuses': dict(config['statuses'])
+            }
+            
+            # Configure logging with loaded settings
+            LoggerManager.configure(config_dict)
+            
+            # Reinitialize logger with new configuration
+            self.logger = setup_logger('ConfigHandler')
+            
+            self.logger.debug("Configuration loaded successfully")
+            return config_dict
+            
+        except Exception as e:
+            self.logger.error(f"Failed to load configuration: {str(e)}")
+            raise
+
+    def _validate_config(self, config: Dict) -> None:
+        """Validate configuration with logging"""
+        self.logger.debug("Validating configuration")
+        
+        # Required sections
+        required_sections = ['authentication', 'settings', 'statuses']
+        for section in required_sections:
+            if section not in config:
+                self.logger.error(f"Missing required section: {section}")
+                raise ValueError(f"Missing required section: {section}")
+            
+        self.logger.debug("Configuration validation complete")
+
+======================================alert_processor.log
+
+from config_handler import ConfigHandler
+from url_builder import UrlBuilder
+from http_client import HttpClient
+from logger_config import setup_logger, LoggerManager
+import sys
+
+class AlertProcessor:
+    def __init__(self, config_path: str = 'config.ini'):
+        # Start with default INFO level
+        self.logger = setup_logger('AlertProcessor', 'INFO')
+        self.logger.info("Initializing Alert Processor")
+        
+        # Load configuration
+        config_handler = ConfigHandler()
+        self.config = config_handler.load_config(config_path)
+        
+        # Reinitialize logger with configured level
+        self.logger = setup_logger('AlertProcessor')
+        LoggerManager.log_section(self.logger, "ALERT PROCESSOR INITIALIZED")
+        
+        # Initialize components
+        self.url_builder = UrlBuilder(self.config['settings']['url'])
+        self.http_client = HttpClient(
+            self.config['authentication']['username'],
+            self.config['authentication']['password']
+        )
+
+    # ... rest of the AlertProcessor class implementation ...
+
+def main():
+    try:
+        # Initialize with default level
+        logger = setup_logger('Main', 'INFO')
+        logger.info("Starting Alert Processor")
+        
+        processor = AlertProcessor()
+        results = processor.run()
+        
+        if results['summary']['errors'] > 0:
+            logger.error(f"Completed with {results['summary']['errors']} errors")
+            sys.exit(1)
+    except Exception as e:
+        logger = setup_logger('Main', 'ERROR')
+        logger.error(f"Critical error: {str(e)}", exc_info=True)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
