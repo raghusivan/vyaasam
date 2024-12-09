@@ -1,0 +1,509 @@
+Monitored Groups for Supervision: Detailed Explanation
+
+What is a Monitored Group?
+
+A monitored group in the context of Shield refers to a logical grouping of communication channels, users, or activities that are subject to surveillance and monitoring. These groups are defined based on specific criteria, such as departments, roles, geographic locations, or types of communication (e.g., email, voice, instant messages). Monitored groups enable organizations to streamline supervision, manage alerts effectively, and ensure compliance with regulatory or internal policies.
+
+Examples of Monitored Groups
+
+1. By Department: Grouping all communications for employees in the Compliance, Risk, or HR departments.
+
+
+2. By Region: Monitoring activities based on geographic locations, such as "Asia-Pacific" or "North America."
+
+
+3. By Communication Type: Separating email, voice, and chat communications into distinct monitored groups.
+
+
+4. By Risk Level: Categorizing high-risk employees (e.g., traders) or high-sensitivity channels into specialized groups for closer supervision.
+
+
+
+
+---
+
+Detailed Sub-Questions
+
+1. Is there a limit on the number of monitored groups that can be created?
+
+Purpose: To understand whether Shield imposes technical or licensing restrictions on the number of monitored groups.
+
+Follow-ups:
+
+1. What is the maximum number of monitored groups allowed per organization?
+
+
+2. Are there performance implications if the number of monitored groups increases significantly?
+
+
+3. Can monitored groups be nested or hierarchically organized?
+
+
+4. Does increasing the number of monitored groups impact costs (e.g., SaaS subscription fees)?
+
+
+
+
+
+---
+
+2. Can groups be dynamically adjusted based on changes in supervision needs?
+
+Purpose: To assess the flexibility of Shield in managing monitored groups as organizational structures and requirements evolve.
+
+Follow-ups:
+
+1. Can monitored groups be automatically updated based on employee role changes, organizational restructuring, or channel additions?
+
+
+2. Is there an API available to programmatically adjust monitored group configurations?
+
+
+3. How long does it take for changes in monitored groups to take effect in the Shield system?
+
+
+4. Can monitored groups be temporarily disabled or reactivated as needed?
+
+
+
+
+
+---
+
+3. Are there specific metrics or KPIs available to monitor group activity?
+
+Purpose: To determine the level of insight and analytics provided by Shield for monitoring the effectiveness and activity of each group.
+
+Follow-ups:
+
+1. Does Shield provide dashboards or reports for monitored group activity (e.g., volume of alerts, communication trends)?
+
+
+2. Can Shield display metrics such as:
+
+Number of alerts generated per group?
+
+Most common alert types or categories for each group?
+
+Time taken to resolve alerts within a group?
+
+
+
+3. Are these metrics customizable to meet Macquarie’s specific reporting needs?
+
+
+4. Can Shield provide historical data trends for monitored groups?
+
+
+
+
+
+---
+
+4. Does Shield support hierarchical or role-based access for monitored groups?
+
+Purpose: To understand the access control mechanisms for managing and supervising monitored groups.
+
+Follow-ups:
+
+1. Can specific monitored groups be restricted to certain users or roles (e.g., only compliance officers can access "High-Risk Traders")?
+
+
+2. Does Shield support granular access control, such as read-only versus full administrative rights for groups?
+
+
+3. Can multiple users collaborate on the same monitored group without compromising data security?
+
+
+4. How are access controls audited to ensure compliance with internal and external policies?
+
+
+
+
+
+---
+
+Why Are Monitored Groups Important?
+
+Monitored groups provide organizations like Macquarie with the ability to:
+
+1. Tailor Surveillance: Focus on specific areas of risk or regulatory concern.
+
+
+2. Streamline Workflows: Assign relevant teams to supervise specific groups based on their expertise.
+
+
+3. Improve Efficiency: Quickly identify and act on high-risk or non-compliant communications.
+
+
+4. Enhance Reporting: Break down compliance data by logical groupings for better analysis and presentation to regulators.
+
+
+
+Next Steps
+
+To further enhance understanding:
+
+Request Shield’s documentation on setting up and managing monitored groups.
+
+Inquire about live demonstrations or case studies showcasing how monitored groups have been used effectively by other organizations.
+
+Test configurations of monitored groups during the implementation phase to ensure they align with Macquarie’s specific needs.
+
+
+Let me know if you'd like more clarification or further breakdown!
+
+=========================
+
+Here is an elaboration of each question with added sub-questions:
+
+
+---
+
+1. Call Failure and Retry Mechanism
+
+Main Question: As discussed earlier, we can make 24 calls in a day, but if there is a failure in the call, can we make more calls to retry? Is the rate limiting a hard limit?
+
+Sub-Questions:
+
+1. Is the rate limit configurable, or is it strictly enforced by Shield?
+
+
+2. How does Shield prioritize retry attempts? Are failed calls queued or retried immediately?
+
+
+3. Is there a mechanism to increase the call frequency temporarily during critical incidents?
+
+
+4. Can Shield provide real-time metrics on the success or failure of API calls?
+
+
+
+
+
+---
+
+2. Client ID and Secret Rotation
+
+Main Question: How will Shield share the Client ID and Secret to Macquarie, and how will this be done in the future to support client secret rotation?
+
+Sub-Questions:
+
+1. What is the preferred method for securely sharing the Client ID and Secret?
+
+
+2. Are there specific guidelines or schedules for secret rotation?
+
+
+3. Can Shield automate client secret rotation, or does it require manual intervention?
+
+
+4. What notifications are sent to Macquarie before a secret expires?
+
+
+
+
+
+---
+
+3. WORM (Write Once Read Many) Storage
+
+Main Question: Can Shield store the alerts and transcripts in WORM storage?
+
+Sub-Questions:
+
+1. How does Shield ensure data immutability in WORM storage?
+
+
+2. Is there an audit trail available for accessing data stored in WORM?
+
+
+3. Can Shield provide reporting tools to confirm data integrity over time?
+
+
+4. What is the retention period for data stored in WORM?
+
+
+
+
+
+---
+
+4. Data Quality Reports
+
+Main Question: We need sample emails from Shield for reconciliation information.
+
+Sub-Questions:
+
+1. Can Shield provide an example of the structure and content of reconciliation reports?
+
+
+2. Are reconciliation reports channel-specific or consolidated?
+
+
+3. How are discrepancies highlighted in the reconciliation reports?
+
+
+4. Are there custom fields in the report that Macquarie can configure?
+
+
+
+
+
+---
+
+5. Reconciliation Emails
+
+Main Question: How many reconciliation emails will be sent every day (consolidated or separate for each channel)? Is it something we can configure in the UI?
+
+Sub-Questions:
+
+1. Is the frequency of reconciliation emails adjustable per channel?
+
+
+2. Can email configurations be performed through Shield’s UI, or do they require backend changes?
+
+
+3. Are there additional charges for increasing reconciliation email frequency?
+
+
+4. What happens if an email fails to send? Is there an alternate delivery mechanism?
+
+
+
+
+
+---
+
+6. Email Formats
+
+Main Question: What will be the format of the information in the email? Will it be different for each channel?
+
+Sub-Questions:
+
+1. Is there a standard email format used across all channels?
+
+
+2. Can Macquarie request specific fields or formats in the emails?
+
+
+3. Does Shield support HTML formatting for better readability?
+
+
+4. Are there any size limitations for email attachments or content?
+
+
+
+
+
+---
+
+7. Failure Notifications
+
+Main Question: If the email is not received on a particular day, what is the retry mechanism? Is there a way to inform Macquarie in case of failure to send the email?
+
+Sub-Questions:
+
+1. How many retry attempts are made before failure is declared?
+
+
+2. Can Macquarie receive instant notifications if an email fails to send?
+
+
+3. Are email failures logged in the audit trail?
+
+
+4. Can Shield escalate failed emails to an alternative communication channel?
+
+
+
+
+
+---
+
+8. Missed Records
+
+Main Question: Will there be information in the email about why the records were missed to be imported from the channel?
+
+Sub-Questions:
+
+1. Does Shield provide error codes or descriptions for missed records?
+
+
+2. Are missed records automatically retried, or is manual intervention required?
+
+
+3. Can Shield categorize missed records by error type (e.g., data format issues, connectivity)?
+
+
+4. How does Shield handle large volumes of missed records?
+
+
+
+
+
+---
+
+9. Audit Files
+
+Main Question: How will the audit files be sent to Macquarie? Can we assume it to be file transfer?
+
+Sub-Questions:
+
+1. What file formats are supported for audit file delivery?
+
+
+2. Can Shield push audit files directly to an S3 bucket or other cloud storage?
+
+
+3. Are audit files compressed or encrypted during transfer?
+
+
+4. Is there an option for real-time audit log delivery?
+
+
+
+
+
+---
+
+10. Audit Log Samples
+
+Main Question: We need more sample data for the audit log. The sample shared with us was having the same data copied across multiple rows.
+
+Sub-Questions:
+
+1. Can Shield provide audit log samples with realistic and varied data?
+
+
+2. Are there tools available to validate the integrity of audit log samples?
+
+
+3. How does Shield ensure that audit logs do not contain duplicate entries?
+
+
+4. Is there an explanation for the structure of audit logs in Shield's documentation?
+
+
+
+
+
+---
+
+11. Security Events
+
+Main Question: How will the security events be sent to Macquarie?
+
+Sub-Questions:
+
+1. Are security events delivered in real-time or as part of a batch process?
+
+
+2. Can Macquarie filter or customize the security event data received?
+
+
+3. What format is used for security events (e.g., JSON, XML)?
+
+
+4. Does Shield provide a dashboard to monitor security events in real-time?
+
+
+
+
+
+---
+
+12. Audit and Security Log Frequency
+
+Main Question: Will the audit and security log be sent once in a day?
+
+Sub-Questions:
+
+1. Can Macquarie request more frequent updates for audit and security logs?
+
+
+2. Are logs timestamped to ensure accuracy in event tracking?
+
+
+3. Can Shield provide alerts if log delivery is delayed or fails?
+
+
+4. Is there an SLA for log delivery frequency and timeliness?
+
+
+
+
+
+---
+
+13. Failed Messages
+
+Main Question: How would Shield handle the failure to ingest the data based on the error type? Would it reconnect with the source to get it fixed, or would it reingest it based on the error type?
+
+Sub-Questions:
+
+1. Are ingestion errors retried automatically, or does Macquarie need to trigger them?
+
+
+2. Can Shield classify errors (e.g., transient vs. permanent) for better resolution?
+
+
+3. What are the thresholds or limits for retry attempts?
+
+
+4. Does Shield provide tools to manually reingest failed data?
+
+
+
+
+
+---
+
+14. Alert History from Audit Trail
+
+Main Question: In case we have to build the alert history from the audit trail, will the frequency of data sharing be the same for alert API and audit trail data?
+
+Sub-Questions:
+
+1. Does Shield provide a mapping between alert data and the corresponding audit trail entries?
+
+
+2. Are there additional APIs or tools to streamline alert history reconstruction?
+
+
+3. Can Macquarie configure separate data-sharing frequencies for alerts and audit logs?
+
+
+4. How does Shield ensure synchronization between alert data and audit trail entries?
+
+
+
+
+
+---
+
+15. Monitored Groups for Supervision
+
+Main Question: Can Shield create multiple monitored groups for supervision?
+
+Sub-Questions:
+
+1. Is there a limit on the number of monitored groups that can be created?
+
+
+2. Can groups be dynamically adjusted based on changes in supervision needs?
+
+
+3. Are there specific metrics or KPIs available to monitor group activity?
+
+
+4. Does Shield support hierarchical or role-based access for monitored groups?
+
+
+
+
+
+---
+
+Let me know if you'd like to refine or expand on any of these!
+
