@@ -1,0 +1,156 @@
+To fix indentation issues in Python on macOS or Linux, here are some robust and efficient solutions:
+
+
+---
+
+1. Use a Python IDE or Editor with Linting and Formatting
+
+VS Code
+
+1. Install Visual Studio Code on your Mac.
+
+
+2. Install the Python extension (ms-python.python) from the Extensions Marketplace.
+
+
+3. Open the problematic file in VS Code.
+
+
+4. Enable auto-formatting:
+
+Go to Preferences > Settings.
+
+Search for Editor: Format On Save and enable it.
+
+
+
+5. Install black or autopep8:
+
+pip install black autopep8
+
+
+6. Save the file, and it will automatically fix indentation and other formatting issues.
+
+
+
+
+---
+
+2. Force Reformatting Using sed
+
+If your file is too corrupted for autopep8 or black, you can normalize indentation using sed.
+
+Replace Tabs with Spaces:
+
+sed -i '' 's/\t/    /g' http_client1.py
+
+Remove Excess Spaces:
+
+sed -i '' 's/^[ \t]*//g' http_client1.py
+
+
+---
+
+3. Fix Indentation Using reindent Script
+
+Python includes a utility script for fixing indentation issues:
+
+1. Install reindent (if not already present):
+
+pip install reindent
+
+
+2. Run it on the file:
+
+reindent http_client1.py
+
+
+
+This converts the file to PEP 8-compliant 4-space indentation and removes extra spaces.
+
+
+---
+
+4. Use Vim to Normalize Indentation
+
+Open the file in Vim:
+
+vim http_client1.py
+
+Enable Indentation Fixes:
+
+:set expandtab
+:set tabstop=4
+:set shiftwidth=4
+:retab
+
+Save and exit:
+
+:wq
+
+
+
+---
+
+5. Fix Using Python Script
+
+If none of the above works, use a custom Python script to reformat indentation.
+
+Script to Fix Indentation:
+
+def fix_indentation(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    with open(file_path, 'w') as file:
+        for line in lines:
+            fixed_line = line.lstrip()  # Remove leading spaces/tabs
+            file.write(' ' * 4 + fixed_line)  # Add 4 spaces as indentation
+
+fix_indentation('http_client1.py')
+
+Run this script with:
+
+python3 script_name.py
+
+
+---
+
+6. Use PyCharm (Best GUI Option)
+
+1. Install PyCharm.
+
+
+2. Open the problematic file.
+
+
+3. Use Code > Reformat Code (or ⌥⌘L).
+
+
+4. PyCharm will reformat the file and resolve all indentation issues.
+
+
+
+
+---
+
+7. Completely Reset Indentation
+
+If the issue is severe, you can flatten and re-indent the entire file:
+
+awk '{$1=$1;print}' OFS="    " http_client1.py > fixed_file.py
+
+
+---
+
+Recommendations:
+
+Best Option: Use VS Code or PyCharm for robust and reliable formatting.
+
+Quick Fix: Use reindent or the Python script.
+
+Manual Control: Use vim or sed to adjust and verify indentation.
+
+
+Let me know if you'd like detailed steps for any specific tool!
+
