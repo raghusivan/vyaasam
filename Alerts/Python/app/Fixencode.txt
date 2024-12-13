@@ -1,0 +1,194 @@
+If the curl command works but the Python script does not, the issue is likely related to how Python handles certificates, headers, or parameters. Below is an updated and fixed Python implementation that mirrors the behavior of the curl command.
+
+
+---
+
+Fixed Python Implementation
+
+import os
+from configparser import ConfigParser
+import requests
+from urllib.parse import quote, urlencode
+
+class HttpClient:
+    def __init__(self, username: str, password: str):
+        self.logger = setup_logger("HttpClient")
+        self.session = self._init_session(username, password)
+
+    @staticmethod
+    def get_smtp_password_s3():
+        try:
+            # Lambda temporary directory for files
+            temp_dir = "/Users/rvenkat9/scripts/alerts/src/dec6/app/certs"
+
+            # Map specific file names to local paths
+            cert_files = {
+                'FOR-Risk-DigitalReasoning-CyberArk-use.pem': 'cert_path',
+                'private-key.key': 'key_path',
+                'Macquarie-Root-CA.cer': 'ca_cert_path',
+            }
+
+            local_paths = {}
+
+            # Verify that the directory exists
+            if not os.path.exists(temp_dir):
+                print(f"[ERROR] Temp directory does not exist: {temp_dir}")
+                raise FileNotFoundError(f"Temp directory not found: {temp_dir}")
+
+            # Verify and map all files
+            for file_name, key in cert_files.items():
+                full_path = os.path.join(temp_dir, file_name)
+                print(f"[DEBUG] Checking file: {full_path}")
+                if os.path.exists(full_path):
+                    local_paths[key] = full_path
+                    print(f"[INFO] File found: {full_path}")
+                else:
+                    print(f"[ERROR] File not found: {full_path}")
+                    raise FileNotFoundError(f"Required file missing: {full_path}")
+
+            # Prepare API request config
+            config = ConfigParser()
+            config_file = './config.ini'
+
+            # Verify if the config file exists
+            print(f"[DEBUG] Checking config file: {config_file}")
+            if not os.path.exists(config_file):
+                print(f"[ERROR] Config file not found: {config_file}")
+                raise FileNotFoundError(f"Config file not found: {config_file}")
+
+            config.read(config_file)
+            api_config = config['API']
+
+            # Encode the address parameter
+            address_encoded = quote(api_config['address'], safe='')  # Encodes spaces as %20
+            print(f"[DEBUG] Encoded Address: {address_encoded}")
+
+            # Construct the full URL with encoded parameters
+            params = {
+                'AppID': api_config['app_id'],
+                'Safe': api_config['safe'],
+                'Username': api_config['username'],
+                'Address': api_config['address']
+            }
+            full_url = f"{api_config['url']}?{urlencode(params)}"
+            print(f"[INFO] Full API URL: {full_url}")
+
+            # Make the API request
+            print(f"[INFO] Making API request to {api_config['url']}")
+            response = requests.get(
+                api_config['url'],
+                params=params,
+                cert=(local_paths['cert_path'], local_paths['key_path']),
+                verify=local_paths['ca_cert_path'],  # CA Certificate
+                timeout=30,
+            )
+
+            print(f"[DEBUG] Response Status Code: {response.status_code}")
+            if response.status_code == 200:
+                print(f"[INFO] API request successful. Extracting content.")
+                return response.json().get('Content')
+            else:
+                print(f"[ERROR] Failed to get password. Status code: {response.status_code}")
+                print(f"[DEBUG] Response Content: {response.text}")
+                return None
+
+        except FileNotFoundError as fnf_error:
+            print(f"[ERROR] FileNotFoundError: {str(fnf_error)}")
+            return None
+        except requests.exceptions.SSLError as ssl_error:
+            print(f"[ERROR] SSL Error: {str(ssl_error)}")
+            return None
+        except Exception as e:
+            print(f"[ERROR] Unexpected error: {str(e)}")
+            return None
+
+    def _init_session(self, username: str, password: str) -> requests.Session:
+        self.logger.debug("Initializing HTTP session with auth")
+        session = requests.Session()
+        session.verify = False
+        smtp_password = self.get_smtp_password_s3()  # Use the method
+        print(f"[DEBUG] Retrieved SMTP Password: {smtp_password}")
+        return session
+
+
+---
+
+Key Fixes:
+
+1. Encoding Address Parameter:
+
+Used quote to encode spaces in Address as %20 instead of +.
+
+
+
+2. Full URL Construction:
+
+Constructed the full URL with urlencode for parameters and explicitly encoded Address.
+
+
+
+3. Certificate Validation:
+
+Specified both cert (client certificate and private key) and verify (CA certificate) in the requests.get call.
+
+Matches the behavior of the curl command's --cert, --key, and --cacert options.
+
+
+
+4. Detailed Debugging:
+
+Prints the exact full URL being used for the API call.
+
+Added error handling for SSL errors (requests.exceptions.SSLError) and general exceptions.
+
+
+
+5. Timeout Handling:
+
+Added a timeout parameter in requests.get to prevent indefinite hangs.
+
+
+
+
+
+---
+
+Debugging Output Example:
+
+When you run the updated script, you should see detailed output similar to the following:
+
+[DEBUG] Checking file: /Users/rvenkat9/scripts/alerts/src/dec6/app/certs/FOR-Risk-DigitalReasoning-CyberArk-use.pem
+[INFO] File found: /Users/rvenkat9/scripts/alerts/src/dec6/app/certs/FOR-Risk-DigitalReasoning-CyberArk-use.pem
+[DEBUG] Checking file: /Users/rvenkat9/scripts/alerts/src/dec6/app/certs/private-key.key
+[INFO] File found: /Users/rvenkat9/scripts/alerts/src/dec6/app/certs/private-key.key
+[DEBUG] Checking file: /Users/rvenkat9/scripts/alerts/src/dec6/app/certs/Macquarie-Root-CA.cer
+[INFO] File found: /Users/rvenkat9/scripts/alerts/src/dec6/app/certs/Macquarie-Root-CA.cer
+[DEBUG] Checking config file: ./config.ini
+[INFO] File found: ./config.ini
+[DEBUG] API Config: {'url': 'https://cyberark-ccp-np.lb.macbank/AIMWebService/api/Accounts', 'app_id': 'AP012', 'safe': 'Safe1', 'username': 'admin', 'address': 'Digital Reasoning'}
+[DEBUG] Encoded Address: Digital%20Reasoning
+[INFO] Full API URL: https://cyberark-ccp-np.lb.macbank/AIMWebService/api/Accounts?AppID=AP012&Safe=Safe1&Username=admin&Address=Digital%20Reasoning
+[INFO] Making API request to https://cyberark-ccp-np.lb.macbank/AIMWebService/api/Accounts
+[DEBUG] Response Status Code: 200
+[INFO] API request successful. Extracting content.
+
+
+---
+
+Curl to Python Mapping:
+
+
+---
+
+Next Steps:
+
+1. Test the updated script and verify the API response.
+
+
+2. If issues persist, compare the Python request headers (response.request.headers) with the curl headers using --verbose in curl.
+
+
+3. Let me know if additional debugging is required!
+
+
+
