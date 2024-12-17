@@ -1,0 +1,124 @@
+from config_handler import ConfigHandler
+from url_builder import UrlBuilder
+from http_client import HttpClient
+from logger_config import setup_logger, LoggerManager
+from datetime import datetime
+import sys
+import json
+
+class AlertProcessor:
+    def __init__(self, config_path: str = 'config.ini'):
+        # Load config first to set up logging
+        config_handler = ConfigHandler()
+        self.config = config_handler.load_config(config_path)
+        
+        # Initialize logger with configured settings
+        self.logger = setup_logger('AlertProcessor')
+        LoggerManager.log_section(self.logger, "STARTING ALERT PROCESSOR")
+        
+        # Initialize components
+        self.url_builder = UrlBuilder(self.config['settings']['url'])
+        self.http_client = HttpClient(
+            self.config['authentication']['username'],
+            self.config['authentication']['password']
+        )
+        
+        self.logger.info("Initialization complete")
+
+    def process_status(self, status_key: str, status_value: str) -> dict:
+        """Process single status"""
+        LoggerManager.log_section(self.logger, f"Processing: {status_key}")
+        
+        try:
+            url = self.url_builder.build_url(
+                self.config['settings']['start_datetime'],
+                int(self.config['settings']['days_to_retrieve']),
+                status_value
+            )
+            
+            response_data = self.http_client.get(url)
+            
+            if 'alerts' in response_data and response_data['alerts']:
+                all_alerts = response_data['alerts']
+                self.logger.info(f"Retrieved {len(all_alerts)} alerts")
+                return {
+                    'status': status_key,
+                    'total': len(all_alerts),
+                    'success': True
+                }
+            
+            raise ValueError("No alerts in response")
+            
+        except Exception as e:
+            self.logger.error(f"Processing failed: {str(e)}")
+            return {
+                'status': status_key,
+                'error': str(e),
+                'success': False
+            }
+
+    def run(self) -> dict:
+        """Main execution method"""
+        LoggerManager.log_section(self.logger, "STARTING PROCESSING")
+        start_time = datetime.now()
+        
+        results = {
+            'processed': 0,
+            'successful': 0,
+            'failed': 0,
+            'details': []
+        }
+
+        try:
+            for status_key, status_value in self.config['statuses'].items():
+                result = self.process_status(status_key, status_value)
+                
+                if result['success']:
+                    results['successful'] += 1
+                else:
+                    results['failed'] += 1
+                    
+                results['processed'] += 1
+                results['details'].append(result)
+                
+                self.logger.info(
+                    f"Progress: {results['processed']}/{len(self.config['statuses'])} "
+                    f"(Success: {results['successful']}, Failed: {results['failed']})"
+                )
+                
+        finally:
+            duration = (datetime.now() - start_time).total_seconds()
+            results['duration'] = duration
+            
+            # Add 'summary' for the main method
+            results['summary'] = {
+                'errors': results['failed']
+            }
+            
+            LoggerManager.log_section(self.logger, "PROCESSING COMPLETE")
+            self.logger.info(f"Total Processed: {results['processed']}")
+            self.logger.info(f"Successful: {results['successful']}")
+            self.logger.info(f"Failed: {results['failed']}")
+            self.logger.info(f"Duration: {duration:.2f} seconds")
+            
+        return results
+
+def main():
+    try:
+        logger = setup_logger('Main')
+        logger.info("Starting Alert Processor")
+        
+        processor = AlertProcessor()
+        results = processor.run()
+        
+        if results['summary']['errors'] > 0:
+            logger.error(f"Completed with {results['summary']['errors']} errors")
+            sys.exit(1)
+            
+    except Exception as e:
+        logger = setup_logger('Main')
+        logger.error(f"Critical error: {str(e)}", exc_info=True)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
