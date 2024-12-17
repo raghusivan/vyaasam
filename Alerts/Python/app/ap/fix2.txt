@@ -1,0 +1,211 @@
+from config_handler import ConfigHandler
+from url_builder import UrlBuilder
+from http_client import HttpClient
+from logger_config import setup_logger, LoggerManager
+from datetime import datetime
+import sys
+import json
+import os
+
+class AlertProcessor:
+    def __init__(self, config_path: str = 'config.ini'):
+        """Initialize configuration, logger, and components."""
+        # Load config
+        config_handler = ConfigHandler()
+        self.config = config_handler.load_config(config_path)
+
+        # Initialize logger
+        self.logger = setup_logger('AlertProcessor')
+        LoggerManager.log_section(self.logger, "ALERT PROCESSOR INITIALIZATION")
+
+        # Log configuration info
+        self.logger.info(f"Configuration loaded from: {config_path}")
+
+        # Initialize components
+        self.url_builder = UrlBuilder(self.config['settings']['url'])
+        self.http_client = HttpClient(
+            self.config['authentication']['username'],
+            self.config['authentication']['password']
+        )
+
+        # Read is_resolved filter
+        self.is_resolved_filter = self.config['settings'].get('is_resolved', 'all').lower()
+        self.logger.info(f"Filter for 'is_resolved': {self.is_resolved_filter}")
+        
+        # Set output file name with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.output_file = f"filtered_alerts_{timestamp}.json"
+        self.logger.info(f"Output file will be named: {self.output_file}")
+
+        # Initialize output file
+        self.create_or_clear_output_file()
+        self.logger.info("Initialization complete.")
+
+    def create_or_clear_output_file(self):
+        """Create or clear the output file at the start of processing."""
+        with open(self.output_file, 'w') as file:
+            json.dump([], file)  # Initialize with an empty list
+        self.logger.info(f"Output file '{self.output_file}' initialized.")
+
+    def process_status(self, status_key: str, status_value: str) -> dict:
+        """Process a single status and extract individual messages."""
+        LoggerManager.log_section(self.logger, f"Processing Status: {status_key}")
+        try:
+            # Build the URL
+            self.logger.info(f"Building URL for status '{status_key}'...")
+            url = self.url_builder.build_url(
+                self.config['settings']['start_datetime'],
+                int(self.config['settings']['days_to_retrieve']),
+                status_value
+            )
+            self.logger.info(f"URL built: {url}")
+
+            # Get response data
+            self.logger.info("Fetching alerts from the server...")
+            response_data = self.http_client.get(url)
+            self.logger.info("Response data received successfully.")
+            
+            # Log the full raw response
+            self.logger.debug(f"Full server response for '{status_key}': {json.dumps(response_data, indent=2)}")
+
+            # Verify messages exist and extract
+            if 'messages' in response_data and isinstance(response_data['messages'], list):
+                top_level_messages = response_data['messages']
+                self.logger.info(f"Top-level messages count: {len(top_level_messages)}")
+
+                # Extract and filter messages wrapped in {}
+                filtered_messages = self.extract_and_filter_messages(top_level_messages)
+                self.logger.info(f"Filtered individual messages count: {len(filtered_messages)}")
+
+                # Append filtered messages to the single output file
+                self.append_messages_to_file(filtered_messages)
+
+                return {
+                    'status': status_key,
+                    'total': len(top_level_messages),
+                    'filtered': len(filtered_messages),
+                    'success': True
+                }
+
+            self.logger.warning(f"No 'messages' field found in response for status '{status_key}'.")
+            return {
+                'status': status_key,
+                'total': 0,
+                'filtered': 0,
+                'success': False
+            }
+
+        except Exception as e:
+            self.logger.error(f"Failed to process status '{status_key}': {str(e)}", exc_info=True)
+            return {
+                'status': status_key,
+                'error': str(e),
+                'success': False
+            }
+
+    def extract_and_filter_messages(self, top_level_messages: list) -> list:
+        """Extract and filter individual messages from the top-level 'messages'."""
+        filtered_messages = []
+        for top_message in top_level_messages:
+            # Log the message being inspected
+            self.logger.debug(f"Inspecting top-level message: {top_message.get('message_id')}")
+            if isinstance(top_message, dict):  # Ensure it's a valid dictionary
+                if self.should_include_message(top_message):
+                    filtered_messages.append(top_message)
+        return filtered_messages
+
+    def should_include_message(self, message: dict) -> bool:
+        """Check if a message matches the 'is_resolved' filter."""
+        if self.is_resolved_filter == 'true':
+            return message.get('is_resolved') is True
+        elif self.is_resolved_filter == 'false':
+            return message.get('is_resolved') is False
+        return True  # 'all' case
+
+    def append_messages_to_file(self, messages: list):
+        """Append filtered messages to the output JSON file."""
+        if not messages:
+            self.logger.info("No messages to append.")
+            return
+
+        # Load existing data
+        with open(self.output_file, 'r+') as file:
+            existing_data = json.load(file)
+            existing_data.extend(messages)  # Append new messages
+            file.seek(0)
+            json.dump(existing_data, file, indent=2)
+
+        self.logger.info(f"Appended {len(messages)} messages to '{self.output_file}'.")
+
+    def run(self) -> dict:
+        """Main execution method."""
+        LoggerManager.log_section(self.logger, "STARTING ALERT PROCESSING")
+        start_time = datetime.now()
+
+        results = {
+            'processed': 0,
+            'successful': 0,
+            'failed': 0,
+            'details': []
+        }
+
+        try:
+            for status_key, status_value in self.config['statuses'].items():
+                self.logger.info(f"Processing status: {status_key}")
+                result = self.process_status(status_key, status_value)
+
+                if result['success']:
+                    results['successful'] += 1
+                else:
+                    results['failed'] += 1
+
+                results['processed'] += 1
+                results['details'].append(result)
+
+                self.logger.info(
+                    f"Progress: {results['processed']}/{len(self.config['statuses'])} "
+                    f"(Successful: {results['successful']}, Failed: {results['failed']})"
+                )
+
+        except Exception as e:
+            self.logger.error(f"Unexpected error occurred during processing: {str(e)}", exc_info=True)
+
+        finally:
+            duration = (datetime.now() - start_time).total_seconds()
+            results['duration'] = duration
+
+            # Add summary
+            results['summary'] = {'errors': results['failed']}
+
+            LoggerManager.log_section(self.logger, "PROCESSING COMPLETE")
+            self.logger.info(f"Total Processed: {results['processed']}")
+            self.logger.info(f"Successful: {results['successful']}")
+            self.logger.info(f"Failed: {results['failed']}")
+            self.logger.info(f"Duration: {duration:.2f} seconds")
+
+        return results
+
+
+def main():
+    """Main method to execute the alert processor."""
+    logger = setup_logger('Main')
+    try:
+        logger.info("Starting Alert Processor...")
+
+        processor = AlertProcessor()
+        results = processor.run()
+
+        if results['summary']['errors'] > 0:
+            logger.warning(f"Processing completed with {results['summary']['errors']} errors.")
+            sys.exit(1)
+
+        logger.info("Processing completed successfully.")
+        sys.exit(0)
+
+    except Exception as e:
+        logger.error(f"Critical error in main execution: {str(e)}", exc_info=True)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
