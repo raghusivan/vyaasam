@@ -1,0 +1,139 @@
+import logging
+import configparser
+from config_handler import ConfigHandler
+from url_builder import UrlBuilder
+from http_client import HttpClient
+from datetime import datetime
+import sys
+import json
+
+def setup_logger(name: str, config_path: str) -> logging.Logger:
+    """
+    Set up a logger using configurations defined in the config.ini file.
+    """
+    config = configparser.ConfigParser()
+    config.read(config_path)
+
+    log_config = config['logging']
+    log_level = log_config.get('level', 'INFO').upper()
+    log_format = log_config.get('format', '[%(asctime)s] %(levelname)-8s [%(name)s] - %(message)s')
+    date_format = log_config.get('date_format', '%Y-%m-%d %H:%M:%S')
+
+    logger = logging.getLogger(name)
+    logger.setLevel(getattr(logging, log_level, logging.INFO))
+
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(log_format, date_format))
+        logger.addHandler(handler)
+
+    return logger
+
+
+class AlertProcessor:
+    def __init__(self, config_path: str):
+        """
+        Initialize components using configuration and logger.
+        """
+        # Load configuration
+        config_handler = ConfigHandler()
+        self.config = config_handler.load_config(config_path)
+
+        # Set up logger
+        self.logger = setup_logger("AlertProcessor", config_path)
+        self.logger.info("Initializing Alert Processor...")
+
+        # Initialize components
+        self.url_builder = UrlBuilder(self.config['settings']['url'])
+        self.http_client = HttpClient(
+            self.config['authentication']['username'],
+            self.config['authentication']['password']
+        )
+
+        # Read 'is_resolved' filter
+        self.is_resolved_filter = self.config['settings'].get('is_resolved', 'all').lower()
+        self.logger.debug(f"Filter for 'is_resolved': {self.is_resolved_filter}")
+
+        # Set output file with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.output_file = f"filtered_alerts_{timestamp}.json"
+        self.logger.info(f"Output file initialized: {self.output_file}")
+        self._create_output_file()
+
+    def _create_output_file(self):
+        """Create or clear the output file."""
+        with open(self.output_file, 'w') as file:
+            json.dump([], file, indent=2)
+        self.logger.debug(f"Cleared content of file: {self.output_file}")
+
+    def process_status(self, status_key: str, status_value: str) -> int:
+        """Process a single status and extract filtered messages."""
+        self.logger.info(f"Processing status: {status_key}")
+        try:
+            url = self.url_builder.build_url(
+                self.config['settings']['start_datetime'],
+                int(self.config['settings']['days_to_retrieve']),
+                status_value
+            )
+            self.logger.debug(f"Built URL: {url}")
+
+            # Fetch response
+            response = self.http_client.get(url)
+            self.logger.debug(f"Received response: {json.dumps(response, indent=2)}")
+
+            if 'messages' in response and isinstance(response['messages'], list):
+                filtered = self._filter_messages(response['messages'])
+                self._append_to_output_file(filtered)
+                self.logger.info(f"Filtered {len(filtered)} messages.")
+                return len(filtered)
+            else:
+                self.logger.warning("No messages found in response.")
+        except Exception as e:
+            self.logger.error(f"Error processing status '{status_key}': {str(e)}", exc_info=True)
+        return 0
+
+    def _filter_messages(self, messages: list) -> list:
+        """Filter messages based on the is_resolved flag."""
+        if self.is_resolved_filter == 'true':
+            return [msg for msg in messages if msg.get('is_resolved') is True]
+        elif self.is_resolved_filter == 'false':
+            return [msg for msg in messages if msg.get('is_resolved') is False]
+        return messages  # 'all' case
+
+    def _append_to_output_file(self, messages: list):
+        """Append filtered messages to the output JSON file."""
+        if messages:
+            with open(self.output_file, 'r+') as file:
+                data = json.load(file)
+                data.extend(messages)
+                file.seek(0)
+                json.dump(data, file, indent=2)
+            self.logger.debug(f"Appended {len(messages)} messages to {self.output_file}")
+
+    def run(self):
+        """Main method to process all statuses."""
+        total_filtered = 0
+        for status_key, status_value in self.config['statuses'].items():
+            count = self.process_status(status_key, status_value)
+            total_filtered += count
+
+        self.logger.info(f"Total messages processed: {total_filtered}")
+        return total_filtered
+
+
+def main():
+    config_path = 'config.ini'
+    logger = setup_logger("Main", config_path)
+    logger.info("Starting Alert Processor...")
+
+    try:
+        processor = AlertProcessor(config_path)
+        total_messages = processor.run()
+        logger.info(f"Processing completed. Total messages: {total_messages}")
+    except Exception as e:
+        logger.critical(f"Critical error occurred: {str(e)}", exc_info=True)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
