@@ -1,0 +1,148 @@
+from config_handler import ConfigHandler
+from url_builder import UrlBuilder
+from http_client import HttpClient
+from datetime import datetime
+import sys
+import json
+import os
+import configparser
+import logging
+
+class AlertProcessor:
+    def __init__(self, config_path: str = 'config.ini'):
+        """Initialize configuration, logger, and components."""
+        # Load config
+        config_handler = ConfigHandler()
+        self.config = config_handler.load_config(config_path)
+
+        # Initialize logger from config file
+        self.logger = setup_logger('AlertProcessor', config_path)
+
+        self.logger.info("ALERT PROCESSOR INITIALIZATION STARTED")
+
+        # Initialize components
+        self.url_builder = UrlBuilder(self.config['settings']['url'])
+        self.http_client = HttpClient(
+            self.config['authentication']['username'],
+            self.config['authentication']['password']
+        )
+
+        # Read is_resolved filter
+        self.is_resolved_filter = self.config['settings'].get('is_resolved', 'all').lower()
+        self.logger.debug(f"Filter for 'is_resolved': {self.is_resolved_filter}")
+        
+        # Set output file name with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.output_file = f"filtered_alerts_{timestamp}.json"
+        self.logger.info(f"Output file will be named: {self.output_file}")
+
+        # Initialize output file
+        self.create_or_clear_output_file()
+        self.logger.info("Initialization complete.")
+
+    def create_or_clear_output_file(self):
+        """Create or clear the output file at the start of processing."""
+        with open(self.output_file, 'w') as file:
+            json.dump([], file, indent=2)
+        self.logger.info(f"Output file '{self.output_file}' initialized.")
+
+    def process_status(self, status_key: str, status_value: str) -> dict:
+        """Process a single status and extract individual messages."""
+        self.logger.info(f"Processing Status: {status_key}")
+        try:
+            url = self.url_builder.build_url(
+                self.config['settings']['start_datetime'],
+                int(self.config['settings']['days_to_retrieve']),
+                status_value
+            )
+            self.logger.debug(f"URL built: {url}")
+
+            # Fetch data
+            response_data = self.http_client.get(url)
+            self.logger.debug(f"Raw server response: {json.dumps(response_data, indent=2)}")
+
+            # Extract and filter messages
+            if 'messages' in response_data and isinstance(response_data['messages'], list):
+                top_level_messages = response_data['messages']
+                self.logger.info(f"Top-level messages count: {len(top_level_messages)}")
+                filtered_messages = self.extract_and_filter_messages(top_level_messages)
+                self.append_messages_to_file(filtered_messages)
+                self.logger.info(f"Filtered messages count: {len(filtered_messages)}")
+                return {'filtered': len(filtered_messages)}
+
+            self.logger.warning(f"No messages found for status: {status_key}")
+            return {'filtered': 0}
+
+        except Exception as e:
+            self.logger.error(f"Error processing status '{status_key}': {str(e)}", exc_info=True)
+            return {'filtered': 0}
+
+    def extract_and_filter_messages(self, messages: list) -> list:
+        """Filter messages based on 'is_resolved' flag."""
+        return [msg for msg in messages if self.should_include_message(msg)]
+
+    def should_include_message(self, message: dict) -> bool:
+        """Filter message based on is_resolved value."""
+        return self.is_resolved_filter == 'all' or \
+               (self.is_resolved_filter == 'true' and message.get('is_resolved') is True) or \
+               (self.is_resolved_filter == 'false' and message.get('is_resolved') is False)
+
+    def append_messages_to_file(self, messages: list):
+        """Append messages to the output file."""
+        if messages:
+            with open(self.output_file, 'r+') as file:
+                existing_data = json.load(file)
+                existing_data.extend(messages)
+                file.seek(0)
+                json.dump(existing_data, file, indent=2)
+            self.logger.info(f"Appended {len(messages)} messages to {self.output_file}")
+
+    def run(self):
+        """Main method to process all statuses."""
+        total_messages = 0
+        for status_key, status_value in self.config['statuses'].items():
+            result = self.process_status(status_key, status_value)
+            total_messages += result.get('filtered', 0)
+
+        self.logger.info(f"Total messages processed: {total_messages}")
+        return total_messages
+
+
+def setup_logger(name: str, config_path: str) -> logging.Logger:
+    """Setup logger from the existing config.ini logging section."""
+    config = configparser.ConfigParser()
+    config.read(config_path)
+
+    log_config = config['logging']
+    log_level = log_config.get('level', 'INFO').upper()
+    log_format = log_config.get('format', '%(asctime)s - %(levelname)s - %(message)s')
+    date_format = log_config.get('date_format', '%Y-%m-%d %H:%M:%S')
+
+    logger = logging.getLogger(name)
+    logger.setLevel(getattr(logging, log_level, logging.INFO))
+
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(log_format, date_format))
+        logger.addHandler(handler)
+
+    return logger
+
+
+def main():
+    config_path = 'config.ini'
+    logger = setup_logger('Main', config_path)
+    logger.info("Starting Alert Processor...")
+
+    try:
+        processor = AlertProcessor(config_path)
+        total_messages = processor.run()
+        logger.info(f"Processing complete. Total messages: {total_messages}")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Critical error occurred: {str(e)}", exc_info=True)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
