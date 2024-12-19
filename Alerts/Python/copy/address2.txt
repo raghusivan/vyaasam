@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+import subprocess
+import re
+import os
+
+def copy_to_clipboard(text):
+    """Copy text to clipboard using pbcopy"""
+    process = subprocess.Popen('pbcopy', env={'LANG': 'en_US.UTF-8'}, stdin=subprocess.PIPE)
+    process.communicate(text.encode('utf-8'))
+
+def get_ip():
+    """Get IP address using curl"""
+    try:
+        # First find and store the IP
+        print("Looking for IP address...")
+        
+        # Use grep to find IP pattern
+        result = subprocess.run(
+            "curl -s 'https://portal.platform.infraportal.syd.c1.macquarie.com/resources/branches/pipeline-branch/commsurv:guardiansh:dev' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}'",
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        if result.stdout:
+            ip = result.stdout.strip()
+            if re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', ip):
+                copy_to_clipboard(ip)
+                print(f"✅ Successfully copied IP: {ip}")
+                return True
+            
+        print("❌ No valid IP address found")
+        return False
+        
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return False
+
+if __name__ == "__main__":
+    print("Starting IP copy process...")
+    get_ip()
