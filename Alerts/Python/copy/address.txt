@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+import os
+import sys
+import time
+import pyperclip
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+def setup_chrome():
+    """Setup Chrome with required options"""
+    options = webdriver.ChromeOptions()
+    options.add_argument('--start-maximized')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    # If you need to handle internal certificates
+    options.add_argument('--ignore-certificate-errors')
+    return webdriver.Chrome(options=options)
+
+def get_ip_address():
+    """Get IP address from the MAX interface"""
+    url = "portal.platform.infraportal.syd.c1.macquarie.com/resources/branches/pipeline-branch/commsurv:guardiansh:dev"
+    
+    driver = None
+    try:
+        print("Starting automation...")
+        driver = setup_chrome()
+        driver.get(f"https://{url}")
+        
+        # Wait for page to load
+        wait = WebDriverWait(driver, 20)
+        
+        # First, find and click the EC2 section (Autoscale)
+        ec2_element = wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//div[contains(text(), 'ec2 (Autoscale)')]"))
+        )
+        ec2_element.click()
+        
+        # Wait for EC2 DETAILS tab to become visible
+        wait.until(
+            EC.presence_of_element_located((By.XPATH, "//div[text()='EC2 DETAILS']"))
+        )
+        
+        # Look for the IP address in the table
+        ip_element = wait.until(
+            EC.presence_of_element_located((By.XPATH, "//td[contains(text(), '10.')]"))
+        )
+        
+        ip_address = ip_element.text.strip()
+        
+        # Verify IP format
+        if not ip_address or not all(part.isdigit() and 0 <= int(part) <= 255 
+                                   for part in ip_address.split('.')):
+            raise ValueError(f"Invalid IP address format: {ip_address}")
+        
+        # Copy to clipboard
+        pyperclip.copy(ip_address)
+        print(f"Successfully copied IP address: {ip_address}")
+        
+        return True
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return False
+        
+    finally:
+        if driver:
+            driver.quit()
+
+def install_dependencies():
+    """Install required packages if they're missing"""
+    try:
+        import selenium
+        import pyperclip
+    except ImportError:
+        print("Installing required packages...")
+        os.system(f"{sys.executable} -m pip install selenium pyperclip")
+        print("Packages installed successfully!")
+
+def main():
+    """Main function to run the automation"""
+    print("Checking dependencies...")
+    install_dependencies()
+    
+    print("Starting IP address copy automation...")
+    success = get_ip_address()
+    
+    if success:
+        print("✅ IP address copied to clipboard successfully!")
+    else:
+        print("❌ Failed to copy IP address. Please try again.")
+
+if __name__ == "__main__":
+    main()
