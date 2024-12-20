@@ -1,0 +1,132 @@
+import os
+import base64
+import logging
+import requests
+from botocore.exceptions import ClientError
+
+class HttpClient:
+    def __init__(self, config_handler):
+        """
+        Initialize HttpClient with a ConfigHandler instance.
+        """
+        self.logger = logging.getLogger("HttpClient")
+        self.config_handler = config_handler
+
+        # Load essential configurations
+        self.username = self.config_handler.get_value("authentication", "username")
+        self.password = self.get_admin_password()
+        self.base_url = self.config_handler.get_value("settings", "url")
+
+        # Initialize HTTP session
+        self.session = self._init_session()
+
+    @staticmethod
+    def _download_certificates(config, logger):
+        """
+        Download certificates from S3 and save them locally for secure requests.
+        """
+        try:
+            bucket_name = config.get_value("S3", "bucket_name")
+            certs_path = config.get_value("SSL", "certs_s3_path")
+            temp_dir = "/tmp"
+
+            cert_files = {
+                "private-key.pem": "key_path",
+                "Macquarie-Root-CA.crt": "ca_cert_path",
+            }
+
+            for file_name, config_key in cert_files.items():
+                s3_key = f"{certs_path}/{file_name}"
+                local_path = os.path.join(temp_dir, file_name)
+
+                # Simulate S3 download (replace with actual download logic)
+                logger.debug(f"Downloading {file_name} from S3 bucket {bucket_name}...")
+                # Example: S3 download logic here
+                with open(local_path, "w") as f:
+                    f.write(f"Mock content for {file_name}")  # Mock for S3 download
+                logger.info(f"Downloaded {file_name} to {local_path}")
+
+        except ClientError as e:
+            logger.error(f"Failed to download certificates from S3: {str(e)}")
+
+    def get_admin_password(self):
+        """
+        Retrieve the admin password dynamically from CyberArk or fallback.
+        """
+        try:
+            api_config = {
+                "AppId": self.config_handler.get_value("API", "app_id"),
+                "Safe": self.config_handler.get_value("API", "safe"),
+                "UserName": self.config_handler.get_value("API", "username"),
+                "Address": self.config_handler.get_value("API", "address"),
+            }
+            api_url = self.base_url
+
+            # Make API request to fetch password
+            self.logger.info("Fetching admin password from CyberArk...")
+            response = requests.get(
+                api_url,
+                params=api_config,
+                timeout=30,
+            )
+            response.raise_for_status()
+
+            # Parse response
+            content = response.json().get("Content")
+            if not content:
+                self.logger.error(f"Failed to retrieve password. Response: {response.text}")
+                raise ValueError("Admin password not found in the response")
+
+            self.logger.info("Admin password retrieved successfully")
+            return content
+
+        except requests.RequestException as e:
+            self.logger.error(f"Failed to fetch admin password: {str(e)}", exc_info=True)
+            raise
+
+    def _init_session(self):
+        """
+        Initialize an HTTP session with authentication and headers.
+        """
+        try:
+            self.logger.debug("Initializing HTTP session...")
+            session = requests.Session()
+            session.verify = False  # Disable SSL verification for this example
+
+            # Set headers with basic auth
+            credentials = f"{self.username}:{self.password}"
+            auth_header = base64.b64encode(credentials.encode()).decode()
+
+            session.headers.update({
+                "Authorization": f"Basic {auth_header}",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Connection": "keep-alive",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            })
+
+            self.logger.debug("Session initialized with headers")
+            return session
+
+        except Exception as e:
+            self.logger.error(f"Failed to initialize HTTP session: {str(e)}", exc_info=True)
+            raise
+
+    def get(self, url: str, params: dict = None):
+        """
+        Perform an HTTP GET request with logging.
+        """
+        try:
+            self.logger.info(f"Making GET request to {url}...")
+            response = self.session.get(url, params=params, timeout=30)
+
+            self.logger.info(f"Response status code: {response.status_code}")
+            response.raise_for_status()
+
+            data = response.json()
+            self.logger.debug(f"Response data keys: {list(data.keys())}")
+            return data
+
+        except requests.RequestException as e:
+            self.logger.error(f"GET request failed: {str(e)}", exc_info=True)
+            raise
