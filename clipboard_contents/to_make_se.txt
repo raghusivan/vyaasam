@@ -1,0 +1,37 @@
+To make self.path come as a parameter in the __init__ method instead of being hardcoded, modify the class constructor as follows:
+
+Updated Code:
+
+class UrlBuilder:
+    def __init__(self, base_url: str, path: str):
+        import urllib.parse
+        from datetime import datetime, timedelta
+        from logger_config import setup_logger
+        
+        self.logger = setup_logger('UrlBuilder')
+        self.base_url = base_url.rstrip('/')
+        self.path = path  # Now `path` comes as a parameter
+        self.logger.debug(f"Initialized with base URL: {self.base_url} and path: {self.path}")
+
+Key Changes:
+
+1. Added a path parameter to the __init__ method.
+
+
+2. Replaced the hardcoded assignment of self.path with the path parameter.
+
+
+3. Updated the logger to show both base_url and path for better debugging.
+
+
+
+Usage:
+
+When instantiating the UrlBuilder class, pass the path value as an argument:
+
+base_url = "http://example.com"
+path = "/conduct_surveillance/api/ecomm_production_20200929/case_management/messages"
+url_builder = UrlBuilder(base_url, path)
+
+Now, self.path is dynamic and can be provided during object initialization. Let me know if you need further assistance!
+
