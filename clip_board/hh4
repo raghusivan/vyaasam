@@ -1,0 +1,148 @@
+To ensure the UrlBuilder reads the path and url dynamically from config.ini and initializes within the AlertProcessor class, follow these steps:
+
+
+---
+
+1. Update the config.ini File
+
+Add url and path under the [settings] section.
+
+[settings]
+url = http://example.com
+path = /conduct_surveillance/api/ecomm_production_20200929/case_management/messages
+[authentication]
+username = your_username
+password = your_password
+
+
+---
+
+2. Modify the AlertProcessor Class
+
+Update the AlertProcessor class to read the config and initialize the UrlBuilder instance.
+
+Here’s the updated code for AlertProcessor:
+
+import configparser
+from url_builder import UrlBuilder
+from http_client import HttpClient
+from logger_config import setup_logger
+
+class AlertProcessor:
+    def __init__(self, config_path: str):
+        # Load configuration
+        self.config = self._load_config(config_path)
+        
+        # Set up logger
+        self.logger = setup_logger("AlertProcessor", config_path)
+        self.logger.info("Initializing Alert Processor...")
+        
+        # Initialize components
+        url = self.config['settings']['url']
+        path = self.config['settings']['path']
+        self.url_builder = UrlBuilder(url, path)
+        
+        self.http_client = HttpClient(
+            self.config['authentication']['username'],
+            self.config['authentication']['password']
+        )
+    
+    def _load_config(self, config_path: str):
+        config = configparser.ConfigParser()
+        config.read(config_path)
+        return config
+    
+    def process(self):
+        self.logger.info("Starting processing...")
+        # Example to demonstrate URL creation
+        test_url = self.url_builder.build_url(
+            start_date="2023-01-01",
+            days=1,
+            status="open"
+        )
+        self.logger.info(f"Generated URL: {test_url}")
+
+
+---
+
+3. Ensure the UrlBuilder Class Works
+
+The UrlBuilder class will now accept both url and path:
+
+class UrlBuilder:
+    def __init__(self, base_url: str, path: str):
+        from logger_config import setup_logger
+        
+        self.logger = setup_logger('UrlBuilder')
+        self.base_url = base_url.rstrip('/')
+        self.path = path  # Dynamically passed path
+        self.logger.debug(f"Initialized with base URL: {self.base_url} and path: {self.path}")
+    
+    def build_url(self, start_date: str, days: int, status: str) -> str:
+        from datetime import datetime, timedelta
+        import urllib.parse
+        
+        try:
+            # Calculate end date
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = start_dt + timedelta(days=days)
+            
+            start_str = start_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            end_str = end_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            
+            # Build URL
+            url = (
+                f"{self.base_url}{self.path}"
+                f"?start-datetime={start_str}"
+                f"&end-datetime={end_str}"
+                f"&status={urllib.parse.quote(status)}"
+            )
+            self.logger.info(f"Constructed URL: {url}")
+            return url
+        except Exception as e:
+            self.logger.error(f"URL construction failed: {str(e)}")
+            raise
+
+
+---
+
+4. Main Execution Script
+
+Now, initialize the AlertProcessor class with the path to the config.ini:
+
+if __name__ == "__main__":
+    CONFIG_PATH = "config.ini"
+    processor = AlertProcessor(CONFIG_PATH)
+    processor.process()
+
+
+---
+
+How It Works:
+
+1. configparser reads the config.ini file.
+
+
+2. AlertProcessor extracts the url and path from [settings].
+
+
+3. These values are passed dynamically to the UrlBuilder class.
+
+
+4. The build_url function generates the URL.
+
+
+
+
+---
+
+Output Example:
+
+Assuming the config.ini is correct, the logger will display:
+
+INFO:AlertProcessor:Initializing Alert Processor...
+INFO:UrlBuilder:Initialized with base URL: http://example.com and path: /conduct_surveillance/api/ecomm_production_20200929/case_management/messages
+INFO:AlertProcessor:Generated URL: http://example.com/conduct_surveillance/api/ecomm_production_20200929/case_management/messages?start-datetime=2023-01-01T00:00:00.000&end-datetime=2023-01-02T00:00:00.000&status=open
+
+Let me know if you need further refinements!
+
