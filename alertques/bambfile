@@ -1,0 +1,8 @@
+The issue is that the Bamboo job requires a specific Python version (Python 3.x), but the agents with the required capability are currently offline or unavailable. Additionally, access to manage agent capabilities or create new server configurations is restricted, preventing us from resolving this by adding or modifying capabilities on existing agents.
+
+ issue is that the Bamboo job requires a specific Python version (Python 3.x), but the agents with the required capability are currently offline or unavailable. Additionally, access to manage agent capabilities or create new server configurations is restricted, preventing us from resolving this by adding or modifying capabilities on 
+
+
+
+
+
