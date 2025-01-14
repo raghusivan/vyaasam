@@ -1,0 +1,2 @@
+There are certificate files that need to be referenced in the Python code to retrieve the password from CyberArk. Currently, we are uncertain about the appropriate location to store these files for them to be referenced in the code. Including them directly within the Python application is not an option, as Black Duck flags it with critical errors. What are the best possible solutions for this, and how are other teams handling this issue in their Python implementations?
+
