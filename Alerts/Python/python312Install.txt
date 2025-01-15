@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Check if pyenv is installed
+if ! command -v pyenv &> /dev/null; then
+    echo "pyenv is not installed. Installing pyenv locally..."
+
+    # Clone pyenv into user's home directory
+    git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+
+    # Update shell configuration
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bash_profile
+    echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bash_profile
+    echo 'eval "$(pyenv init --path)"' >> ~/.bash_profile
+
+    # Reload shell configuration
+    source ~/.bash_profile
+fi
+
+# Check if pyenv is correctly installed
+if command -v pyenv &> /dev/null; then
+    echo "pyenv installed successfully."
+else
+    echo "Failed to install pyenv. Exiting."
+    exit 1
+fi
+
+# Install Python 3.12 using pyenv
+echo "Installing Python 3.12..."
+pyenv install 3.12.0
+
+# Set Python 3.12 as the global version
+pyenv global 3.12.0
+
+# Verify the installation
+python3 --version
+if [[ $(python3 --version) == "Python 3.12"* ]]; then
+    echo "Python 3.12 installed and set up successfully."
+else
+    echo "Failed to install or set up Python 3.12. Please check logs."
+fi
