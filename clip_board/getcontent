@@ -1,0 +1,49 @@
+Here is a Linux shell script to run the two curl commands as described. The clip_board is optional, and sauQ is mandatory.
+
+#!/bin/bash
+
+# Default values
+DEFAULT_CLIP_BOARD="clip_board"
+
+# Parse arguments
+CLIP_BOARD_INPUT=${1:-$DEFAULT_CLIP_BOARD}
+SAUQ_INPUT=$2
+
+# Check if mandatory input is provided
+if [ -z "$SAUQ_INPUT" ]; then
+  echo "Error: The second argument (sauQ) is required."
+  echo "Usage: $0 [clip_board (optional)] <sauQ (mandatory)>"
+  exit 1
+fi
+
+# Run the first curl command
+curl -O "https://raw.githubusercontent.com/raghusivan/Vyaasam/master/$CLIP_BOARD_INPUT/sauQ"
+
+# Run the second curl command
+curl -s --cert ./FOR-Risk-Safehouse-CyberArk-use.pem --key ./private-key.key --cacert ./Macquarie-ca.crt
+
+How to use this script:
+
+1. Save the script as run_curl.sh.
+
+
+2. Make it executable:
+
+chmod +x run_curl.sh
+
+
+3. Run the script:
+
+If using the default clip_board:
+
+./run_curl.sh sauQ
+
+If specifying a custom clip_board:
+
+./run_curl.sh custom_clip_board sauQ
+
+
+
+
+This script ensures sauQ is mandatory while allowing the first input (clip_board) to be optional with a default value.
+
