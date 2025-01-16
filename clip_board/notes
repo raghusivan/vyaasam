@@ -1,0 +1,121 @@
+import sqlite3
+import tkinter as tk
+from tkinter import messagebox, filedialog
+
+class NoteManager:
+    def __init__(self, db_name="notes.db"):
+        self.conn = sqlite3.connect(db_name)
+        self.create_table()
+
+    def create_table(self):
+        with self.conn:
+            self.conn.execute(
+                "CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT NOT NULL)"
+            )
+
+    def list_notes(self):
+        with self.conn:
+            cursor = self.conn.execute("SELECT id, content FROM notes")
+            notes = cursor.fetchall()
+            return notes
+
+    def add_note(self, note):
+        with self.conn:
+            self.conn.execute("INSERT INTO notes (content) VALUES (?)", (note,))
+            return "Note added!"
+
+    def delete_note_by_id(self, note_id):
+        with self.conn:
+            cursor = self.conn.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+            if cursor.rowcount == 0:
+                return "Invalid note ID!"
+            return "Note deleted!"
+
+    def search_notes(self, query):
+        with self.conn:
+            cursor = self.conn.execute("SELECT id, content FROM notes WHERE content LIKE ?", ('%' + query + '%',))
+            results = cursor.fetchall()
+            return results
+
+    def load_notes_from_file(self, filename):
+        try:
+            with open(filename, 'r') as file:
+                content = file.read()
+                notes = [note.strip() for note in content.split('===') if note.strip()]
+                with self.conn:
+                    self.conn.executemany("INSERT INTO notes (content) VALUES (?)", [(note,) for note in notes])
+                return f"Loaded {len(notes)} notes from {filename}"
+        except FileNotFoundError:
+            return f"File not found: {filename}"
+
+class NoteApp:
+    def __init__(self, root):
+        self.manager = NoteManager()
+        self.root = root
+        self.root.title("Note Manager")
+
+        # UI Elements
+        self.text_area = tk.Text(root, height=15, width=50)
+        self.text_area.pack(pady=10)
+
+        self.entry = tk.Entry(root, width=50)
+        self.entry.pack(pady=5)
+
+        self.add_button = tk.Button(root, text="Add Note", command=self.add_note)
+        self.add_button.pack(pady=5)
+
+        self.delete_button = tk.Button(root, text="Delete Note", command=self.delete_note)
+        self.delete_button.pack(pady=5)
+
+        self.search_button = tk.Button(root, text="Search Notes", command=self.search_notes)
+        self.search_button.pack(pady=5)
+
+        self.load_button = tk.Button(root, text="Load Notes from File", command=self.load_notes_from_file)
+        self.load_button.pack(pady=5)
+
+        self.list_button = tk.Button(root, text="List Notes", command=self.list_notes)
+        self.list_button.pack(pady=5)
+
+    def add_note(self):
+        note = self.entry.get().strip()
+        if note:
+            message = self.manager.add_note(note)
+            messagebox.showinfo("Info", message)
+            self.entry.delete(0, tk.END)
+
+    def delete_note(self):
+        note_id = self.entry.get().strip()
+        if note_id.isdigit():
+            message = self.manager.delete_note_by_id(int(note_id))
+            messagebox.showinfo("Info", message)
+            self.entry.delete(0, tk.END)
+
+    def search_notes(self):
+        query = self.entry.get().strip()
+        results = self.manager.search_notes(query)
+        self.text_area.delete(1.0, tk.END)
+        if results:
+            for idx, (note_id, note) in enumerate(results, start=1):
+                self.text_area.insert(tk.END, f"Result {idx} (ID: {note_id}): {note}\n")
+        else:
+            self.text_area.insert(tk.END, "No matching notes found!")
+
+    def load_notes_from_file(self):
+        filename = filedialog.askopenfilename()
+        if filename:
+            message = self.manager.load_notes_from_file(filename)
+            messagebox.showinfo("Info", message)
+
+    def list_notes(self):
+        notes = self.manager.list_notes()
+        self.text_area.delete(1.0, tk.END)
+        for idx, (note_id, note) in enumerate(notes, start=1):
+            self.text_area.insert(tk.END, f"Note {idx} (ID: {note_id}): {note}\n")
+
+def main():
+    root = tk.Tk()
+    app = NoteApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
