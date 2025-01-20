@@ -1,0 +1,320 @@
+Here’s an expanded set of questions and answers based on the content of the screenshot and the diagram, covering the entire workflow, potential gaps, and best practices.
+
+
+---
+
+Data Ingestion and Sources
+
+Questions:
+
+1. Source Systems:
+
+What are the exact communication sources being integrated (e.g., Bloomberg, Verint, Unified Communication)?
+
+Are these sources providing real-time data or batch updates?
+
+
+
+2. File Formats:
+
+What file formats (JSON, CSV, XML) are provided by each source system, and are they consistent across sources?
+
+
+
+3. Error Handling:
+
+What happens if a source system fails to send data (e.g., network issues, incorrect credentials)?
+
+Is there a retry mechanism or a fallback system?
+
+
+
+4. Authentication:
+
+How are source systems authenticated? Are there token-based mechanisms or secure API keys in place?
+
+
+
+5. Versioning:
+
+How are changes in source system schemas (e.g., new fields or renamed attributes) detected and handled?
+
+
+
+
+Answers:
+
+Bloomberg SFTP provides raw files (CSV or JSON) that are processed using Python scripts within Airflow.
+
+Unified Communication and Verint send data via APIs, requiring token authentication.
+
+Airflow retries ingestion up to 3 times in case of failure, logging errors for manual intervention if all retries fail.
+
+Schema changes are validated using version control in Airflow DAGs to avoid pipeline crashes.
+
+
+
+---
+
+Data Validation and Processing
+
+Questions:
+
+1. Validation Rules:
+
+What specific validation rules are applied to raw data from source systems?
+
+Are these rules customizable based on the data type or channel?
+
+
+
+2. Duplicate Records:
+
+How are duplicate records detected and eliminated during processing?
+
+
+
+3. Python Script Execution:
+
+What tasks are performed by the Python scripts in Airflow (e.g., file parsing, field transformation)?
+
+
+
+4. Fallback for Invalid Data:
+
+Where is invalid or unprocessed data stored, and how is it flagged for resolution?
+
+
+
+5. Metadata Enrichment:
+
+How is metadata (e.g., employee ID, channel mappings) enriched during validation?
+
+
+
+
+Answers:
+
+Data validation rules include email format checks, employee ID cross-references, and record completeness validation.
+
+Duplicates are removed by hashing records and comparing them to previously ingested data.
+
+Python scripts convert raw files to JSON, call APIs for enrichment, and format outputs for downstream ingestion.
+
+Invalid data is flagged and moved to a quarantine bucket in S3 for manual review.
+
+Metadata enrichment occurs in the CDH layer using reference datasets like HR data and channel mappings.
+
+
+
+---
+
+Intermediate Storage (CDH - Cloudera Data Hub)
+
+Questions:
+
+1. Data Retention:
+
+What are the retention policies for intermediate data stored in CDH?
+
+How long is intermediate data stored before being deleted?
+
+
+
+2. Access Control:
+
+Who has access to data stored in CDH, and how is access monitored?
+
+
+
+3. Backup and Redundancy:
+
+Are there backup mechanisms in place for CDH data?
+
+
+
+4. Validation in CDH:
+
+What additional validation steps are performed in CDH beyond Airflow?
+
+
+
+
+Answers:
+
+CDH retains intermediate data for 30 days, with older data archived to S3.
+
+Access to CDH is restricted to compliance teams and system administrators, monitored using IAM policies.
+
+CDH implements row-level access controls to ensure data is segmented by team or department.
+
+Additional CDH validations include cross-checking against HR datasets and ensuring employee email mappings are consistent.
+
+
+
+---
+
+Surveillance Data Mapping
+
+Questions:
+
+1. Employee Email Mapping:
+
+How are changes in employee email addresses handled (e.g., mismatches between HR and Bloomberg)?
+
+Is there a mechanism for detecting and resolving mapping gaps?
+
+
+
+2. Voice and Communication Mapping:
+
+How are voice profiles linked to employees?
+
+Are there fallback identifiers if employee mapping fails?
+
+
+
+3. Shared Mailboxes:
+
+How are shared mailboxes classified and monitored?
+
+
+
+4. Senior Leadership Classification:
+
+What criteria are used to classify employees as senior leaders?
+
+
+
+
+Answers:
+
+Employee email mismatches trigger alerts, and the communication data is routed to a fallback system until resolved.
+
+Voice profiles are mapped using employee IDs extracted from communication metadata.
+
+Shared mailboxes are identified via predefined lists, with specific rules for monitoring.
+
+Senior leaders are classified based on role hierarchies defined in the HR system.
+
+
+
+---
+
+Data Transfer and Final Integration
+
+Questions:
+
+1. MFT (Managed File Transfer):
+
+What protocols are used for secure data transfer to Shield?
+
+How is data transfer monitored for errors or delays?
+
+
+
+2. Daily Employee View:
+
+What fields are included in the employee view sent to Shield (e.g., name, email, role)?
+
+How is the historical employee view handled for ex-employees?
+
+
+
+3. Error Handling in Shield:
+
+What happens if Shield rejects data due to format or content issues?
+
+
+
+
+Answers:
+
+MFT uses SFTP with encrypted file transfer to ensure security.
+
+Daily Employee View includes active employees' email addresses, roles, and organizational metadata.
+
+Historical views include termination dates and archived roles, ensuring ex-employees are included in audits.
+
+Shield logs rejected data and sends notifications for manual review.
+
+
+
+---
+
+Compliance and Governance
+
+Questions:
+
+1. Audit Trail:
+
+How is an audit trail maintained for changes to data mappings and ingestion processes?
+
+
+
+2. Compliance Alerts:
+
+How does the system ensure compliance with regulatory standards (e.g., GDPR)?
+
+
+
+3. Data Ownership:
+
+Who owns the data at each stage of the pipeline (e.g., HR, IT, Compliance)?
+
+
+
+
+Answers:
+
+An audit trail is maintained in Airflow and CDH, logging every update to employee mappings and data transformations.
+
+Compliance alerts are generated for missing or mismatched data, routed to compliance officers for resolution.
+
+Data ownership is shared: HR owns employee metadata, IT manages the pipeline, and Compliance oversees validation.
+
+
+
+---
+
+Scalability and Future Enhancements
+
+Questions:
+
+1. Handling Bulk Updates:
+
+How will the system handle bulk updates (e.g., a company-wide email migration)?
+
+
+
+2. Scaling the Pipeline:
+
+What mechanisms are in place to scale ingestion pipelines for higher data volumes?
+
+
+
+3. Future Integrations:
+
+Are there plans to integrate additional data sources into Shield?
+
+
+
+
+Answers:
+
+Bulk updates will be staged, with Airflow orchestrating parallel data processing.
+
+The pipeline scales horizontally, with Airflow and CDH dynamically allocating resources based on workload.
+
+Future integrations include voice data from new systems and expanded metadata from HR.
+
+
+
+---
+
+Workshop Preparation
+
+For a workshop, organize the above questions into categories and ensure stakeholders from HR, IT, Compliance, and the Surveillance team are present. Focus on gaps in data mapping, error handling, and scalability while discussing improvement plans.
+
+Would you like further assistance with structuring a workshop or detailing specific answers?
+
