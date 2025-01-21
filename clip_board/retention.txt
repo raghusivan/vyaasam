@@ -1,0 +1,58 @@
+To modify the Jira task as per your request, here's the updated version:
+
+
+---
+
+Title: Build code for Alert migration to WORM
+
+Type: Story
+Priority: Major
+Labels: None
+
+
+---
+
+Task Details
+
+As a: Customer
+
+Acceptance Criteria:
+
+Create an app to do the following:
+
+1. Retrieve closed alert JSON files from the API.
+
+
+2. Create a folder structure based on the alert file's date:
+
+Distribute files into folders indicating years left out of the 10-year retention period (e.g., "4_years_left", "3_years_left").
+
+
+
+3. Ensure proper handling of errors:
+
+Log errors with detailed messages.
+
+Channel errors to the appropriate error-handling mechanism (e.g., centralized logging or alerts).
+
+
+
+
+
+Additional Requirements:
+
+File names should clearly indicate how many years remain out of the 10-year retention period.
+
+Ensure robust validation and error handling throughout the process.
+
+Provide detailed logs for successful and failed operations.
+
+
+Description:
+Develop a system that organizes retrieved closed alert JSON files into retention folders based on their creation date. This system will calculate the remaining years out of a total 10-year retention policy and structure the folders accordingly. Files will be labeled and placed into corresponding folders (e.g., "3_years_left").
+
+
+---
+
+Would you like me to include technical implementation details or provide pseudo-code for the logic?
+
