@@ -1,0 +1,79 @@
+Requirements
+
+1. API Integration:
+
+Fetch closed alert JSON files from the API.
+
+
+
+2. Retention Calculation:
+
+Calculate the remaining years out of a 10-year retention period based on the alert creation date.
+
+
+
+3. Folder Structure:
+
+Create folders named with a meaningful structure (e.g., Retention_4_Years_Remaining).
+
+Ensure folders are created dynamically based on the retention years.
+
+
+
+4. File Naming:
+
+Save files with descriptive names, including the alert ID and the retention period.
+
+
+
+5. SFTP Integration:
+
+Establish a connection to an SFTP server using provided credentials.
+
+Create folders and save files directly on the SFTP server.
+
+
+
+6. Error Handling:
+
+Log all errors, including:
+
+API failures.
+
+SFTP connection or file transfer issues.
+
+Date parsing or retention calculation errors.
+
+
+Ensure error messages are meaningful for troubleshooting.
+
+
+
+7. Logging:
+
+Maintain a detailed log of:
+
+Successfully processed alerts.
+
+Failed operations with reasons.
+
+
+
+
+8. Scalability:
+
+Support large numbers of alerts.
+
+Ensure efficient folder creation and file saving.
+
+
+
+9. Security:
+
+Protect SFTP credentials and ensure secure data transfer.
+
+
+
+
+Would you like me to assist with anything else?
+
