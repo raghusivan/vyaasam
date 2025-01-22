@@ -1,0 +1,68 @@
+Here is the SQL script to create a MySQL database and a table to log job runs, including details such as the job's status, error message (if any), and the timestamps for the job's start and end times:
+
+SQL Script
+
+-- Step 1: Create the database
+CREATE DATABASE IF NOT EXISTS alert_job_logs;
+
+-- Step 2: Use the database
+USE alert_job_logs;
+
+-- Step 3: Create the table
+CREATE TABLE job_run_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,           -- Unique identifier for each job run
+    job_name VARCHAR(255) NOT NULL,              -- Name of the job
+    start_time DATETIME NOT NULL,                -- Start time of the job run
+    end_time DATETIME,                           -- End time of the job run
+    status ENUM('SUCCESS', 'FAILURE') NOT NULL,  -- Status of the job run
+    error_message TEXT,                          -- Error message if the job failed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Timestamp for when the record was created
+);
+
+-- Step 4: Insert sample data
+INSERT INTO job_run_logs (job_name, start_time, end_time, status, error_message)
+VALUES
+('AlertAPIJob', '2024-06-09 12:31:17', '2024-08-07 12:31:17', 'SUCCESS', NULL),
+('AlertAPIJob', '2024-06-10 10:00:00', '2024-06-10 10:15:00', 'FAILURE', 'API timeout error');
+
+Explanation
+
+1. Database:
+
+The database is named alert_job_logs.
+
+
+
+2. Table Structure:
+
+id: Auto-incremented unique ID for each job run.
+
+job_name: Stores the name of the job (e.g., AlertAPIJob).
+
+start_time: Start timestamp of the job run.
+
+end_time: End timestamp of the job run.
+
+status: ENUM type column to store the status (SUCCESS or FAILURE).
+
+error_message: Text field to capture error details if the job fails.
+
+created_at: Automatically logs when the record is created.
+
+
+
+3. Sample Data:
+
+Demonstrates how to insert job run records, including a successful run and a failed run with an error message.
+
+
+
+
+Query to View Data
+
+You can view the logged job runs with this query:
+
+SELECT * FROM job_run_logs;
+
+Let me know if you need additional queries or changes!
+
