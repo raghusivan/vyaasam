@@ -1,0 +1,65 @@
+def get_latest_start_time(config):
+    logger = setup_logger('DatabaseHandler')
+    
+    # Connect to the database
+    connection = connect()
+    if connection is None:
+        logger.error("Failed to connect to the database. Exiting…")
+        return None
+
+    cursor = connection.cursor(dictionary=True)
+
+    # Check if any record exists in the table
+    cursor.execute("SELECT * FROM closed_alert_s_DG_run_US ORDER BY start_time DESC LIMIT 1")
+    record = cursor.fetchone()
+
+    if record is None:
+        # No records found, use start time from config.ini
+        start_time = config['settings']['start_date']
+        logger.info("No records found in closed_alert_s_DG_run_US, using start date from config.ini")
+    else:
+        # Check if job run_flag is False
+        if record['job_run_flag'] == 0:
+            start_time = record['start_time']
+            logger.info("Record found with job run_flag set to False, using its start time")
+        else:
+            logger.info("Record found but job run_flag is set to True. Exiting…")
+            DatabaseHandler.close(connection)
+            return None
+
+    cursor.close()
+    DatabaseHandler.close(connection)
+    return start_time
+
+def update_db_run_log(start_time: str, end_time: str, status: str, error_message: str = None):
+    logger = setup_logger('DatabaseHandler')
+    
+    # Connect to the database
+    connection = connect()
+    if connection is None:
+        logger.error("Failed to connect to the database. Exiting…")
+        return None
+
+    cursor = connection.cursor()
+
+    # Insert a new record with job run_flag as False
+    cursor.execute("""
+        INSERT INTO closed_alert_s_DG_run_US (start_time, end_time, status, error_message, job_run_flag)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (start_time, end_time, status, error_message, 0))
+
+    # Calculate new end date based on retrieve days flag
+    retrieve_days = config['settings']['retrieve_days']
+    new_end_time = (datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S') + timedelta(days=retrieve_days)).strftime('%Y-%m-%d %H:%M:%S')
+
+    # Update the record with the new end time
+    cursor.execute("""
+        UPDATE closed_alert_s_DG_run_US
+        SET end_time = %s
+        WHERE start_time = %s
+    """, (new_end_time, start_time))
+
+    connection.commit()
+    cursor.close()
+    DatabaseHandler.close(connection)
+    logger.info("Logs updated successfully in the database.")
