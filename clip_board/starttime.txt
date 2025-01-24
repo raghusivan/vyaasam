@@ -1,0 +1,41 @@
+from datetime import datetime
+
+def get_latest_start_time(config):
+    logger = setup_logger('DatabaseHandler')
+    
+    # Connect to the database
+    connection = connect()
+    if connection is None:
+        logger.error("Failed to connect to the database. Exiting…")
+        return None
+
+    cursor = connection.cursor(dictionary=True)
+
+    # Check if any record exists in the table
+    cursor.execute("SELECT * FROM closed_alert_s_DG_run_US ORDER BY start_time DESC LIMIT 1")
+    record = cursor.fetchone()
+
+    if record is None:
+        # No records found, use start time from config.ini
+        start_time = config['settings']['start_date']
+        logger.info("No records found in closed_alert_s_DG_run_US, using start date from config.ini")
+    else:
+        # Check if job run_flag is False
+        if record['job_run_flag'] == 0:
+            start_time = record['start_time']
+            logger.info("Record found with job run_flag set to False, using its start time")
+        else:
+            logger.info("Record found but job run_flag is set to True. Exiting…")
+            DatabaseHandler.close(connection)
+            return None
+
+    cursor.close()
+    DatabaseHandler.close(connection)
+
+    # Ensure start_time is a string in the correct format
+    if isinstance(start_time, datetime):
+        start_time = start_time.strftime('%Y-%m-%d %H:%M:%S')
+    elif not isinstance(start_time, str):
+        start_time = str(start_time)
+
+    return start_time
