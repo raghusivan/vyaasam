@@ -1,0 +1,34 @@
+The error message indicates that the start_time format is invalid, and the expected format is:
+
+%Y-%m-%dT%H:%M:%S.%f
+
+Fix: Ensure Correct Datetime Format
+
+Modify the strftime format when converting start_datetime and end_time to strings.
+
+Fix in alert_processor.py
+
+Replace:
+
+start_time_str = self.start_datetime.strftime("%Y-%m-%d %H:%M:%S")
+end_time_str = end_time.strftime("%Y-%m-%d %H:%M:%S")
+
+With:
+
+start_time_str = self.start_datetime.strftime("%Y-%m-%dT%H:%M:%S.%f")
+end_time_str = end_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+Why this Fix?
+
+The format "Y-%m-%dT%H:%M:%S.%f" follows the ISO 8601 standard, which includes:
+
+T separator between date and time.
+
+.%f to include microseconds.
+
+
+
+Now, your log should correctly match the expected database format.
+
+Let me know if you need further assistance!
+
