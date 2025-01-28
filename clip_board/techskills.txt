@@ -1,0 +1,71 @@
+I'll analyze the resume to extract the technical skills and determine the years of experience based on the career timeline.
+
+// Define job entries with technologies and dates
+const jobs = [
+  { start: "2024-06", end: "2025-01", // Current date
+    tech: ["Java", "Python", "Vue.js", "AWS Lambda", "Apache Airflow", "Docker", "Kubernetes", "Amazon EKS", "Git", "GitHub", "Bamboo", "AWS", "Elasticsearch", "Linux"]
+  },
+  { start: "2021-08", end: "2024-03",
+    tech: ["Java 11", "Scala", "Spring Framework", "Spring Boot", "Spring WebFlux", "JUnit", "Mockito", "Docker", "Kubernetes", "Git", "GitHub", "Jenkins", "ELK Stack", "Apache Kafka", "Hazelcast"]
+  },
+  { start: "2011-06", end: "2021-08",
+    tech: ["Java", "JSF", "Spring", "PrimeFaces", "JPA", "Hibernate", "RESTful", "AWS Lambda", "Docker", "AWS", "S3", "CloudFront", "Unix", "Git", "Jenkins", "Groovy", "MySQL", "JBoss"]
+  },
+  // Earlier positions add to the total experience but with some technology overlap
+];
+
+// Calculate total experience (from earliest to latest job)
+const firstJobDate = new Date("2007-05");
+const currentDate = new Date("2025-01");
+const totalYearsExp = (currentDate - firstJobDate) / (1000 * 60 * 60 * 24 * 365.25);
+
+console.log(`Total years of experience: ${totalYearsExp.toFixed(1)} years`);
+
+/* Result
+
+Total years of experience: 17.7 years
+
+*/
+
+Based on the resume analysis, here are the key technical skills with approximate years of experience:
+
+Core Languages & Frameworks (15+ years):
+- Java (including versions 7, 8, 11) - 17+ years
+- J2EE - 17+ years
+- Spring Framework/Spring Boot - 12+ years
+- Hibernate/JPA - 12+ years
+- JSF/PrimeFaces - 10+ years
+
+Cloud & DevOps (Recent 5-7 years):
+- AWS (Lambda, EKS, S3, CloudFront) - 5+ years
+- Docker - 5+ years
+- Kubernetes - 3+ years
+- Jenkins/Bamboo CI/CD - 5+ years
+
+Databases (15+ years):
+- MySQL - 15+ years
+- Oracle - 10+ years
+- PostgreSQL - Recent experience
+- Knowledge Graph (NoSQL) - Recent experience
+
+Web Technologies (15+ years):
+- HTML/CSS - 15+ years
+- JavaScript - 15+ years
+- RESTful Web Services - 10+ years
+
+Other Technologies:
+- Python - 2-3 years (more recent experience)
+- Vue.js - 1-2 years (recent experience)
+- Apache Airflow - 1-2 years (recent experience)
+- Unix/Linux - 15+ years
+- Git/GitHub - 10+ years
+- Groovy - 5+ years
+- Apache Kafka - 2-3 years
+- ELK Stack - 3+ years
+
+Application Servers:
+- JBoss EAP - 10+ years
+- Tomcat - 10+ years
+- WebSphere - Earlier experience
+
+The total professional experience spans approximately 17.7 years, with the core Java/J2EE stack being consistently used throughout the career. More modern technologies like cloud platforms (AWS), containerization (Docker, Kubernetes), and modern frameworks (Vue.js, Spring WebFlux) have been adopted in recent roles.
