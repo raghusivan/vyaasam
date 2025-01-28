@@ -1,0 +1,61 @@
+Here’s a rewritten version of your run() method with the fix:
+
+Fix Implemented:
+
+Ensure self.start_datetime is always a datetime object.
+
+Convert self.start_datetime and end_time to strings before passing them to update_db_run_log().
+
+
+import sys
+from datetime import datetime, timedelta
+
+class AlertProcessor:
+    def run(self):
+        """Main method to process all statuses."""
+        total_filtered = 0
+
+        for status_key, status_value in self.config['statuses'].items():
+            count = self.process_status(status_key, status_value)
+            total_filtered += count
+
+        days = int(self.config['settings']['days_to_retrieve'])  # Ensure days is an integer
+
+        # Ensure start_datetime is a datetime object
+        if isinstance(self.start_datetime, str):
+            try:
+                self.start_datetime = datetime.fromisoformat(self.start_datetime)
+            except ValueError as e:
+                self.logger.critical(f"Failed to parse start_datetime: {str(e)}")
+                sys.exit(1)
+
+        # Calculate end_time by adding 'days' to start_datetime
+        end_time = self.start_datetime + timedelta(days=days)
+
+        # Convert datetime objects to string before passing them
+        start_time_str = self.start_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        end_time_str = end_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        # Log the parameters and update the database run log
+        self.logger.debug(f"Database call parameters - config: {self.config}, start_time: {start_time_str}, end_time: {end_time_str}, status: 'SUCCESS'")
+        DatabaseHandler.update_db_run_log(self.config, start_time_str, end_time_str, "SUCCESS")
+
+        self.logger.info(f"Total messages processed: {total_filtered}")
+        return total_filtered
+
+Key Fixes:
+
+1. Convert self.start_datetime to a datetime object if it's a string.
+
+
+2. Convert start_datetime and end_time to strings before passing them to update_db_run_log().
+
+
+3. Logs updated to reflect the corrected values.
+
+
+
+This will prevent the TypeError: strftime argument 1 must be str, not datetime.datetime.
+
+Let me know if you need any modifications!
+
