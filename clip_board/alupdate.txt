@@ -1,0 +1,62 @@
+from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
+class DatabaseHandler:
+    def update_db_env_log(self, config, start_time: str, end_time: str, return_status: str, error_message: str = None):
+        try:
+            # Ensure start_time and end_time are not None and are in the correct format
+            if start_time is None:
+                logger.error("start_time is None. Cannot proceed.")
+                return None
+
+            if end_time is None:
+                logger.error("end_time is None. Cannot proceed.")
+                return None
+
+            try:
+                start_time = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                logger.error("Invalid start_time format. Expected format: 'YYYY-MM-DDTHH:MM:SS'")
+                return None
+
+            try:
+                end_time = datetime.strptime(end_time, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                logger.error("Invalid end_time format. Expected format: 'YYYY-MM-DDTHH:MM:SS'")
+                return None
+
+            # Update existing record where end_time is NULL
+            update_query = """
+            UPDATE job_runs
+            SET end_time = %s, status = %s, error_message = %s
+            WHERE start_time = %s AND end_time IS NULL
+            """
+            params = (end_time, return_status, error_message, start_time)
+
+            # Execute the update query
+            self.execute_query(update_query, params)
+
+            # Prepare for the next job run
+            next_start_time = end_time
+            next_end_time = None  # End time will be set after the next job run
+
+            insert_query = """
+            INSERT INTO job_runs (start_time, end_time, status, error_message)
+            VALUES (%s, %s, %s, %s)
+            """
+            insert_params = (next_start_time, next_end_time, "RUNNING", None)
+
+            # Execute the insert query for the next job run
+            self.execute_query(insert_query, insert_params)
+
+        except Exception as e:
+            logger.error(f"Failed to update database: {e}")
+            return None
+
+    def execute_query(self, query, params):
+        # Placeholder for executing a database query
+        # Replace with actual database connection and execution logic
+        print(f"Executing query: {query} with params: {params}")
+        # Example: connection.execute(query, params)
