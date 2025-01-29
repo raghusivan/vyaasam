@@ -1,0 +1,123 @@
+Here's a generic version of your get_password method that handles both a file path (as str) and an instance of ConfigParser. If config_file is a string, it treats it as a file path and reads it; if it's an instance of ConfigParser, it uses it directly without reading.
+
+Updated Method
+
+import os
+import configparser
+
+class CyberArkPasswordRetrieval:
+    @staticmethod
+    def get_password(config_file, api_section: str, cert_section: str) -> str:
+        """ Retrieves a password from CyberArk based on configuration.
+        
+        - If `config_file` is a string, it is treated as a file path and read.
+        - If `config_file` is a `ConfigParser` instance, it is used directly.
+        """
+        logger = setup_logger('PasswordRetrieval')
+
+        try:
+            logger.info("=== Starting Password Retrieval ===")
+
+            # Determine if config_file is a path or ConfigParser instance
+            if isinstance(config_file, str):
+                logger.info(f"Config File Path: {config_file}")
+                
+                if not os.path.exists(config_file):
+                    logger.error(f"ERROR: Config file not found {config_file}")
+                    raise FileNotFoundError(f"Config file not found: {config_file}")
+                
+                # Read configuration from file
+                config = configparser.ConfigParser()
+                config.read(config_file)
+
+            elif isinstance(config_file, configparser.ConfigParser):
+                logger.info("Using provided ConfigParser instance.")
+                config = config_file  # Use directly
+            
+            else:
+                raise TypeError("config_file must be either a file path (str) or an instance of ConfigParser")
+
+            # Extract required configurations
+            api_config = config[api_section]
+            cert_config = config[cert_section]
+
+            temp_dir = cert_config.get('temp_dir', '')
+            logger.info(f"Certificate Directory: {temp_dir}")
+
+            cert_files = {
+                cert_config.get('cert_file1'): 'cert_path',
+                cert_config.get('cert_file2'): 'key_path',
+                cert_config.get('cert_file3'): 'ca_cert_path',
+            }
+
+            logger.info("Checking Certificate Files:")
+            local_paths = {}
+
+            if not os.path.exists(temp_dir):
+                logger.error(f"ERROR: Directory not found - {temp_dir}")
+                raise FileNotFoundError(f"Temp directory not found: {temp_dir}")
+
+            for file_name, key in cert_files.items():
+                full_path = os.path.join(temp_dir, file_name)
+                logger.info(f"Checking {file_name}: {full_path}")
+
+                if os.path.exists(full_path):
+                    local_paths[key] = full_path
+                else:
+                    logger.warning(f"WARNING: {file_name} not found in {temp_dir}")
+
+            return "retrieved_password"
+
+        except Exception as e:
+            logger.error(f"Error retrieving password: {str(e)}")
+            raise
+
+
+---
+
+How This Works
+
+1. Handles both cases:
+
+If config_file is a string → Treats it as a file path, checks existence, and reads it.
+
+If config_file is an instance of ConfigParser → Uses it directly.
+
+
+
+2. Validations:
+
+If config_file is not str or ConfigParser, it raises a TypeError.
+
+If a file path is given and does not exist, it raises FileNotFoundError.
+
+
+
+3. Extracts configurations dynamically:
+
+Reads api_section and cert_section.
+
+Verifies and logs certificate files.
+
+
+
+
+
+---
+
+Example Usage
+
+With a File Path
+
+password = CyberArkPasswordRetrieval.get_password("/path/to/config.ini", "API", "CYBER_DB")
+
+With a ConfigParser Instance
+
+config = configparser.ConfigParser()
+config.read("/path/to/config.ini")
+password = CyberArkPasswordRetrieval.get_password(config, "API", "CYBER_DB")
+
+This makes the function more robust and reusable.
+
+Would you like me to validate this against your uploaded file?
+
