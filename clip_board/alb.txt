@@ -1,0 +1,81 @@
+To debug why Airflow is not receiving any response from the AWS Lambda function via ALB, let's check the following potential issues:
+
+1. Verify ALB URL Reachability
+
+Try running the following command from the Airflow server to check if the ALB is reachable:
+
+curl -v -X POST "https://avatarloadbalancer.airflowlambda.avatar.syd.commsurv.non.sli.macquarie.com"
+
+or
+
+curl -v -X POST "https://smartsloadbalancer.dev.smartsalertextractor.syd.forriskmgmblms.non.sli.macquarie.com:4437"
+
+If the request times out, the issue might be:
+
+ALB is down or misconfigured.
+
+Network firewall/security groups are blocking the request.
+
+
+2. Debug the Airflow Task Execution
+
+Check the Airflow logs for the task execution:
+
+airflow tasks logs test_invoke_dag <task_id> --subdir /path/to/dag/
+
+Look for any error messages or timeouts.
+
+3. Check the Response Status Code
+
+Modify the script to log response status codes and errors:
+
+try:
+    response = requests.post(alb_url, json=payload, headers=headers, timeout=30, verify=False)
+    response.raise_for_status()  # Raises HTTPError for bad responses
+    print(f"Response Status Code: {response.status_code}")
+    print(f"Response Body: {response.text}")
+except requests.exceptions.RequestException as e:
+    print(f"Request failed: {e}")
+
+If the response code is:
+
+200: The request was successful, check if Lambda is actually processing.
+
+403: Possible authentication issue.
+
+500: Issue with the Lambda function or ALB configuration.
+
+502/503: ALB or backend Lambda is overloaded or down.
+
+
+4. Increase Timeout
+
+If the Lambda function is taking too long, increase the timeout:
+
+response = requests.post(alb_url, json=payload, headers=headers, timeout=60, verify=False)
+
+5. Check Airflow Scheduler and Workers
+
+Make sure Airflow is running without issues:
+
+airflow scheduler
+airflow workers
+
+If a worker is down, restart it:
+
+airflow workers restart
+
+6. Verify AWS Lambda Execution Logs
+
+Check AWS CloudWatch logs for the Lambda function to see if the request is reaching Lambda:
+
+aws logs tail /aws/lambda/<lambda_function_name> --follow
+
+7. Check ALB Target Group Health
+
+Ensure the Lambda function is registered with the ALB target group and is healthy:
+
+aws elbv2 describe-target-health --target-group-arn <your-target-group-arn>
+
+Let me know what errors/logs you find so we can further diagnose!
+
