@@ -1,0 +1,154 @@
+Below is an updated refactoring of the file‐management code. In this version, the helper method for writing individual files now looks inside each message for an "ingestion_date" attribute. If that attribute is present and can be parsed as an ISO‑formatted date, the method uses it to compute the year and month for the folder. Otherwise, it falls back to using the current date and time.
+
+
+---
+
+file_manager.py
+
+import os
+import json
+from datetime import datetime
+
+class FileManager:
+    def __init__(self, output_dir="output"):
+        self.output_dir = output_dir
+
+    def get_date_folder(self, timestamp: datetime) -> str:
+        """
+        Given a timestamp, compute the folder path (output/year/month),
+        create it if it doesn't exist, and return the folder path.
+        """
+        year_str = timestamp.strftime("%Y")
+        month_str = timestamp.strftime("%m")
+        date_folder = os.path.join(self.output_dir, year_str, month_str)
+        os.makedirs(date_folder, exist_ok=True)
+        return date_folder
+
+    def write_individual_file(self, message: dict, index: int) -> str:
+        """
+        Write a single JSON message to a uniquely named file under a folder
+        based on the message's ingestion_date attribute if present (ISO format).
+        If the ingestion_date attribute does not exist or cannot be parsed,
+        the current datetime is used.
+        Returns the full path of the written file.
+        """
+        ingestion_date_str = message.get('ingestion_date')
+        if ingestion_date_str:
+            try:
+                # Attempt to parse the ingestion_date attribute
+                timestamp = datetime.fromisoformat(ingestion_date_str)
+            except ValueError:
+                # Fallback to current datetime if parsing fails
+                timestamp = datetime.now()
+        else:
+            timestamp = datetime.now()
+
+        date_folder = self.get_date_folder(timestamp)
+        file_name = f"message_{timestamp.strftime('%Y%m%d_%H%M%S_%f')}_{index}.json"
+        full_path = os.path.join(date_folder, file_name)
+        with open(full_path, 'w') as file:
+            json.dump(message, file, indent=2)
+        return full_path
+
+    def append_to_combined_file(self, messages: list, timestamp: datetime, output_file: str) -> str:
+        """
+        Append a list of messages to a combined JSON file in the date-based folder.
+        If the file doesn't exist, it is created. Returns the full path to the file.
+        """
+        date_folder = self.get_date_folder(timestamp)
+        combined_path = os.path.join(date_folder, output_file)
+
+        # Attempt to read any existing data; if not present, start with an empty list
+        try:
+            with open(combined_path, 'r') as file:
+                data = json.load(file)
+        except FileNotFoundError:
+            data = []
+
+        data.extend(messages)
+
+        # Write the updated list of messages back to the file
+        with open(combined_path, 'w') as file:
+            json.dump(data, file, indent=2)
+
+        return combined_path
+
+
+---
+
+processor.py
+
+from datetime import datetime
+import json
+from file_manager import FileManager
+
+class ResponseProcessor:
+    def __init__(self, output_file, individual_json=False, output_dir="output"):
+        self.output_file = output_file
+        self.individual_json = individual_json
+        self.file_manager = FileManager(output_dir)
+        # Set up logger, etc. as needed
+
+    def process_and_save_messages(self, response: dict) -> int:
+        """
+        Process the response and save messages to files.
+        """
+        if 'messages' in response and isinstance(response['messages'], list):
+            filtered = self._filter_messages(response['messages'])
+            self._append_to_output_file(filtered)
+            # self.logger.info(f"Processed and saved {len(filtered)} messages.")
+            return len(filtered)
+        else:
+            # self.logger.warning("No messages found in the response.")
+            return 0
+
+    def _filter_messages(self, messages: list) -> list:
+        # Placeholder for your filtering logic
+        return messages
+
+    def _append_to_output_file(self, messages: list):
+        """
+        Depending on the configuration, either write each message
+        to an individual file (using its ingestion_date attribute if available)
+        or append all messages to a combined file.
+        """
+        if self.individual_json:
+            # Write each message as an individual JSON file
+            for i, message in enumerate(messages):
+                file_path = self.file_manager.write_individual_file(message, i)
+                # self.logger.debug(f"Saved message to {file_path}")
+        else:
+            # Append messages to a single combined JSON file
+            if messages:
+                timestamp = datetime.now()
+                file_path = self.file_manager.append_to_combined_file(messages, timestamp, self.output_file)
+                # self.logger.debug(f"Appended {len(messages)} messages to {file_path}")
+
+
+---
+
+Explanation
+
+1. Individual File Writing with Ingestion Date:
+
+In write_individual_file, the method first checks for an "ingestion_date" key in the message.
+
+If present, it attempts to parse that string using datetime.fromisoformat(). (Ensure your ingestion dates follow ISO format, e.g. "2025-02-04T15:30:00".)
+
+If the key is absent or the parsing fails, the method uses the current time via datetime.now().
+
+The computed timestamp is then used to determine the year/month folder via get_date_folder(), which creates the folder if it doesn’t exist.
+
+Finally, the message is written into a uniquely named JSON file under that folder.
+
+
+
+2. Combined File Writing:
+
+The combined method still uses the current timestamp to build the folder path.
+
+
+
+
+This separation and the added ingestion date parsing make it easy to write individual message files into the proper year/month folder based on each message’s own ingestion date when available.
+
