@@ -1,0 +1,123 @@
+Since I couldn't read the uploaded files, I'll modify the Python script based on the code visible in the first image and the requirements from the last image.
+
+Modifications:
+
+1. New Method: process_messages:
+
+Takes config, start_date, and status as parameters.
+
+Retrieves the number of days to add from the config file (settings section).
+
+Calculates the end_date by adding the retrieved days to start_date.
+
+Retrieves messages with the given status between start_date and end_date.
+
+Strips the first 5 characters from each message.
+
+Logs them to the console.
+
+
+
+
+
+---
+
+Modified Python Code:
+
+import mysql.connector
+from mysql.connector import Error
+from logger_config import setup_logger
+from datetime import datetime, timedelta
+from cyberark_password_retrieval import CyberArkPasswordRetrieval
+
+class DatabaseHandler:
+    db_pass = None  # Class variable to store the password
+
+    @staticmethod
+    def get_db_pass(config):
+        if DatabaseHandler.db_pass is None:
+            # Assuming CyberArkPasswordRetrieval is used for fetching the password
+            DatabaseHandler.db_pass = CyberArkPasswordRetrieval.get_password()
+        return DatabaseHandler.db_pass
+
+    @staticmethod
+    def connect(config):
+        logger = setup_logger("DatabaseHandler.connect")
+        try:
+            db_pass = DatabaseHandler.get_db_pass(config)
+            connection = mysql.connector.connect(
+                host=config["CYBER_DB"]["address"],
+                port=int(config["CYBER_DB"]["port"]),
+                user=config["CYBER_DB"]["username"],
+                passwd=db_pass,
+                database=config["CYBER_DB"]["name"]
+            )
+
+            if connection.is_connected():
+                logger.info("Successfully connected to the database")
+                return connection
+
+        except Error as e:
+            logger.error(f"Error while connecting to MySQL: {e}")
+            return None
+
+    @staticmethod
+    def process_messages(config, start_date, status):
+        logger = setup_logger("DatabaseHandler.process_messages")
+        try:
+            connection = DatabaseHandler.connect(config)
+            if not connection:
+                logger.error("Database connection failed")
+                return
+
+            cursor = connection.cursor(dictionary=True)
+
+            # Get the number of days to add from config under settings
+            days_to_add = int(config["SETTINGS"]["days_to_retrieve"])
+
+            # Calculate end date
+            end_date = (datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S") + timedelta(days=days_to_add)).strftime("%Y-%m-%d %H:%M:%S")
+
+            query = """
+                SELECT message FROM css_reporting.R_MESSAGE rm
+                JOIN css_reporting.R_ALERT_STATUS ras
+                ON rm.ID = ras.MESSAGE_ID
+                WHERE ras.status = %s AND ras.status_date BETWEEN %s AND %s
+            """
+
+            cursor.execute(query, (status, start_date, end_date))
+            results = cursor.fetchall()
+
+            # Process messages: Strip first 5 characters and log them
+            for row in results:
+                stripped_message = row["message"][5:]  # Strip first 5 characters
+                logger.info(f"Processed Message: {stripped_message}")
+
+            cursor.close()
+            connection.close()
+
+        except Exception as e:
+            logger.error(f"Error processing messages: {e}")
+
+
+---
+
+Key Updates:
+
+1. New method process_messages:
+
+Connects to the database.
+
+Retrieves messages based on the given status and start_date.
+
+Calculates end_date dynamically using the days_to_retrieve value from the config file.
+
+Strips the first 5 characters from each message.
+
+Logs the modified messages.
+
+
+
+
+Let me know if you need any further refinements!
+
