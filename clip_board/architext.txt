@@ -1,0 +1,203 @@
+Below is a plain-text version of the document that you can paste directly into Confluence’s rich-text editor without any markup or HTML. You can adjust fonts, headings, and spacing using Confluence’s formatting tools as needed.
+
+──────────────────────────── Technical Design: Alert Processor System ────────────────────────────
+
+1. Overview
+
+
+
+
+---
+
+The Alert Processor System is designed to fetch, process, and store alert data from a configurable HTTP source. It employs a structured, modular approach that loads configuration settings, initializes components, and iterates through alert statuses to aggregate and process messages. The system is organized into three major phases:
+
+• Initialization Phase
+  – Loads configuration settings, initializes key components, and sets up logging.
+
+• Processing Status Phase
+  – Dynamically constructs URLs for each alert status, fetches data via HTTP, and processes responses.
+
+• Running the Processor
+  – Iterates over all statuses, aggregates processed messages, and updates system state accordingly.
+
+2. System Components and Architecture
+
+
+
+
+---
+
+2.1 Core Components
+
+• ConfigHandler: Manages configuration settings (base URL, statuses, time ranges) required for system initialization.
+• Logger: Captures and tracks key events, errors, and processing flows for troubleshooting and monitoring.
+• UrlBuilder: Dynamically constructs URLs based on parameters such as start time, duration, and status.
+• HttpClient: Executes HTTP requests to fetch alert data from the constructed URLs.
+• ResponseProcessor: Parses HTTP responses, extracts relevant messages, and stages the records.
+
+Staging Options:
+ – MySQL Database: Stores each alert record as a separate record. This is a simple integration if your RDBMS is already set up but may be slower with very large files.
+ – S3 Bucket: Stores large JSON files (e.g., 200 KB each) in a highly scalable, high-throughput object store. S3 is typically faster for large files.
+
+2.2 Workflow
+
+a. Initialization Phase
+ – Load configuration settings using ConfigHandler.
+ – Set up Logger to capture events.
+ – Initialize UrlBuilder, HttpClient, and ResponseProcessor using configuration parameters.
+ – Determine the processing start time from configuration or the system clock.
+
+b. Processing Status Phase
+ – For each status (configured in the system), dynamically build the URL using UrlBuilder.
+ – Fetch alert data via HttpClient.
+ – Process and stage the responses using ResponseProcessor. (Staging can be performed in MySQL or S3.)
+
+c. Running the Processor
+ – Iterate through all defined statuses and aggregate processed messages.
+ – For each alert, stage the record (store the JSON payload) and send an SQS message containing a pointer to the staged record.
+ – SQS messages are batched (up to 100 per invocation) to trigger Worker Lambdas.
+
+ Worker Lambda instances:
+  • Retrieve the staged record (from MySQL or S3).
+  • Upload the JSON file to an SFTP server.
+  • Update the alert’s status in MySQL to “completed.”
+
+ A CloudWatch Scheduler automatically triggers a Finalizer Lambda that:
+  • Queries the staging system (MySQL and/or S3) to verify that all alerts are processed.
+  • Finalizes the job (for example, updating scheduling details).
+
+3. Sequence Diagram
+
+
+
+
+---
+
+Simplified Sequence Diagram:
+
+ConfigHandler  →  Logger  →  UrlBuilder  →  HttpClient  →  ResponseProcessor
+(Load Settings)     (Log Events)    (Build URLs)    (Fetch HTTP Response)    (Process & Stage Data)
+[Data stored in MySQL/S3]
+
+Runtime Flow:  • Airflow/MWAA (HTTP Trigger)    │    ▼  • ALB    │    ▼  • Coordinator Lambda
+   – Stages records in MySQL or S3
+   – Sends SQS messages (pointers)    │    ▼  • SQS Queue (Batch Size: 100)    │    ▼  • Worker Lambda (parallel)
+   – Retrieves record (from MySQL or S3)
+   – Uploads JSON file to SFTP
+   – Updates record to “completed”    │    ▼  • CloudWatch Scheduler triggers Finalizer Lambda
+   – Queries staging area (MySQL/S3)
+   – Finalizes job & updates scheduling
+
+4. Class Design (Pseudocode)
+
+
+
+
+---
+
+4.1 AlertProcessor Class
+
+
+---
+
+public class AlertProcessor { private ConfigHandler config; private Logger logger; private UrlBuilder urlBuilder; private HttpClient httpClient; private ResponseProcessor responseProcessor;
+
+public AlertProcessor(ConfigHandler config) {
+    this.config = config;
+    this.logger = new Logger();
+    this.urlBuilder = new UrlBuilder(config);
+    this.httpClient = new HttpClient(config);
+    this.responseProcessor = new ResponseProcessor(logger);
+}
+
+public void run() {
+    for (String status : config.getStatuses()) {
+        String url = urlBuilder.buildUrl(status);
+        String response = httpClient.fetchData(url);
+        responseProcessor.processResponse(response);
+    }
+}
+
+}
+
+4.2 UrlBuilder Class
+
+
+---
+
+public class UrlBuilder { private String baseUrl;
+
+public UrlBuilder(ConfigHandler config) {
+    this.baseUrl = config.getBaseUrl();
+}
+
+public String buildUrl(String status) {
+    return baseUrl + "?status=" + status;
+}
+
+}
+
+4.3 HttpClient Class
+
+
+---
+
+public class HttpClient { private ConfigHandler config;
+
+public HttpClient(ConfigHandler config) {
+    this.config = config;
+}
+
+public String fetchData(String url) {
+    // Execute HTTP request and return response data
+    return "{response data}";
+}
+
+}
+
+4.4 ResponseProcessor Class
+
+
+---
+
+public class ResponseProcessor { private Logger logger;
+
+public ResponseProcessor(Logger logger) {
+    this.logger = logger;
+}
+
+public void processResponse(String response) {
+    // Parse response, filter relevant messages, and stage them
+    logger.log("Processed response: " + response);
+}
+
+}
+
+5. Optimization Considerations
+
+
+
+
+---
+
+• Concurrency: Use multi-threading or asynchronous processing to handle multiple statuses in parallel.
+• Error Handling: Implement robust retry mechanisms for HTTP requests and SQS message processing.
+• Logging: Integrate with a centralized logging system for improved traceability.
+
+Staging Choice:
+ – S3 Bucket: Recommended for high throughput and large file sizes (e.g., 200 KB each).
+ – MySQL DB: Acceptable for moderate volumes if the RDBMS is already in place, though it may be slower with very large JSON files.
+
+6. Conclusion
+
+
+
+
+---
+
+The Alert Processor System is a modular, scalable, and maintainable solution for fetching and processing alert data. By separating configuration management, URL construction, HTTP communication, and response processing into distinct components, the system ensures high concurrency and reliability. Staging alert data using either MySQL or S3 (with S3 being the preferred option for high-volume, large files) and triggering downstream processing via SQS and Lambda provides a robust architecture. Automated finalization through CloudWatch further ensures that all alerts are processed and the job is properly finalized.
+
+Further optimizations—such as enhanced error handling, centralized logging, and dynamic configuration management—can be incorporated as the system scales. ────────────────────────────
+
+You now have a complete, plain-text version of the document. When pasting into Confluence, you can use the editor’s built-in tools to assign heading styles, create bullet lists, and format code blocks as needed.
+
