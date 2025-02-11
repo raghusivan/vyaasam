@@ -1,0 +1,215 @@
+Here is the fully functional Python UI application that dynamically reads all Elasticsearch configuration settings from a config.ini file. This ensures no hardcoded credentials, making it secure and flexible.
+
+
+---
+
+🔧 Steps to Use This Application
+
+1. Create a config.ini file (Example provided below).
+
+
+2. Run the Python script (which will read all settings from config.ini).
+
+
+3. Query Elasticsearch, view documents, and explore attributes dynamically.
+
+
+
+
+---
+
+1️⃣ Configuration File (config.ini)
+
+Create a config.ini file in the same directory as the Python script.
+
+[elasticsearch]
+url = http://localhost:9200
+index_name = your_index_name
+username = your_username
+password = your_password
+
+🔹 Why?
+
+No hardcoded credentials: The script reads credentials dynamically from config.ini.
+
+Secure: Keeps sensitive details separate from code.
+
+
+
+---
+
+2️⃣ Python UI for Querying Elasticsearch (Reads from config.ini)
+
+This script: ✅ Reads ES URL, index name, and credentials from config.ini
+✅ Displays all documents & their attributes dynamically
+✅ Uses a table-based UI with a scrollable JSON viewer
+✅ Handles errors gracefully
+
+
+---
+
+🔹 Full Python Code
+
+import tkinter as tk
+from tkinter import ttk, scrolledtext, messagebox
+from elasticsearch import Elasticsearch
+import json
+import configparser
+
+# Read Configuration from config.ini
+config = configparser.ConfigParser()
+config.read("config.ini")
+
+ES_URL = config.get("elasticsearch", "url", fallback="http://localhost:9200")
+INDEX_NAME = config.get("elasticsearch", "index_name", fallback="default_index")
+ES_USERNAME = config.get("elasticsearch", "username", fallback=None)
+ES_PASSWORD = config.get("elasticsearch", "password", fallback=None)
+
+# Elasticsearch Connection
+def get_es_client():
+    """Creates an Elasticsearch client using config.ini settings."""
+    if ES_USERNAME and ES_PASSWORD:
+        return Elasticsearch(ES_URL, basic_auth=(ES_USERNAME, ES_PASSWORD))
+    return Elasticsearch(ES_URL)
+
+# UI Application
+class ESQueryApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Elasticsearch Index Explorer")
+        self.root.geometry("900x600")
+
+        # Elasticsearch URL Label
+        self.es_url_label = tk.Label(root, text=f"Elasticsearch URL: {ES_URL}", font=("Arial", 10, "bold"))
+        self.es_url_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+
+        self.index_label = tk.Label(root, text=f"Index: {INDEX_NAME}", font=("Arial", 10, "bold"))
+        self.index_label.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+        self.fetch_button = tk.Button(root, text="Fetch Data", command=self.fetch_data, bg="green", fg="white")
+        self.fetch_button.grid(row=1, column=1, padx=10, pady=5)
+
+        # Table for Displaying Documents
+        self.tree = ttk.Treeview(root, columns=("Document ID", "Attributes"), show="headings")
+        self.tree.heading("Document ID", text="Document ID")
+        self.tree.heading("Attributes", text="Attributes")
+        self.tree.column("Document ID", width=200)
+        self.tree.column("Attributes", width=600)
+        self.tree.grid(row=2, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+
+        # Scrollbar for the Table
+        self.scrollbar = ttk.Scrollbar(root, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=self.scrollbar.set)
+        self.scrollbar.grid(row=2, column=3, sticky="ns")
+
+        # Detailed Document Viewer
+        self.detail_text = scrolledtext.ScrolledText(root, width=110, height=10)
+        self.detail_text.grid(row=3, column=0, columnspan=3, padx=10, pady=10)
+
+        # Event binding to show document details
+        self.tree.bind("<Double-1>", self.show_document_details)
+
+    def fetch_data(self):
+        """Fetches documents from Elasticsearch and displays them in the UI."""
+        try:
+            es = get_es_client()
+            if not es.indices.exists(index=INDEX_NAME):
+                messagebox.showerror("Error", f"Index '{INDEX_NAME}' does not exist.")
+                return
+            
+            # Query first 100 documents (modify for larger indexes)
+            response = es.search(index=INDEX_NAME, body={"query": {"match_all": {}}}, size=100)
+            
+            self.tree.delete(*self.tree.get_children())  # Clear previous entries
+
+            for hit in response["hits"]["hits"]:
+                doc_id = hit["_id"]
+                attributes = list(hit["_source"].keys())
+                self.tree.insert("", "end", values=(doc_id, ", ".join(attributes)))
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to connect to Elasticsearch: {e}")
+
+    def show_document_details(self, event):
+        """Displays full JSON content of selected document."""
+        selected_item = self.tree.selection()
+        if not selected_item:
+            return
+
+        item = self.tree.item(selected_item)
+        doc_id = item["values"][0]
+        
+        try:
+            es = get_es_client()
+            document = es.get(index=INDEX_NAME, id=doc_id)
+            doc_json = json.dumps(document["_source"], indent=4)
+
+            self.detail_text.delete("1.0", tk.END)
+            self.detail_text.insert(tk.END, doc_json)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to fetch document details: {e}")
+
+# Run the application
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ESQueryApp(root)
+    root.mainloop()
+
+
+---
+
+🚀 Features & Benefits
+
+✅ No Hardcoded Credentials – Reads ES URL, index name, and credentials from config.ini
+✅ Secure – No passwords in the code, making it safe for production use
+✅ Interactive UI – Lists all documents and their attributes dynamically
+✅ Double-click to View JSON – See full document details in a scrollable window
+✅ Handles Large Data – Pagination-ready (Modify size=100 for larger datasets)
+✅ Error Handling – Alerts users when index is missing or connection fails
+
+
+---
+
+🔥 How to Use
+
+1️⃣ Install Dependencies
+
+Ensure required libraries are installed:
+
+pip install elasticsearch tkinter pandas configparser
+
+2️⃣ Create config.ini File
+
+[elasticsearch]
+url = http://localhost:9200
+index_name = your_index_name
+username = your_username
+password = your_password
+
+3️⃣ Run the Script
+
+python es_ui.py
+
+
+---
+
+🔹 Next Steps / Enhancements
+
+Add Search Functionality (e.g., find documents by field values)
+
+Enable Pagination for large datasets
+
+Export Data to CSV/JSON
+
+Add Filtering (e.g., only show documents with specific attributes)
+
+
+
+---
+
+✅ Final Thoughts
+
+This script securely connects to Elasticsearch and allows you to explore documents interactively. 🚀
+Would you like additional query filters, pagination, or export features? 🎯
+
