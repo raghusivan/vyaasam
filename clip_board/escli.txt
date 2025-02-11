@@ -1,0 +1,126 @@
+Issue: no display name and no $DISPLAY environment variable
+
+The error occurs because Tkinter requires a graphical (GUI) environment, but your system is a headless server (i.e., no GUI/display environment is available).
+
+
+---
+
+✅ Solution: Use a CLI-Based Elasticsearch Query Instead of Tkinter UI
+
+Since you're running this on a headless Linux server, replace Tkinter with a command-line-based solution that prints the Elasticsearch data in the terminal.
+
+
+---
+
+🔹 Updated Python Script (CLI-Based)
+
+This script: ✅ Reads settings from config.ini (No Hardcoded Credentials)
+✅ Connects to Elasticsearch & Fetches Documents
+✅ Displays Attributes & Document IDs in the Terminal
+✅ Handles Errors Gracefully
+
+
+---
+
+1️⃣ Update Your config.ini File (If Not Done Already)
+
+Ensure you have a config.ini file:
+
+[elasticsearch]
+url = http://localhost:9200
+index_name = your_index_name
+username = your_username
+password = your_password
+
+
+---
+
+2️⃣ CLI-Based Python Script
+
+Save this as es_cli.py and run it on your Linux server.
+
+import json
+import configparser
+from elasticsearch import Elasticsearch
+
+# Read Configuration from config.ini
+config = configparser.ConfigParser()
+config.read("config.ini")
+
+ES_URL = config.get("elasticsearch", "url", fallback="http://localhost:9200")
+INDEX_NAME = config.get("elasticsearch", "index_name", fallback="default_index")
+ES_USERNAME = config.get("elasticsearch", "username", fallback=None)
+ES_PASSWORD = config.get("elasticsearch", "password", fallback=None)
+
+# Elasticsearch Connection
+def get_es_client():
+    """Creates an Elasticsearch client using config.ini settings."""
+    if ES_USERNAME and ES_PASSWORD:
+        return Elasticsearch(ES_URL, basic_auth=(ES_USERNAME, ES_PASSWORD))
+    return Elasticsearch(ES_URL)
+
+def fetch_documents():
+    """Fetches and prints documents from Elasticsearch."""
+    try:
+        es = get_es_client()
+        if not es.indices.exists(index=INDEX_NAME):
+            print(f"❌ ERROR: Index '{INDEX_NAME}' does not exist.")
+            return
+        
+        # Query first 100 documents (Modify size if needed)
+        response = es.search(index=INDEX_NAME, body={"query": {"match_all": {}}}, size=100)
+
+        print("\n📌 **Listing Documents in Index:**", INDEX_NAME)
+        for hit in response["hits"]["hits"]:
+            doc_id = hit["_id"]
+            attributes = list(hit["_source"].keys())
+            print(f"🆔 Document ID: {doc_id}")
+            print(f"📜 Attributes: {', '.join(attributes)}")
+            print("-" * 50)
+
+    except Exception as e:
+        print(f"❌ ERROR: Failed to connect to Elasticsearch: {e}")
+
+# Run the CLI Application
+if __name__ == "__main__":
+    fetch_documents()
+
+
+---
+
+3️⃣ How to Run the Script
+
+Run this script on your Linux server using:
+
+python3 es_cli.py
+
+
+---
+
+🔥 Why This Works?
+
+✅ No GUI Required – Works perfectly on a headless Linux server
+✅ Secure – Reads Elasticsearch credentials from config.ini
+✅ Terminal-Based Output – Prints document IDs & attributes to the CLI
+✅ Handles Errors Gracefully – Checks for missing index, connection issues
+
+
+---
+
+🚀 Next Steps
+
+1. Test the script on your server (python3 es_cli.py)
+
+
+2. Check if Elasticsearch returns the expected documents
+
+
+3. Modify pagination if needed (size=100)
+
+
+4. Enhance the script to save data as JSON or CSV
+
+
+
+Would you like pagination, filtering, or exporting to JSON/CSV? 🚀
+
