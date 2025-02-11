@@ -1,0 +1,45 @@
+You need to ensure that the Lambda function response format is compatible with the ALB expectations. Your Lambda currently returns:
+
+{
+    "statusCode": 200,
+    "body": "Hello from Lambda!"
+}
+
+Fix: Adjust Lambda Response Format
+
+ALB expects responses in a specific format with required headers. Modify your Lambda function to return:
+
+def lambda_handler(event, context):
+    return {
+        "statusCode": 200,
+        "statusDescription": "200 OK",
+        "isBase64Encoded": False,
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": "{\"message\": \"Hello from Lambda!\"}"
+    }
+
+Where to Check or Modify This in Code
+
+If your Lambda function is a Python script, find the function that returns the response (lambda_handler or equivalent).
+
+Modify the response to include headers, statusDescription, and isBase64Encoded.
+
+Deploy the updated Lambda function and test it via ALB.
+
+
+Next Steps
+
+1. Modify and redeploy Lambda function with the correct response format.
+
+
+2. Test invoking Lambda via ALB again.
+
+
+3. Check CloudWatch logs for any new errors.
+
+
+
+Would you like me to check your uploaded file for the response format?
+
