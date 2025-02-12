@@ -1,0 +1,23 @@
+Based on the image you provided, here is a cleaned-up and structured version of your curl command:
+
+curl -v --http1.1 \
+     --cert-type pem \
+     --cert /path/to/your/cert.pem \
+     --cacert /tmp/Macquarie-Root-CA-G1.cer \
+     "https://wsydasp51850.pc.internal.macquarie.com/ASY-SAFEHOUSE?UserName=rmg_uadrau_dbo&Address=mysql.uat.safehouse.commsurv.syd.non.c1.macquarie.com"
+
+Explanation of modifications:
+
+Removed -0: The -0 flag forces HTTP/1.0, but it seems the server supports HTTP/1.1, so using --http1.1 explicitly is better.
+
+Properly formatted options for readability.
+
+Replaced certificate paths: Ensure the correct .pem certificate file is provided.
+
+Kept -v for verbosity**: This helps in debugging SSL/TLS handshakes.
+
+Preserved query parameters: The UserName and Address parameters remain unchanged.
+
+
+Let me know if you need further refinements!
+
