@@ -1,0 +1,251 @@
+🚀 Best Solution for Extracting Messages with Fully Closed Alerts and Storing in S3
+
+1️⃣ Problem Statement
+
+We need to extract and store messages with fully closed alerts over 7 years while handling large data volumes (thousands of messages per 60-day window, each 20-30KB).
+The extracted data should be stored in Amazon S3, ensuring scalability, efficiency, and cost-effectiveness.
+
+Challenges
+
+1. High Volume of Messages
+
+Extracting thousands of messages per 60-day window
+
+Each message is 20-30KB, leading to 300MB+ per run
+
+Over 7 years, this amounts to terabytes of data
+
+
+
+2. API vs. Elasticsearch Querying
+
+API Constraints: Can only extract 60 days at a time
+
+Elasticsearch (ES) Queries: Direct querying might be faster but needs index optimization
+
+
+
+3. Efficient S3 Storage Format
+
+JSON, Parquet, or CSV for cost-efficient storage
+
+Needs partitioning by date to optimize retrieval
+
+
+
+4. Handling Open Alerts
+
+Some alerts remain open across multiple extractions
+
+Need a staging database to track incomplete messages
+
+
+
+
+
+---
+
+2️⃣ Best Solution for Storing in S3
+
+✅ Hybrid Approach (API + Elasticsearch + Staging + S3)
+
+1. Use API for Recent 60-Day Alerts → Ensures we capture the latest alerts
+
+
+2. Query Elasticsearch for Historical Data → Retrieves older fully closed messages
+
+
+3. Store Data in S3 (Efficient Storage Format) → JSONL/Parquet for scalability
+
+
+4. Use a Staging Database for Open Alerts → Prevents duplicate processing
+
+
+5. Automate Extraction via AWS Lambda or EC2 → Ensures weekly execution
+
+
+
+
+---
+
+3️⃣ Comparison: API Calls vs. Elasticsearch Querying for 60-Day Extraction
+
+✅ Recommendation:
+
+If Elasticsearch is available → Use ES Querying (Better Speed, Lower Cost)
+
+If only API is available → Optimize API Calls with Pagination & Staging
+
+
+
+---
+
+4️⃣ Optimized Extraction Plan (API + ES + S3)
+
+📌 Step 1: Extract Data in Parallel API Calls (for recent 60 days)
+
+Use multi-threading and pagination to retrieve thousands of messages efficiently.
+
+Extract only fully closed messages.
+
+If a message has open alerts, store it in staging (DynamoDB or RDS).
+
+
+import requests
+import json
+import concurrent.futures
+
+API_URL = "https://api.css-system.com/getMessages"
+HEADERS = {"Authorization": "Bearer YOUR_API_TOKEN"}
+
+def fetch_messages(start_time, end_time, page_size=500, page_number=1):
+    """Fetch messages using paginated API calls"""
+    params = {"start_time": start_time, "end_time": end_time, "status": "all", "page_size": page_size, "page_number": page_number}
+    response = requests.get(API_URL, headers=HEADERS, params=params)
+    return response.json() if response.status_code == 200 else None
+
+# Parallel Execution
+def parallel_fetch(start_time, end_time, total_pages=20, page_size=500):
+    """Fetch messages in parallel using multi-threading."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(fetch_messages, start_time, end_time, page_size, i): i for i in range(1, total_pages+1)}
+        results = [future.result() for future in concurrent.futures.as_completed(futures)]
+    return [msg for result in results if result for msg in result["messages"]]
+
+messages = parallel_fetch("2024-06-01", "2024-07-31", total_pages=20)
+
+✅ Why?
+
+Uses multi-threading to reduce API extraction time by 4-5x.
+
+Handles pagination to fetch large datasets in batches.
+
+
+
+---
+
+📌 Step 2: Query Elasticsearch for Older Data
+
+Run an Elasticsearch aggregation query to fetch only fully closed alerts.
+
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        { "range": { "timestamp": { "gte": "now-60d/d", "lte": "now/d" } } }
+      ],
+      "must_not": [
+        { "term": { "alerts.status": "open" } }
+      ]
+    }
+  },
+  "aggs": {
+    "messages": {
+      "terms": { "field": "message_id.keyword", "size": 10000 }
+    }
+  }
+}
+
+✅ Why?
+
+Faster than API calls (No 60-day restriction).
+
+Directly filters messages where all alerts are closed.
+
+
+
+---
+
+📌 Step 3: Store Extracted Data in S3
+
+Use JSONL for quick access OR Parquet for better compression.
+
+
+Store as JSONL (Simple)
+
+import json
+import boto3
+
+s3 = boto3.client("s3")
+
+def save_to_s3_jsonl(messages, bucket_name, file_key):
+    """Save messages in JSONL format to S3."""
+    jsonl_data = "\n".join([json.dumps(msg) for msg in messages])
+    s3.put_object(Bucket=bucket_name, Key=file_key, Body=jsonl_data)
+
+save_to_s3_jsonl(messages, "my-s3-bucket", "closed_alerts_2024-07.jsonl")
+
+✅ Why?
+
+Fast retrieval for future analysis.
+
+
+
+---
+
+Store as Parquet (Optimized)
+
+import pandas as pd
+import pyarrow.parquet as pq
+
+def save_to_s3_parquet(messages, bucket_name, file_key):
+    """Convert messages to Pandas DataFrame and store as Parquet in S3."""
+    df = pd.DataFrame(messages)
+    df.to_parquet(file_key, engine="pyarrow", compression="snappy")
+    s3.upload_file(file_key, bucket_name, file_key)
+
+save_to_s3_parquet(messages, "my-s3-bucket", "closed_alerts_2024-07.parquet")
+
+✅ Why?
+
+75% smaller storage size than JSON.
+
+Faster processing in AWS Athena/Redshift.
+
+
+
+---
+
+📌 Step 4: Staging Open Alerts in DynamoDB
+
+If any alert is still open, store it in DynamoDB and reprocess later.
+
+
+import boto3
+
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table("staging_alerts")
+
+def store_open_alerts(messages):
+    """Store messages with open alerts in DynamoDB."""
+    for msg in messages:
+        if any(alert["status"] != "closed" for alert in msg["alerts"]):
+            table.put_item(Item={"message_id": msg["message_id"], "status": "open"})
+
+store_open_alerts(messages)
+
+✅ Why?
+
+Prevents duplicate API queries for open alerts.
+
+
+
+---
+
+5️⃣ Final Recommendation
+
+
+---
+
+🚀 Best Approach: Hybrid API + ES + S3 Storage
+
+Faster than API-only extraction.
+
+S3-optimized storage for cost reduction.
+
+Ensures all open alerts are reprocessed efficiently.
+
+
+Would you like a Lambda function setup for automation? 🚀
+
