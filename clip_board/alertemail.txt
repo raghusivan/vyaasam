@@ -1,0 +1,28 @@
+Here’s a refined version of your email with improved clarity and flow:
+
+
+---
+
+Subject: JSON Files for Alert API and ES Index Comparison
+
+Hi Brie,
+
+I have attached JSON files containing messages with alerts retrieved via the Alert API and directly queried from the Elasticsearch (ES) index.
+
+Alert API document: apiMessage_MES-481d7ddd597aa556-1b52c7a400000000.json
+
+ES Index document for the same message ID: esMessage_MES-481d7ddd597aa556-1b52c7a400000000.json
+
+
+In the ES Index file, I have removed the _source section.
+
+Please review them for comparison and let me know if you have any questions.
+
+Thanks,
+Raghu
+
+
+---
+
+This version improves readability and keeps it professional yet concise. Let me know if you'd like further refinements!
+
