@@ -1,0 +1,168 @@
+To ensure your AWS Lambda function can be invoked correctly by an Application Load Balancer (ALB), you need to ensure that:
+
+1. The response format matches ALB’s expectations.
+
+
+2. The Lambda function properly handles HTTP events.
+
+
+
+Modifications Needed
+
+Lambda must return statusCode, headers, and body in the correct structure.
+
+The function should handle incoming ALB events properly.
+
+
+Fixed Code
+
+Update your lambda_handler function as follows:
+
+import json
+import logging
+import boto3
+import email
+from io import BytesIO
+import smtplib
+
+# Setup logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Initialize S3 client
+s3_client = boto3.client('s3')
+
+# Email server configuration
+SMTP_SERVER = "your-smtp-server.com"
+SMTP_PORT = 587
+SMTP_USERNAME = "your-email@example.com"
+SMTP_PASSWORD = "your-password"
+
+from_address = "your-email@example.com"
+to_address = "recipient@example.com"
+
+def send_emails_from_folder(folder):
+    bucket_name = "your-bucket-name"
+    
+    response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder)
+    if 'Contents' not in response:
+        logger.info(f"No files found in {folder}")
+        return
+
+    # Setup SMTP connection
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+    except Exception as e:
+        logger.error(f"Failed to connect to SMTP server: {e}")
+        return
+    
+    for item in response['Contents']:
+        file_key = item['Key']
+        
+        try:
+            # Download the file from S3
+            obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+            email_file = BytesIO(obj['Body'].read())
+            msg = email.message_from_binary_file(email_file)
+
+            # Send email
+            server.sendmail(from_address, to_address, msg.as_string())
+            logger.info(f"Email sent successfully from: {from_address} to: {to_address} using file: {file_key}")
+
+            # Move the file to the 'processed' folder
+            move_file_to_processed(s3_client, file_key, "processed")
+
+        except Exception as e:
+            logger.error(f"Failed to send email for file {file_key}: {e}")
+
+    server.quit()
+
+def lambda_handler(event, context):
+    """
+    AWS Lambda function handler that processes ALB events
+    """
+    logger.info(f"Email Sender Python Code invoked event: {event} and context: {context}")
+
+    # Handle ALB health check
+    if "requestContext" in event and event["requestContext"].get("elb"):
+        return {
+            "statusCode": 200,
+            "statusDescription": "200 OK",
+            "isBase64Encoded": False,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"message": "Health Check Passed"})
+        }
+
+    # Process folders
+    folders = ["your-folder-path"]
+    for folder in folders:
+        send_emails_from_folder(folder)
+
+    # Return ALB compatible response
+    return {
+        "statusCode": 200,
+        "statusDescription": "200 OK",
+        "isBase64Encoded": False,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({"message": "Emails processed successfully"})
+    }
+
+
+---
+
+Key Fixes
+
+✅ Added ALB Health Check Handling
+
+ALB periodically checks if the Lambda function is alive.
+
+The function now returns a 200 OK if an ALB health check is detected.
+
+
+✅ Ensured Lambda Returns Proper HTTP Response
+
+ALB requires a structured response with:
+
+{
+    "statusCode": 200,
+    "statusDescription": "200 OK",
+    "isBase64Encoded": false,
+    "headers": {
+        "Content-Type": "application/json"
+    },
+    "body": "{\"message\": \"Emails processed successfully\"}"
+}
+
+
+✅ Handled SMTP Connection Errors Gracefully
+
+SMTP setup is inside a try-except block to avoid crashes if the server is unreachable.
+
+
+✅ Ensured move_file_to_processed Function is Called Correctly
+
+Ensures files are moved after being processed.
+
+
+
+---
+
+Next Steps
+
+1. Deploy the updated Lambda function.
+
+
+2. Test invoking Lambda via ALB.
+
+
+3. Check ALB Target Group health status.
+
+
+4. Verify ALB logs in S3 for errors.
+
+
+
+If you still face issues, check CloudWatch logs for detailed errors. Let me know if you need further debugging help! 🚀
+
