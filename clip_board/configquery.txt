@@ -1,0 +1,155 @@
+Below is an example of how to:
+
+1. Keep all Elasticsearch settings and your query in a config.ini.
+
+
+2. Use those settings in a Python script to connect to Elasticsearch and run the query.
+
+
+3. Print out the results, including the “complete” sample query shown in your screenshot.
+
+
+
+
+---
+
+1. config.ini
+
+[elasticsearch]
+ES_URL = http://localhost:9200
+ES_USERNAME = elastic
+ES_PASSWORD = changeme
+INDEX_NAME = my_index
+full_document = True
+
+; Below is an example query matching what was in your screenshot.
+; Note: Must be valid JSON. If you need multi-line, be careful with quotes or backslashes.
+QUERY = {
+    "size": 2,
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "term": {
+                        "status": "active"
+                    }
+                },
+                {
+                    "range": {
+                        "created_date": {
+                            "gte": "now-7d"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "_source": ["field1", "field2", "field3"]
+}
+
+Explanation
+
+ES_URL, ES_USERNAME, ES_PASSWORD, INDEX_NAME, full_document: Basic connection and index info.
+
+QUERY: The JSON query from your screenshot. It returns up to 2 documents ("size": 2) that:
+
+1. Have a field status = active.
+
+
+2. Have a created_date within the last 7 days.
+
+
+3. Only retrieve _source fields: "field1", "field2", "field3".
+
+
+
+
+You can modify any part of this JSON as needed (e.g., changing "range" dates, adding filters, etc.).
+
+
+---
+
+2. Python Script (e.g. search_es.py)
+
+import configparser
+import json
+from elasticsearch import Elasticsearch
+
+def main():
+    # 1. Read configuration
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
+    # 2. Extract Elasticsearch settings from config
+    ES_URL = config.get('elasticsearch', 'ES_URL', fallback='http://localhost:9200')
+    ES_USERNAME = config.get('elasticsearch', 'ES_USERNAME', fallback='elastic')
+    ES_PASSWORD = config.get('elasticsearch', 'ES_PASSWORD', fallback='changeme')
+    INDEX_NAME = config.get('elasticsearch', 'INDEX_NAME', fallback='my_index')
+    ES_FULL_DOCUMENT_TYPE = config.get('elasticsearch', 'full_document', fallback='True')
+
+    # 3. Convert QUERY string in config to a Python dict
+    query_str = config.get('elasticsearch', 'QUERY', fallback='{}')
+    query_body = json.loads(query_str)
+
+    # 4. Connect to Elasticsearch
+    es = Elasticsearch(
+        ES_URL,
+        http_auth=(ES_USERNAME, ES_PASSWORD),
+        timeout=30
+    )
+
+    # 5. Run the search with the query from config.ini
+    response = es.search(index=INDEX_NAME, body=query_body)
+
+    # 6. Print the full response (JSON formatted)
+    print("----- Full Elasticsearch Response -----")
+    print(json.dumps(response, indent=2))
+
+    # 7. Print a summary of the documents’ _source
+    print("\n----- Documents (_source) -----")
+    for doc in response["hits"]["hits"]:
+        print(doc.get("_source", {}))
+
+if __name__ == "__main__":
+    main()
+
+How This Works
+
+1. configparser loads config.ini.
+
+
+2. We get each value (URL, username, password, index, query) via config.get(...).
+
+
+3. json.loads() converts the QUERY from a string to a Python dictionary.
+
+
+4. Elasticsearch(...) initializes the client.
+
+
+5. es.search(...) runs the query read from config.ini.
+
+
+6. We print the entire search response (response) and a simpler summary (just the _source fields).
+
+
+
+
+---
+
+Usage
+
+1. Update config.ini with your actual credentials, index name, and query.
+
+
+2. Run the script:
+
+python search_es.py
+
+
+3. Check the console output to see the returned documents.
+
+
+
+You can now change queries easily in config.ini without modifying your Python code. This setup is ideal for quickly swapping between different queries or Elasticsearch environments.
+
