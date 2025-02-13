@@ -1,0 +1,58 @@
+If by “search only for the alert_status section” you mean return only the alert_status object from each document (and ignore the other sections in the _source), you can use source filtering in Elasticsearch. For example:
+
+GET /your_index/_search
+{
+  "_source": ["alert_status"], 
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "wildcard": {
+            "alert_status.alert_status_id": {
+              "value": "MES-4820bcetfa9089-7087531200000*"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+Explanation
+
+1. _source filtering:
+
+"_source": ["alert_status"] tells Elasticsearch you only want the alert_status field (and all its sub-fields) returned in each matching document’s _source.
+
+If you have nested fields under alert_status, they’ll still be included.
+
+
+
+2. Querying inside alert_status:
+
+Notice that the field name is alert_status.alert_status_id. If alert_status_id is a sub-field of alert_status, you need to use the full path in the query (alert_status.alert_status_id) unless your mapping is flattened.
+
+The example above shows a wildcard query matching documents where alert_status.alert_status_id starts with "MES-4820bcetfa9089-7087531200000".
+
+
+
+3. Adjust to your needs:
+
+If you just want to retrieve all documents but only the alert_status section, change the query to a match_all or remove the must clause:
+
+{
+  "_source": ["alert_status"],
+  "query": {
+    "match_all": {}
+  }
+}
+
+If you want more fields in the source (e.g., alert_status plus alert_history), you can do:
+
+"_source": ["alert_status", "alert_history"]
+
+
+
+
+This approach is how you can “search” (i.e., filter or query) on fields within alert_status and also retrieve only that portion of the document in the response.
+
