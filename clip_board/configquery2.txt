@@ -1,0 +1,88 @@
+Below is an updated config.ini that fixes JSON parsing issues by escaping the double quotes inside your Painless script. This ensures that when configparser reads the QUERY value and passes it to json.loads(), it will be valid JSON.
+
+
+---
+
+1. config.ini
+
+[elasticsearch]
+ES_URL = https://master.uat.digitalreasoningelasticsearch.forriskdigitalreasoning.syd.non.c1.m.acuqire.com:9020
+INDEX_NAME = ecom_production_20200229_message_types_alerts_2025
+ES_USERNAME = mg_cr_elastic_au_ua
+ES_PASSWORD = YourPasswordHere
+listing_size = 1
+full_document = true
+status_id = AZSjnNpId7Y4KliXBJZiU
+
+; The QUERY is stored as valid JSON on one line.
+; We only use double quotes inside the script's source,
+; and everything is properly escaped to avoid configparser issues.
+
+QUERY = {"query":{"bool":{"must":[{"script":{"script":{"source":"int count = 0; if (doc[\\\"key_indicator_list\\\"].size()>0) count++; if (doc[\\\"assignee\\\"].size()>0) count++; if (doc[\\\"person_of_interest\\\"].size()>0) count++; if (doc[\\\"reason_for_concern\\\"].size()>0) count++; if (doc[\\\"status\\\"].size()>0) count++; return count >= 5;","lang":"painless"}}}]},"sort":{"modified_date":"desc"},"_source":true,"size":3}
+
+Why the Double Backslashes?
+
+Inside JSON, " characters must be escaped as \". But because you’re placing JSON inside an .ini file, Python’s configparser reads it as a single string. When Python then parses this string again with json.loads(), we need to ensure that every internal quote is double-escaped: \\\". Otherwise, you’ll get syntax errors like “Expecting ',' delimiter” or “Unexpected character”.
+
+
+---
+
+2. Python Script (Example)
+
+Below is an example Python script that loads this config.ini, connects to Elasticsearch, and executes the query.
+
+import configparser
+import json
+from elasticsearch import Elasticsearch
+
+def main():
+    # 1. Load config.ini
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
+    # 2. Read Elasticsearch connection details
+    es_url = config.get('elasticsearch', 'ES_URL', fallback='http://localhost:9200')
+    es_username = config.get('elasticsearch', 'ES_USERNAME', fallback='')
+    es_password = config.get('elasticsearch', 'ES_PASSWORD', fallback='')
+    index_name = config.get('elasticsearch', 'INDEX_NAME', fallback='my_index')
+
+    # 3. Get the query string and parse it into a Python dictionary
+    query_str = config.get('elasticsearch', 'QUERY', fallback='{}')
+    try:
+        query_body = json.loads(query_str)
+    except json.JSONDecodeError as e:
+        print(f"Error parsing QUERY JSON: {e}")
+        return
+
+    # 4. Create the Elasticsearch client
+    es = Elasticsearch(
+        es_url,
+        http_auth=(es_username, es_password),
+        timeout=30
+    )
+
+    # 5. Execute the search
+    try:
+        response = es.search(index=index_name, body=query_body)
+        print("----- Elasticsearch Search Response -----")
+        print(json.dumps(response, indent=2))
+    except Exception as e:
+        print(f"Error executing search: {e}")
+
+if __name__ == "__main__":
+    main()
+
+Key Takeaways
+
+1. Escape Double Quotes in your Painless script references (e.g., doc["key_indicator_list"]) as doc[\\\"key_indicator_list\\\"].
+
+
+2. Keep the entire JSON query on one line in config.ini.
+
+
+3. Remove or comment out any lines in config.ini that aren’t valid INI syntax.
+
+
+
+With these fixes, the script should no longer throw a JSON parsing error and will correctly execute the query against Elasticsearch.
+
