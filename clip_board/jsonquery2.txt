@@ -1,0 +1,56 @@
+Below is a canonical example of how to form a wildcard query in Elasticsearch given your mapping (where alert_status_id is of type keyword). Note that the wildcard query expects an object with a value property under the field name.
+
+Try this corrected query structure:
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "wildcard": {
+            "alert_status_id": {
+              "value": "MES-4820bcetfa9089-7087531200000*"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "_source": true
+}
+
+Why this fixes the error
+
+1. Correct wildcard syntax
+In Elasticsearch, a wildcard query generally follows this format:
+
+{
+  "wildcard": {
+    "field_name": {
+      "value": "pattern*"
+    }
+  }
+}
+
+If you simply put "alert_status_id": "MES-4820bcetfa..." without the value object, Elasticsearch may interpret it incorrectly and throw parse errors (e.g., "failed to create query: For input string: \"bool\" ").
+
+
+2. Keyword field support
+From your mapping snippet:
+
+"alert_status_id": {
+  "type": "keyword",
+  "index": true,
+  "ignore_above": 10922
+}
+
+This means alert_status_id is a keyword field, so a wildcard query is valid. (If it were a text field with an analyzer, you might consider a different query type or use a .keyword subfield.)
+
+
+3. Single asterisk for partial match
+Typically, you would use * at the end (or beginning) for partial matches (e.g. "MES-4820bcetfa9089-7087531200000*"). If you need more flexible matching, you can place * anywhere in the string. Triple asterisks (***) can also work, but one * is usually sufficient for the intended “match anything from here on” logic.
+
+
+
+With the above query, you should avoid the previous parse error and be able to match documents whose alert_status_id begins with "MES-4820bcetfa9089-7087531200000" and continues with any characters after that.
+
