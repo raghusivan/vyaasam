@@ -1,0 +1,109 @@
+Below is an example of how you can place the exact query from your screenshot into config.ini (properly escaped so configparser and json.loads() can handle it) and a matching Python script that reads and executes the query.
+
+
+---
+
+1. config.ini
+
+[elasticsearch]
+ES_URL = http://localhost:9200
+ES_USERNAME = elastic
+ES_PASSWORD = changeme
+INDEX_NAME = my_index
+
+; The QUERY is stored as valid JSON on one line.
+; Notice how we use double quotes inside the script's source, 
+; and everything is properly escaped to avoid configparser issues.
+QUERY = {"query":{"bool":{"must":[{"script":{"script":{"source":"int count = 0; if (doc[\"assignee\"].size()>0) count++; if (doc[\"is_manual_alert\"].size()>0) count++; if (doc[\"key_indicator_list\"].size()>0) count++; if (doc[\"person_of_interest\"].size()>0) count++; if (doc[\"reason_for_concern\"].size()>0) count++; if (doc[\"status\"].size()>0) count++; if (doc[\"user\"].size()>0) count++; return count >= 5;","lang":"painless"}}}]},"sort":{"modified_date":"desc"},"_source":true,"size":3}
+
+Explanation
+
+QUERY contains:
+
+A bool query with one must clause, which is a script query.
+
+The Painless script checks each listed field (e.g., assignee, is_manual_alert, key_indicator_list, etc.) to see if it exists (.size() > 0).
+
+It increments a counter for each existing field and returns true if count >= 5.
+
+Sorting by "modified_date" in descending order.
+
+Returning _source for each matching document, with size = 3 results.
+
+
+
+Important:
+
+We used double quotes around field names (like doc["assignee"]) so we can safely embed the script in JSON.
+
+The entire JSON query is on one line in config.ini.
+
+Any extra lines or timestamps (e.g., 2023-08-23 ...) must be removed or commented out to avoid ParsingError.
+
+
+
+---
+
+2. Python Script (e.g., search_es.py)
+
+import configparser
+import json
+from elasticsearch import Elasticsearch
+
+def main():
+    # 1. Load config.ini
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
+    # 2. Read Elasticsearch connection details
+    ES_URL = config.get('elasticsearch', 'ES_URL', fallback='http://localhost:9200')
+    ES_USERNAME = config.get('elasticsearch', 'ES_USERNAME', fallback='elastic')
+    ES_PASSWORD = config.get('elasticsearch', 'ES_PASSWORD', fallback='changeme')
+    INDEX_NAME = config.get('elasticsearch', 'INDEX_NAME', fallback='my_index')
+
+    # 3. Get the query string and parse it into a Python dictionary
+    query_str = config.get('elasticsearch', 'QUERY', fallback='{}')
+    try:
+        query_body = json.loads(query_str)
+    except json.JSONDecodeError as e:
+        print(f"Error parsing QUERY JSON: {e}")
+        return
+
+    # 4. Create the Elasticsearch client
+    es = Elasticsearch(
+        ES_URL,
+        http_auth=(ES_USERNAME, ES_PASSWORD),
+        timeout=30
+    )
+
+    # 5. Execute the search
+    try:
+        response = es.search(index=INDEX_NAME, body=query_body)
+        print("----- Elasticsearch Search Response -----")
+        print(json.dumps(response, indent=2))
+    except Exception as e:
+        print(f"Error executing search: {e}")
+
+if __name__ == "__main__":
+    main()
+
+How It Works
+
+1. configparser.ConfigParser() reads the [elasticsearch] section in config.ini.
+
+
+2. We extract ES_URL, ES_USERNAME, ES_PASSWORD, INDEX_NAME, and the QUERY.
+
+
+3. json.loads() converts the QUERY string into a Python dictionary, which Elasticsearch’s search() method expects.
+
+
+4. We connect to Elasticsearch with the provided credentials.
+
+
+5. We run the search and print the results (or catch any exceptions).
+
+
+
+This setup ensures you can easily modify the query in config.ini without altering your Python code—just keep the JSON valid and properly escaped.
+
