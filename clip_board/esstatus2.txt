@@ -1,0 +1,73 @@
+That error usually happens when Elasticsearch sees deprecated or invalid fields in your query—most commonly "disable_coord" or "adjust_pure_negative"—which were removed or changed in newer versions (and even in late 5.x). To fix it, remove those fields and any other deprecated items, and use a minimal valid query. For example:
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "wildcard": {
+            "alert_status_id": {
+              "value": "MES-48*"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "_source": true
+}
+
+Why This Works
+
+1. No Deprecated Fields
+
+disable_coord and adjust_pure_negative were deprecated/removed around Elasticsearch 5.x–6.x. If they’re still in your query body, Elasticsearch will complain with a “failed to create query” parse error.
+
+Similarly, remove any other old fields like "boost": 1.0 at the wrong level or "minimum_should_match" in the wrong place.
+
+
+
+2. Wildcard Query
+
+The wildcard clause must be structured as shown, with "value" containing your pattern.
+
+If alert_status_id is indeed top-level in your document (as the screenshot suggests), reference it directly. If it’s nested under alert_status, then the field path would be "alert_status.alert_status_id".
+
+
+
+3. _source: true
+
+Tells Elasticsearch to return all fields from _source for each matching document.
+
+
+
+
+Final Check
+
+Make sure you are hitting the correct index and (if you’re on ES 5.x) the correct type in your URL, for example:
+
+POST /your_index/alert_status/_search
+
+or, if you must include _type in the query (instead of the path):
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        { "term": { "_type": "alert_status" } },
+        {
+          "wildcard": {
+            "alert_status_id": {
+              "value": "MES-48*"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "_source": true
+}
+
+If you’re still getting no results, confirm the exact field name and the wildcard pattern matches your stored documents.
+
+
