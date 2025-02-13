@@ -1,0 +1,70 @@
+Based on your mapping screenshot, alert_status is the type name, and alert_status_id is a field inside that type. In Elasticsearch 5.x/6.x, you can query it by specifying both the index and the type in the request path. For example:
+
+POST /your_index_name/alert_status/_search
+{
+  "_source": true,
+  "query": {
+    "wildcard": {
+      "alert_status_id": {
+        "value": "MES-48*"
+      }
+    }
+  }
+}
+
+Explanation
+
+1. Index + Type Path
+
+your_index_name is the name of your index (e.g., ecomm_production_20200929__message_types_alerts_2025).
+
+alert_status is the type (from your mapping).
+
+
+
+2. Wildcard Query
+
+alert_status_id is a top-level field within that type.
+
+"value": "MES-48*" matches any alert_status_id that begins with MES-48. Adjust this prefix/pattern as needed.
+
+
+
+3. _source: true
+
+Tells Elasticsearch to return all fields in each matching document.
+
+If you want only certain fields, you can use something like "_source": ["alert_status_id", "status", "last_updated"] etc.
+
+
+
+
+Alternative if You Must Use /your_index_name/_search
+
+If you cannot (or prefer not to) include the type in the path, you can filter by _type in the query:
+
+POST /your_index_name/_search
+{
+  "_source": true,
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "_type": "alert_status"
+          }
+        },
+        {
+          "wildcard": {
+            "alert_status_id": {
+              "value": "MES-48*"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+Either way, this is how you perform a wildcard search on the alert_status_id field (located in the alert_status type) and retrieve all properties for each matching document.
+
