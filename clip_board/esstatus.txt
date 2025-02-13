@@ -1,0 +1,144 @@
+Below is a minimal, correct wildcard query for Elasticsearch 5.6.x that:
+
+Targets a specific index and type.
+
+Matches documents by alert_status_id using a wildcard.
+
+Returns all fields (i.e., the full _source) from each matching document.
+
+
+
+---
+
+1. Using Index + Type in the Path
+
+In Elasticsearch 5.x (and 6.x with multiple types), you can specify the index and type in the request path:
+
+POST /your_index/alert_status/_search
+{
+  "_source": true,
+  "query": {
+    "wildcard": {
+      "alert_status_id": {
+        "value": "MES-48*"
+      }
+    }
+  }
+}
+
+Explanation
+
+/your_index/alert_status/_search:
+
+your_index is the index name.
+
+alert_status is the document type.
+
+
+"_source": true: Tells Elasticsearch to return all fields for matching documents.
+
+"wildcard": { "alert_status_id": ... }: Performs a wildcard search on the top-level field alert_status_id.
+
+"value": "MES-48*": Matches any string starting with MES-48. Adjust as needed.
+
+
+
+---
+
+2. If You Must Use /your_index/_search Instead
+
+You can also keep the path as /your_index/_search and filter by _type in the query (common in ES 5.x/6.x):
+
+POST /your_index/_search
+{
+  "_source": true,
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "_type": "alert_status"
+          }
+        },
+        {
+          "wildcard": {
+            "alert_status_id": {
+              "value": "MES-48*"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+---
+
+3. If alert_status_id is Nested Under alert_status
+
+Sometimes the mapping shows:
+
+"alert_status": {
+  "properties": {
+    "alert_status_id": { "type": "keyword" }
+    ...
+  }
+}
+
+That means the field is alert_status.alert_status_id (a sub-field), so your query would be:
+
+POST /your_index/alert_status/_search
+{
+  "_source": true,
+  "query": {
+    "wildcard": {
+      "alert_status.alert_status_id": {
+        "value": "MES-48*"
+      }
+    }
+  }
+}
+
+
+---
+
+4. Example in Python (requests)
+
+import requests
+import json
+
+url = "http://localhost:9200/your_index/alert_status/_search"
+query_body = {
+    "_source": True,
+    "query": {
+        "wildcard": {
+            "alert_status_id": {
+                "value": "MES-48*"
+            }
+        }
+    }
+}
+
+response = requests.post(url, json=query_body)
+print(json.dumps(response.json(), indent=2))
+
+Replace your_index and alert_status with the actual index/type.
+
+If alert_status_id is under alert_status, then use "alert_status.alert_status_id" instead of "alert_status_id".
+
+Adjust "value": "MES-48*" to match the prefix in your data.
+
+
+
+---
+
+Key Takeaways
+
+In ES 5.6: You can still have multiple types, so specifying POST /index/type/_search is valid.
+
+Wildcard queries require "wildcard": { "field_name": { "value": "pattern*" }}.
+
+_source: true returns all fields in each matching document.
+
+
