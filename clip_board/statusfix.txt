@@ -1,0 +1,69 @@
+import json
+from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import ConnectionError, RequestError
+
+def read_elasticsearch_config(config):
+    """Read Elasticsearch connection details from config"""
+    es_url = config.get('elasticsearch', 'ES_URL', fallback='http://localhost:9200')
+    es_username = config.get('elasticsearch', 'ES_USERNAME', fallback='')
+    es_password = config.get('elasticsearch', 'ES_PASSWORD', fallback='')
+    index_name = config.get('elasticsearch', 'INDEX_NAME', fallback='my_index')
+    query_file = config.get('elasticsearch', 'QUERY_FILE', fallback='query.json')
+    return es_url, es_username, es_password, index_name, query_file
+
+def read_query_file(query_file):
+    """Read and parse the query JSON file"""
+    try:
+        with open(query_file, 'r') as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Error parsing QUERY JSON: {e}")
+        return None
+    except FileNotFoundError as e:
+        print(f"Error: Query file not found: {e}")
+        return None
+
+def create_es_client(es_url, es_username, es_password):
+    """Create Elasticsearch client with proper error handling"""
+    try:
+        return Elasticsearch(
+            es_url,
+            basic_auth=(es_username, es_password) if es_username and es_password else None,
+            verify_certs=False,
+            ssl_show_warn=False,
+            timeout=30
+        )
+    except ConnectionError as e:
+        print(f"Error connecting to Elasticsearch: {e}")
+        return None
+
+def execute_search(es, index_name, query_body):
+    """Execute the search query with proper error handling"""
+    try:
+        response = es.search(index=index_name, body=query_body)
+        print("─── Elasticsearch Search Response ───")
+        print(json.dumps(response, indent=2))
+        return response
+    except RequestError as e:
+        print(f"Error executing search: {e}")
+        return None
+
+def main():
+    # 1. Read config (assuming you have a config object)
+    es_url, es_username, es_password, index_name, query_file = read_elasticsearch_config(config)
+    
+    # 2. Read query file
+    query_body = read_query_file(query_file)
+    if not query_body:
+        return
+    
+    # 3. Create Elasticsearch client
+    es = create_es_client(es_url, es_username, es_password)
+    if not es:
+        return
+    
+    # 4. Execute search
+    execute_search(es, index_name, query_body)
+
+if __name__ == "__main__":
+    main()
