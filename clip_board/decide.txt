@@ -1,0 +1,16 @@
+Here’s a concise response you can post:
+
+
+---
+
+Hi Poornima,
+
+That’s a good question. I still need to do some analysis by comparing the Alert API results to ensure we can get all the data in the desired format—especially around date range queries and matching the UI data. Elasticsearch gives us a lot of flexibility, but I want to confirm it meets all our needs before committing.
+
+I’ll need a couple of days to complete this comparison. If the direct ES queries give us the desired extraction and aren’t overly complex, we can move forward with ES. If it turns out to be too cumbersome or doesn’t meet our expectations, we can fall back to the CSS API.
+
+So let me finish this analysis, and then I’ll provide a final recommendation.
+
+Thanks!
+[Your Name]
+
