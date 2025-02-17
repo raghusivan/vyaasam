@@ -1,0 +1,102 @@
+Below is an updated draft message to your manager that explains the issues and includes references to online resources as evidence:
+
+Subject: Impact of Migrating from Elasticsearch 5.x to 7.x on Our Query Structure
+
+Hi [Manager Name],
+
+I wanted to highlight some important changes between our current Elasticsearch 5.x setup and the upcoming Elasticsearch 7.x version, as they directly affect our query functionality and overall document structure.
+
+Key Points:
+
+Document Structure Changes:
+
+ES 5.x:
+We currently use multiple mapping types within a single index (i.e., audio, alert_history, alert_status, and message).
+
+ES 7.x:
+Elasticsearch has removed the ability to have multiple types in a single index. Instead, we must either: 
+
+Create separate indices for each document type, or
+
+Consolidate all documents into a single index with a discriminator field (e.g., "doc_type") to distinguish between document kinds.
+
+Evidence:
+
+Removal of Mapping Types in Elasticsearch 7.x
+
+Breaking Changes in Elasticsearch 7.0
+
+Query Modifications:
+
+Our current queries often reference document types directly. In ES 7.x, since the concept of types no longer exists, these queries will need to be rewritten.
+
+Without reviewing the new 7.x index mappings, we cannot assume which parts of our queries need modification.
+We must first analyze how our documents are structured in the new version before determining the appropriate changes.
+
+Evidence:
+
+Migrating from Elasticsearch 5.x to 7.x
+
+Elasticsearch 7.0 Query DSL Updates
+
+Next Steps:
+
+To accurately update our queries, we need to review the actual 7.x index mappings and confirm the new document structure. Based on that review, we can decide whether to create separate indices per document type or to use a single index with a discriminator field.
+
+Without this analysis, we cannot confidently rewrite our queries to adapt to the new structure.
+
+Please let me know how you’d like to proceed so that we can schedule the necessary review and plan the migration steps accordingly.
+
+Best regards,
+[Your Name]
+
+This message outlines the structural changes and query implications, and it includes links to official Elasticsearch documentation as evidence.
+
+Below is an updated draft message that reflects the situation—emphasizing that the migration from Elasticsearch 5.x to 7.x is not working as expected, that the underlying document redesign is managed internally by the product company (a black box), and that without knowing the final index document structure, we cannot simply reuse our existing queries.
+
+Subject: Concerns Regarding Elasticsearch 5.x to 7.x Migration and Query Adaptation
+
+Hi [Manager Name],
+
+I want to bring to your attention some critical issues regarding our migration from Elasticsearch 5.x to 7.x:
+
+Key Concerns:
+
+Migration Challenges & Document Redesign:
+
+Our migration to Elasticsearch 7.x is not working as expected. The product company is handling a significant internal redesign of the document structure.
+
+In ES 7.x, the removal of mapping types means that the way documents are stored has fundamentally changed. However, since this redesign is managed internally (a black box), we only see the final index documents without detailed insight into the underlying structure.
+
+Impact on Our Queries:
+
+Our existing queries, which were built for ES 5.x and relied on multiple types (e.g., audio, alert_history, alert_status, message), may no longer function correctly in ES 7.x.
+
+Without knowing the final structure of the index documents (which now might have been consolidated into a single type or split into separate indices), we cannot confidently rewrite or modify our queries to ensure they return the expected results.
+
+Evidence and References:
+
+Removal of Mapping Types in Elasticsearch 7.x
+
+Breaking Changes in Elasticsearch 7.0
+
+Migrating from Elasticsearch 5.x to 7.x
+
+Next Steps:
+
+Given that the document redesign is handled internally by the product company and that the migration is not functioning as expected, we need to first get visibility into the final index structure in ES 7.x. This information is essential to:
+
+Understand how the documents are now organized.
+
+Determine which aspects of our queries require modification.
+
+Until we have a clear picture of the new index design, we cannot assume that our existing queries will work correctly. I recommend that we request detailed documentation or a mapping export of the ES 7.x index from the product team so we can assess the required changes on our end.
+
+Please let me know how you’d like to proceed or if you’d like to set up a meeting with the product team to discuss these issues further.
+
+Best regards,
+
+[Your Name]
+
+This message clearly outlines the issues, explains why we cannot simply assume the old queries will work, and includes references for further context.
+
