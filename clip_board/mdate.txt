@@ -1,0 +1,16 @@
+Below is a minimal working query JSON that filters documents by the last_updated field in the specified date range. Make sure your index and field names match exactly as defined in your mapping:
+
+{
+  "query": {
+    "range": {
+      "last_updated": {
+        "gte": "2023-01-01T00:00:00",
+        "lte": "2023-12-31T23:59:59",
+        "format": "date_time||date_time_no_millis"
+      }
+    }
+  }
+}
+
+This query uses the last_updated field—defined in your mapping as a date with the format "date_time||date_time_no_millis"—to return all documents whose last_updated value falls within the specified date/time range.
+
