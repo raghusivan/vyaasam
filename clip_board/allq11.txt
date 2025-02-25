@@ -1,0 +1,90 @@
+If your Elasticsearch 5.x query is returning no results despite the data being present, try the following adjustments:
+
+Updated Query:
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "_id": "YOUR_MESSAGE_ID"
+          }
+        }
+      ],
+      "should": [
+        {
+          "has_child": {
+            "type": "alert_history",
+            "query": {
+              "match_all": {}
+            }
+          }
+        },
+        {
+          "has_child": {
+            "type": "alert_status",
+            "query": {
+              "match_all": {}
+            }
+          }
+        }
+      ],
+      "minimum_should_match": 1
+    }
+  },
+  "_source": true,
+  "size": 1
+}
+
+Fixes:
+
+1. Ensures the parent _id exists – The must clause still ensures the parent message exists.
+
+
+2. Uses should instead of must for has_child – This makes the query return results if either alert_history or alert_status exists.
+
+
+3. Sets minimum_should_match: 1 – This ensures at least one child document (alert_history or alert_status) must exist.
+
+
+
+Debugging Steps:
+
+Run a simple parent-only query to confirm that the message document exists:
+
+{
+  "query": {
+    "term": {
+      "_id": "YOUR_MESSAGE_ID"
+    }
+  }
+}
+
+Run a child query to confirm child documents exist:
+
+{
+  "query": {
+    "has_parent": {
+      "parent_type": "message",
+      "query": {
+        "term": {
+          "_id": "YOUR_MESSAGE_ID"
+        }
+      }
+    }
+  }
+}
+
+Ensure the index has the correct parent-child mapping (Elasticsearch 5.x requires parent to be set at indexing time).
+
+
+If the document still doesn’t appear, check:
+
+If _id is stored correctly in Elasticsearch (try using message_id instead if _id isn't working).
+
+If parent-child relationships were indexed properly (parent must be set during indexing).
+
+
+Let me know what results you get from these!
+
