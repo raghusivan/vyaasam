@@ -1,0 +1,71 @@
+import argparse
+import logging
+import json
+from es_queries import execute_search
+from es_connection import create_es_client
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Read Elasticsearch configuration for query execution.")
+    parser.add_argument("message_id", type=str, help="Message ID to replace in the query.")
+    return parser.parse_args()
+
+def execute_search_and_collect_results(es, index_name, query_body):
+    logging.info("Executing search with provided query body.")
+    results = execute_search(es, index_name, query_body)
+    return results
+
+def main():
+    # Parse command-line arguments
+    args = parse_arguments()
+    message_id = args.message_id
+
+    # Hardcoded Elasticsearch configuration
+    es_url = "https://master.uat.digitalreasoningelasticsearch.forris..."
+    es_username = "rmg_dr_elastic_au_ua"
+    es_password = "qNMr1p_HJKLbzIU"
+    index_name = "ecomm_production_20200929__message_types_alerts_2024"
+
+    # Hardcoded query
+    query_body = {
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"message_id": message_id}},
+                    {"has_child": {
+                        "type": "alert_history",
+                        "query": {"term": {"message_id": message_id}}
+                    }},
+                    {"has_child": {
+                        "type": "alert_status",
+                        "query": {"term": {"message_id": message_id}}
+                    }}
+                ]
+            }
+        }
+    }
+
+    # Create Elasticsearch client
+    logging.info("Creating Elasticsearch client.")
+    es = create_es_client(es_url, es_username, es_password)
+    if not es:
+        logging.error("Failed to create Elasticsearch client. Exiting.")
+        return
+
+    # Fetch results
+    results = execute_search_and_collect_results(es, index_name, query_body)
+    
+    # Write results to a JSON file
+    output_file = f"consolidated_results_{message_id}.json"
+    with open(output_file, "w") as f:
+        json.dump(results, f, indent=2)
+    logging.info(f"Consolidated results written to {output_file}")
+
+if __name__ == "__main__":
+    main()
+
+
+I have rewritten your code, ensuring that the query_body argument is properly passed. Let me know if you need any additional modifications or explanations!
+
