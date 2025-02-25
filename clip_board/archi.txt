@@ -1,0 +1,87 @@
+The whiteboard diagram appears to be an architecture or data flow diagram related to processing alerts from the Shield system using Airflow, S3, and Python Pandas for deserialization and storing data in SQLite.
+
+Breakdown of Components:
+
+1. Shield
+
+The process begins with Shield, which likely refers to a surveillance or security monitoring system.
+
+Shield fetches a token to authenticate and retrieve data from an Alert API.
+
+
+
+2. Alert API
+
+The API responds with an S3 link that contains alert data.
+
+The response size appears to be around 150MB.
+
+
+
+3. Airflow
+
+The alert data is then processed through an Airflow pipeline.
+
+Data is moved into an S3 landing bucket, labeled "landing".
+
+
+
+4. S3 to Processing
+
+Once in the landing bucket, the data is moved to a folder called "tobprocessed".
+
+This indicates that further transformation or processing will occur.
+
+
+
+5. GuardDuty Integration
+
+There is a reference to GuardDuty, an AWS security monitoring service.
+
+It connects with Event B, which could be an event-driven trigger based on threat intelligence.
+
+
+
+6. Data Processing with Python & Pandas
+
+The data in the "tobprocessed" S3 folder is picked up by a Python script using Pandas.
+
+The script deserializes the data for further analysis.
+
+
+
+7. SQLite for Storage
+
+The final processed data is stored in an SQLite database.
+
+
+
+
+Summary of Flow:
+
+1. Shield fetches alerts via an API.
+
+
+2. API response provides an S3 link with a 150MB file.
+
+
+3. Data is moved to an S3 landing bucket.
+
+
+4. Airflow processes and moves data to a "tobprocessed" folder in S3.
+
+
+5. A Python script using Pandas deserializes the data.
+
+
+6. The cleaned data is stored in an SQLite database.
+
+
+7. GuardDuty and event triggers may be monitoring this process for security purposes.
+
+
+
+This diagram represents an automated pipeline for processing security alerts, utilizing cloud storage, workflow orchestration (Airflow), and Python-based data handling.
+
+Would you like a cleaned-up digital version of this flow?
+
