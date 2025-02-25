@@ -1,0 +1,66 @@
+Elasticsearch 5.x does not support inner_hits directly in this way. Instead, you need to use the has_child query correctly inside a bool query. Here's the fixed query to work with Elasticsearch 5.x:
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "_id": "YOUR_MESSAGE_ID"
+          }
+        },
+        {
+          "has_child": {
+            "type": "alert_history",
+            "query": {
+              "bool": {
+                "must": [
+                  {
+                    "term": {
+                      "message_id": "YOUR_MESSAGE_ID"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "has_child": {
+            "type": "alert_status",
+            "query": {
+              "bool": {
+                "must": [
+                  {
+                    "term": {
+                      "message_id": "YOUR_MESSAGE_ID"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "_source": true,
+  "size": 1
+}
+
+Fixes and Adjustments for Elasticsearch 5.x:
+
+1. Removed inner_hits – Elasticsearch 5.x does not support it directly at the top level.
+
+
+2. Used has_child inside must – This ensures both child types (alert_history and alert_status) exist for the given _id.
+
+
+3. Querying by message_id inside child queries – Ensures the children are correctly linked.
+
+
+
+Replace "YOUR_MESSAGE_ID" with the actual _id you are searching for.
+
+This query will retrieve a message document that has alert_history and alert_status as child documents in an Elasticsearch 5.x index. Let me know if you need further adjustments!
+
