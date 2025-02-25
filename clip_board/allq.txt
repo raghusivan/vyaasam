@@ -1,0 +1,48 @@
+Here is the Elasticsearch query to retrieve a message by _id along with its two child documents, alert_history and alert_status:
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "_id": "YOUR_MESSAGE_ID"
+          }
+        }
+      ]
+    }
+  },
+  "join": {
+    "relations": {
+      "message": ["alert_history", "alert_status"]
+    }
+  },
+  "_source": true,
+  "size": 1,
+  "collapse": {
+    "field": "_id"
+  },
+  "inner_hits": {
+    "alert_history": {
+      "type": "alert_history",
+      "size": 10,
+      "query": {
+        "term": {
+          "_id": "YOUR_MESSAGE_ID"
+        }
+      }
+    },
+    "alert_status": {
+      "type": "alert_status",
+      "size": 10,
+      "query": {
+        "term": {
+          "_id": "YOUR_MESSAGE_ID"
+        }
+      }
+    }
+  }
+}
+
+Replace "YOUR_MESSAGE_ID" with the actual message _id. Let me know if you need modifications!
+
