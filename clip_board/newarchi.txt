@@ -1,0 +1,126 @@
+🔹 High-Level Summary (Bullet Points)
+
+1️⃣ Job Execution on EC2 (jobs-uat)
+
+Runs on UAT EC2 instance but processes Production Elasticsearch index.
+
+Uses Systemd service for automatic execution and recovery.
+
+Ensures job continuity and prevents duplicate processing.
+
+
+2️⃣ Fetching Messages from Production Elasticsearch
+
+Queries Production Elasticsearch index for messages by date range.
+
+Extracts only message_id initially for fast indexing.
+
+Uses Scroll API or Search After for large-scale pagination.
+
+
+3️⃣ Storing & Managing Messages in MySQL (UAT)
+
+Saves message_id in MySQL for structured tracking.
+
+Assigns batch IDs for controlled processing.
+
+Tracks message statuses (pending, in_progress, failed, completed).
+
+Prevents duplicate entries using INSERT IGNORE.
+
+
+4️⃣ Parallel Batch Processing on EC2
+
+Uses multiprocessing to process multiple batches simultaneously.
+
+Each worker picks a batch and locks it for processing.
+
+Gracefully handles exits and restarts if workers fail.
+
+
+5️⃣ Fetching Full Messages from Production Elasticsearch
+
+Retrieves full message details for each message_id.
+
+Fetches additional metadata (status, history, processing details).
+
+Implements retry logic for failed queries.
+
+
+6️⃣ Generating JSON Files
+
+Formats message data into structured JSON.
+
+Batches multiple messages into single JSON files for efficiency.
+
+Temporarily stores JSON in /tmp/ before S3 upload.
+
+
+7️⃣ Optimized S3 Upload Handling
+
+Uploads JSON files to S3 bucket for migration.
+
+Uses multi-part uploads for large files (>10MB).
+
+Implements parallel S3 uploads using a worker queue.
+
+Applies exponential backoff for failed uploads.
+
+
+8️⃣ Updating MySQL After Processing
+
+Marks messages as completed after a successful S3 upload.
+
+Logs S3 file paths in MySQL for future reference.
+
+Marks messages as failed if processing/upload fails.
+
+Retries failed messages automatically in the next job run.
+
+
+9️⃣ Handling Failures & Recovery
+
+Automatically resets unprocessed batches if a worker crashes.
+
+Limits retries to prevent infinite loops (e.g., max 5 attempts).
+
+Detects long-running stuck jobs and resets them.
+
+Logs errors in MySQL & CloudWatch for debugging.
+
+
+🔟 Job Scheduling & Automation
+
+Elasticsearch → MySQL job runs hourly.
+
+MySQL → S3 processing job runs every few minutes.
+
+Systemd ensures job auto-restart on failure.
+
+AWS CloudWatch logs for performance tracking.
+
+
+1️⃣1️⃣ Performance Optimization
+
+Uses multiprocessing for high-performance execution.
+
+Batches multiple messages per JSON file to reduce API calls.
+
+Avoids S3 throttling with multi-part uploads.
+
+Optimizes Elasticsearch queries to reduce production load.
+
+
+1️⃣2️⃣ Monitoring & Alerts
+
+Logs batch execution details (batch ID, start time, errors).
+
+Tracks success/failure rates of uploads.
+
+Sends AWS SNS alerts if failures exceed a threshold.
+
+Enables CloudWatch metrics for monitoring job performance.
+
+
+🚀 This ensures a scalable, high-performance, fault-tolerant migration system! 🚀
+
