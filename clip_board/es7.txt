@@ -1,0 +1,29 @@
+Here is a comparison of Elasticsearch 5.x and 7.x queries in a tabular format:
+
+Key Differences:
+
+1. Direct Index Querying in 5.x vs. Parent-Child Relationships in 7.x
+
+In 5.x, alert_status and alert_history were separate mappings, allowing direct queries.
+
+In 7.x, they are children of message, requiring has_child and has_parent queries.
+
+
+
+2. Performance Considerations
+
+7.x queries involving has_child and has_parent require additional lookups, potentially making queries slower.
+
+Direct queries in 5.x were more straightforward and performed better in most cases.
+
+
+
+3. Query Structure Changes
+
+Instead of querying individual indices (5.x), you must filter child or parent documents (7.x).
+
+
+
+
+Let me know if you need more details or additional comparisons!
+
