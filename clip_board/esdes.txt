@@ -1,0 +1,326 @@
+Here's a detailed technical design that can be directly pasted into Confluence. It includes headings, bullet points, and code formatting suitable for Cloud Confluence. It also provides instructions on how to add it properly.
+
+
+---
+
+🔹 Elasticsearch Message Processing Job - Technical Design
+
+Overview
+
+This document outlines the technical design for a batch job that extracts Message IDs from an Elasticsearch (ES) index, stores them in MySQL for tracking, processes them in batches, generates JSON files, and uploads them to S3. The system ensures job tracking, fault tolerance, and scalability across different processing architectures.
+
+
+---
+
+1️⃣ Job Execution Workflow
+
+Step 1: Extract Message IDs from Elasticsearch
+
+Query Elasticsearch (ES) index for messages within a given date range.
+
+Retrieve only the message_id to optimize performance.
+
+Store the message IDs in MySQL (message_tracking table) for processing.
+
+
+Step 2: Store Messages in MySQL for Tracking
+
+Each message_id is stored in the message_tracking table.
+
+Columns include:
+
+message_id - Unique identifier from ES.
+
+batch_id - Groups messages for processing.
+
+status - Tracks processing (pending, in_progress, completed, failed).
+
+start_date - The processing start date.
+
+s3_path - Stores the S3 link after successful upload.
+
+
+
+Step 3: Process Messages in Batches
+
+Messages are batched (e.g., 500 messages per batch) and processed.
+
+Each message is:
+
+Queried from ES to fetch message, history, status, and audit.
+
+Formatted into a JSON file.
+
+Uploaded to S3.
+
+Updated in MySQL (message_tracking table).
+
+
+
+Step 4: Job Execution and Tracking
+
+The job_runs table records each execution.
+
+It checks for pending jobs before running a new one.
+
+If no previous job exists, the config file is used to determine start_date.
+
+
+
+---
+
+2️⃣ Database Schema
+
+Table: job_runs (Tracks Job Execution)
+
+CREATE TABLE job_runs (
+    job_id INT AUTO_INCREMENT PRIMARY KEY,
+    start_date DATE NOT NULL,
+    end_date DATE DEFAULT NULL,
+    status ENUM('running', 'completed', 'failed') DEFAULT 'running',
+    next_run_date DATE DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+Table: message_tracking (Tracks Messages per Job)
+
+CREATE TABLE message_tracking (
+    message_id VARCHAR(255) PRIMARY KEY,
+    batch_id INT NOT NULL,
+    status ENUM('pending', 'in_progress', 'completed', 'failed') DEFAULT 'pending',
+    start_date DATE NOT NULL,
+    s3_path VARCHAR(500) DEFAULT NULL,
+    last_attempted TIMESTAMP DEFAULT NULL
+);
+
+
+---
+
+3️⃣ Options for Processing Messages
+
+Option 1: AWS Lambda + SQS (Serverless)
+
+How It Works:
+
+SQS Queue holds batched message_ids.
+
+Lambda functions are triggered concurrently.
+
+Each Lambda:
+
+Retrieves a message_id, queries ES, creates a JSON file, and uploads to S3.
+
+Updates MySQL message_tracking table.
+
+
+
+Pros:
+
+Highly scalable (Lambda scales automatically).
+
+No EC2 management required.
+
+
+Cons:
+
+Lambda memory limits (max 10GB RAM, 15-minute timeout).
+
+Requires Step Functions if execution takes longer.
+
+
+
+
+---
+
+Option 2: EC2 Instance with Python Multiprocessing
+
+How It Works:
+
+A Python script running on EC2 fetches batches from MySQL.
+
+Uses multiprocessing to process messages in parallel.
+
+Each process:
+
+Fetches data from ES.
+
+Generates JSON.
+
+Uploads to S3.
+
+Updates MySQL.
+
+
+
+Pros:
+
+More control over processing.
+
+No cold start latency.
+
+
+Cons:
+
+Limited scalability (depends on EC2 instance type).
+
+Requires monitoring.
+
+
+
+
+---
+
+Option 3: Auto-Scaling EC2 Instances Behind ALB
+
+How It Works:
+
+Multiple EC2 instances run behind an Application Load Balancer (ALB).
+
+Each worker process:
+
+Picks up a batch.
+
+Processes messages.
+
+Uploads files to S3.
+
+Updates MySQL.
+
+
+
+Pros:
+
+Scalable solution (add more EC2 instances as needed).
+
+Better fault tolerance (if one instance fails, others continue).
+
+
+Cons:
+
+Higher AWS cost than Lambda.
+
+Requires ALB setup and monitoring.
+
+
+
+
+---
+
+4️⃣ Technical Implementation
+
+Extracting Message IDs from Elasticsearch
+
+from elasticsearch import Elasticsearch
+import mysql.connector
+
+es = Elasticsearch("http://your-elasticsearch-host")
+
+def extract_message_ids(start_date, end_date):
+    """Fetch message IDs from Elasticsearch and store them in MySQL"""
+    query = {"query": {"range": {"timestamp": {"gte": start_date, "lte": end_date}}}}
+    results = es.search(index="messages", body=query, size=10000)
+
+    message_ids = [hit["_id"] for hit in results["hits"]["hits"]]
+
+    conn = mysql.connector.connect(host="your-db", user="user", password="pass", database="your_db")
+    cursor = conn.cursor()
+
+    batch_id = int(time.time())
+    insert_query = "INSERT INTO message_tracking (message_id, batch_id, status, start_date) VALUES (%s, %s, 'pending', %s)"
+    cursor.executemany(insert_query, [(msg, batch_id, start_date) for msg in message_ids])
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+---
+
+Processing Batches Using Multiprocessing (EC2)
+
+import multiprocessing
+import boto3
+import json
+
+s3 = boto3.client('s3')
+
+def process_message(message_id):
+    """Process a single message: fetch from ES, generate JSON, upload to S3"""
+    message_data = es.get(index="messages", id=message_id)["_source"]
+
+    file_path = f"/tmp/{message_id}.json"
+    with open(file_path, "w") as f:
+        json.dump(message_data, f)
+
+    s3_key = f"messages/{message_id}.json"
+    s3.upload_file(file_path, "your-bucket", s3_key)
+
+    return s3_key
+
+def process_batch(batch):
+    """Process a batch of messages in parallel"""
+    with multiprocessing.Pool(processes=4) as pool:
+        results = pool.map(process_message, batch)
+
+    return results
+
+
+---
+
+Automating Job Execution with Systemd
+
+sudo nano /etc/systemd/system/message_job.service
+
+[Unit]
+Description=Message Processing Job
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/ubuntu/job.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
+sudo systemctl enable message_job
+sudo systemctl start message_job
+
+
+---
+
+5️⃣ Conclusion
+
+The job runs on EC2, extracts message_ids, stores them in MySQL, and processes them in batches.
+
+Options: AWS Lambda + SQS (serverless), EC2 multiprocessing (scalable), or Auto-Scaling EC2s behind ALB.
+
+Tracking tables ensure no duplicate processing.
+
+Systemd automates execution.
+
+
+🚀 This ensures a robust, fault-tolerant, and scalable processing pipeline! 🚀
+
+
+---
+
+📌 Confluence Instructions
+
+1. Go to your Cloud Confluence page.
+
+
+2. Click "Create" → "Blank Page".
+
+
+3. Paste the above content.
+
+
+4. Use the "Code Block" macro for Python/SQL.
+
+
+5. Publish the page for team visibility.
+
+
+
