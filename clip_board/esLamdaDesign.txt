@@ -1,0 +1,131 @@
+# **/info Technical Design Document: AWS Lambda-Based Elasticsearch Message Processing**
+
+/info  
+📌 **Objective:**  
+This document details the **AWS Lambda-based architecture** for processing messages from an **Elasticsearch (ES) index**. The architecture consists of **two Lambda functions**:
+
+1. **Lambda 1: Extract Message IDs** – Queries Elasticsearch for message IDs and stores them in an **Amazon RDS (MySQL) table**.
+2. **Lambda 2: Process Messages** – Fetches full message details from ES, compiles JSON responses (message, history, audit), and uploads them to **Amazon S3**.
+
+This implementation will also be used for **benchmarking different date ranges** to analyze performance and volume scalability.  
+
+---
+
+/expand  
+## **🔹 AWS Resources Required**  
+/table  
+| AWS Service                          | Purpose                                                 |
+| ------------------------------------ | ------------------------------------------------------- |
+| **AWS Lambda (Extract Message IDs)** | Queries Elasticsearch and stores `message_id` in MySQL. |
+| **AWS Lambda (Process Messages)**    | Queries ES, generates JSON, and uploads to S3.          |
+| **Amazon RDS (MySQL)**               | Stores job execution and message tracking data.         |
+| **Amazon S3**                        | Stores processed message JSON files.                    |
+| **Amazon CloudWatch**                | Logs and monitors Lambda execution.                     |
+| **AWS EventBridge**                  | Triggers the first Lambda job on schedule.              |
+/table  
+/expand  
+
+---
+
+/expand  
+## **🔹 Workflow**  
+
+### **1️⃣ Lambda 1: Extract Message IDs**  
+- **Triggered by AWS EventBridge** (Runs every X hours).  
+- Queries **Elasticsearch for `message_id`s**.  
+- **Stores message IDs in `message_tracking` (MySQL).**  
+- Each message entry includes:
+  - `message_id`
+  - `status` (`Pending`, `Processing`, `Completed`, `Failed`)
+  - `inserted_at` timestamp
+- Updates `/status In Progress` **`job_runs` table** to track execution.
+
+---
+
+### **2️⃣ Lambda 2: Process Messages**  
+- **Triggered manually or by a scheduled event**.  
+- Fetches `/status Pending` **messages** from **MySQL**.  
+- Queries **Elasticsearch** for full details:
+  - `message`
+  - `history`
+  - `audit`
+- Generates a **JSON file** containing all details.  
+- Uploads JSON file to **S3**.  
+- Updates **MySQL**:
+  - Marks message as `/status Completed` after successful upload.  
+  - Stores **S3 file path**.  
+/expand  
+
+---
+
+/expand  
+## **🔹 Database Schema**  
+
+### **1️⃣ Table: `job_runs` (Tracks Job Execution Across All Batches)**  
+/table  
+| job_id | start_date | end_date  | status    | created_at | updated_at |
+| ------- | ----------- | ---------- | --------- | ----------- | ----------- |
+| 1       | 2024-10-01  | 2024-10-02 | `/status Completed` | 2024-10-01  | 2024-10-02  |
+| 2       | 2024-10-02  | NULL       | `/status Running`   | 2024-10-02  | NULL        |
+/table  
+
+---
+
+### **2️⃣ Table: `message_tracking` (Tracks Messages per Job)**  
+/table  
+| message_id | status    | inserted_at | processed_at | s3_path                |
+| ----------- | --------- | ------------ | ------------- | ----------------------- |
+| msg_1      | `/status Pending`   | 2024-10-01   | NULL          | NULL                    |
+| msg_2      | `/status Completed` | 2024-10-01   | 2024-10-02    | s3://bucket/msg_2.json |
+/table  
+/expand  
+
+---
+
+/expand  
+## **🔹 Technical Implementation**  
+
+### **Lambda 1: Extract Message IDs from Elasticsearch**  
+/code:python  
+from elasticsearch import Elasticsearch  
+import mysql.connector  
+import json  
+
+def extract_message_ids(event, context):  
+    es = Elasticsearch("http://your-elasticsearch-host")  
+    query = {"query": {"range": {"timestamp": {"gte": "2024-10-01", "lte": "2024-10-02"}}}}  
+    results = es.search(index="messages", body=query, size=10000)  
+
+    message_ids = [hit["_id"] for hit in results["hits"]["hits"]]  
+    conn = mysql.connector.connect(host="your-db", user="user", password="pass", database="your_db")  
+    cursor = conn.cursor()  
+
+    insert_query = "INSERT INTO message_tracking (message_id, status, inserted_at) VALUES (%s, 'pending', NOW())"  
+    cursor.executemany(insert_query, [(msg,) for msg in message_ids])  
+    conn.commit()  
+    cursor.close()  
+    conn.close()  
+/code  
+
+---
+
+/expand  
+## **🔹 Benchmarking Strategy**  
+- **Run jobs with varying date ranges** to measure:  
+  - Execution time per volume of messages.  
+  - ES query performance and response latency.  
+  - S3 upload times for different JSON file sizes.  
+- **Log results in CloudWatch for trend analysis.**  
+/expand  
+
+---
+
+/expand  
+## **🔹 Conclusion**  
+✅ **Serverless, scalable, and fault-tolerant architecture.**  
+✅ **Efficient tracking using MySQL and S3.**  
+✅ **Easily extendable to support batch processing if needed.**  
+🚀 **Ensures reliability, scalability, and high performance!** 🚀  
+/expand  
+
+---
