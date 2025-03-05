@@ -1,0 +1,82 @@
+Below is a **technical evaluation** comparing several options for running a **one-off Elasticsearch data extraction and processing job**, along with an explanation of why **AWS Lambda** is best suited.
+Technical Evaluation of Deployment Options for Elasticsearch Processing Job
+---
+
+## **What the Job Needs to Do**
+- **Connect to a Production Elasticsearch (ES) index**:  
+  Pull messages based on a **date range** or **filters**.
+
+- **Process Each Message**:  
+  Fetch **message details** (`message`, `history`, `status`, `audit`), compile them into **JSON** files.
+
+- **Output / Destination**:  
+  Store processed files in **S3** (or another persistent location).
+
+- **One-Off Nature**:  
+  This job is **temporary**. After completion, it’s **not likely** to be used again on a regular basis.
+
+---
+
+## **Option 1: Directly Running on EC2**
+1. **Description**  
+   - Spin up or use an **existing EC2 instance** to run a Python script or service.
+   - The script queries Production Elasticsearch, processes the data, and outputs to S3.
+
+2. **Drawbacks**  
+   - **Approval Difficulty**: Getting approval to run large processes in Production can be tedious.
+   - **Risk of Impacting Existing Services**: Heavy ES queries might **slow down** or **crash** other production workloads.
+   - **Complex Setup**: If we run on **UAT EC2** but need Production ES data, we face **networking complexities** or cross-account roles.
+
+3. **Why Not Chosen**  
+   - Potential **performance risk** to Production.
+   - **Intricate approvals** to run a one-off job on a shared instance.
+   - We want a **clean isolation** from existing infrastructure.
+
+---
+
+## **Option 2: AWS Lambda (Serverless Approach)**
+1. **Description**  
+   - Use a **Lambda function** (or multiple Lambdas with SQS) to:
+     - Pull messages from Production ES.
+     - Process each message into JSON.
+     - Upload results to S3.
+   - **Serverless** means we only pay for the actual compute time used.
+
+2. **Advantages**
+   - **Minimal Operational Overhead**: No server management or patching.
+   - **Scalable & Isolated**: Lambdas run in a **separate environment**; no risk to existing EC2 or production services.
+   - **Cost-Effective**: Pay per invocation; ideal for a **short-term, one-off** job.
+   - **Concurrent Execution**: If using **SQS** as an event source, multiple Lambdas can run in parallel for higher throughput.
+
+3. **Why Chosen**  
+   - **No heavy infrastructure** needed (like ALB or multiple EC2s).
+   - **Clear separation** from existing Production resources (only the ES query needs proper IAM access).
+   - **Easier approvals** (small, serverless, ephemeral).
+   - Perfect for a **one-off** job that can scale automatically, then shut down with no idle cost.
+
+---
+
+## **Option 3: Bunch of EC2 Instances Behind ALB**
+1. **Description**  
+   - Spin up multiple EC2 instances in an **Auto Scaling Group** behind an **Application Load Balancer (ALB)**.
+   - Each instance runs the processing logic for parallel throughput.
+
+2. **Drawbacks**  
+   - **Higher Cost**: Need to keep multiple EC2s + an ALB running.
+   - **Complexity**: Setting up load balancing, instance management, and auto scaling for a job that runs once.
+   - **Overkill**: Suitable for a long-running or continuous job, not for a short-term processing event.
+
+3. **Why Not Chosen**  
+   - The job is **one-off**; setting up ALB, ASG, and multiple EC2s is **heavy** and **expensive**.
+   - **Serverless** is simpler and cheaper for short tasks.
+
+---
+
+## **Conclusion: Why AWS Lambda Is Best**
+- **Ease of Isolation**: Lambda runs in a separate environment, **minimizing impact** on production services.
+- **No Server Management**: AWS handles all patching, scaling, and concurrency automatically.
+- **Cost-Effectiveness**: Pay only for actual execution time, no idle server cost.
+- **Simple Approval & Setup**: Doesn’t require a new or shared EC2 in Production, avoiding complex network setups or administrative overhead.
+- **One-Off Job Fit**: Perfect for ephemeral tasks that **don’t need** constant infrastructure.
+
+Hence, **AWS Lambda** (optionally with **SQS** for concurrency) is **chosen** due to its **serverless, scalable, and cost-efficient nature**, fitting this **short-term** data extraction and processing need.
