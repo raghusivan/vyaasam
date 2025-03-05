@@ -1,0 +1,177 @@
+Here’s a **Confluence-formatted technical design document** for **parallel execution of multiple AWS Lambda functions**, ensuring **batch tracking, performance monitoring, and fault tolerance**.  
+
+---
+
+## **🔹 Technical Design: Parallel AWS Lambda Execution for Elasticsearch Processing**
+/info  
+📌 **Objective:**  
+This document details the **design and implementation** of a **parallel AWS Lambda-based batch processing system** for **Elasticsearch messages**. It ensures **high throughput, batch tracking, and retry mechanisms**.  
+
+---
+
+/expand  
+## **🔹 System Overview**  
+- **Lambda 1 (Extract Message IDs)**:
+  - Fetches **message IDs** from **Elasticsearch** for a given date range.
+  - Stores them in **MySQL (`message_tracking` table)**.
+  - Pushes batches of message IDs to **SQS** for processing.  
+
+- **Lambda 2 (Process Messages - Runs in Parallel)**:
+  - Triggered by **SQS in batch mode** (e.g., 100 messages per Lambda execution).
+  - Retrieves **full message details** (`message`, `history`, `status`, `audit`) from **Elasticsearch**.
+  - Generates **JSON files**.
+  - Uploads JSON to **S3**.
+  - Updates MySQL with **status (`completed` or `failed`)**.  
+
+- **Lambda 3 (Retry Failed Messages)**:
+  - Scheduled to **run every X minutes**.
+  - Fetches **failed messages** from MySQL.
+  - Pushes them back to **SQS** for reprocessing.  
+/expand  
+
+---
+
+/expand  
+## **🔹 AWS Resources Required**  
+/table  
+| AWS Service | Purpose |
+|------------|---------|
+| **AWS Lambda (Extract Message IDs)** | Queries Elasticsearch and stores `message_id` in MySQL. |
+| **AWS Lambda (Process Messages - Parallel Execution)** | Queries ES, generates JSON, uploads to S3. |
+| **AWS Lambda (Retry Failed Messages)** | Handles failed message re-processing. |
+| **Amazon SQS** | Stores batch messages, triggers multiple Lambda instances. |
+| **Amazon S3** | Stores processed message JSON files. |
+| **Amazon RDS (MySQL)** | Tracks batch execution and message processing. |
+| **Amazon CloudWatch** | Logs and monitors Lambda execution performance. |
+| **AWS EventBridge** | Triggers the first Lambda job on schedule. |
+/table  
+/expand  
+
+---
+
+/divide  
+
+/expand  
+## **🔹 Database Schema for Batch Tracking**  
+### **1️⃣ Table: `job_runs` (Tracks Job Execution Across All Batches)**  
+/table  
+| job_id | start_date | end_date | status | next_run_date | created_at | updated_at |
+|--------|-----------|---------|------------|--------------|------------|------------|
+| 1      | 2024-10-01 | 2024-10-02 | completed | 2024-10-03 | 2024-10-01 | 2024-10-02 |
+| 2      | 2024-10-02 | 2024-10-03 | running | NULL | 2024-10-02 | NULL |
+/table  
+
+### **2️⃣ Table: `message_tracking` (Tracks Each Message in a Batch)**  
+/table  
+| message_id | batch_id | status | start_date | s3_path | last_attempted |
+|------------|---------|------------|-----------|--------------------------|----------------|
+| msg_1 | 1 | pending | 2024-10-01 | NULL | NULL |
+| msg_2 | 1 | completed | 2024-10-01 | s3://bucket/msg_2.json | 2024-10-01 |
+/table  
+
+### **3️⃣ Table: `batch_progress` (Tracks Parallel Batch Processing for Lambda 2)**  
+/table  
+| batch_id | job_id | status | total_messages | processed | failed | created_at |
+|---------|--------|--------|---------------|----------|--------|------------|
+| 101 | 1 | completed | 500 | 500 | 0 | 2024-10-01 |
+| 102 | 1 | in_progress | 500 | 450 | 50 | 2024-10-01 |
+/table  
+/expand  
+
+---
+
+/divide  
+
+/expand  
+## **🔹 AWS Lambda Execution Flow**  
+### **1️⃣ Lambda 1: Extract Message IDs (Triggered by EventBridge)**
+- Runs on a **scheduled trigger** (e.g., every 1 hour).
+- Fetches **message IDs from Elasticsearch** for a given date range.
+- **Inserts message IDs into MySQL (`message_tracking`).**
+- **Pushes batches of IDs to SQS for parallel processing**.  
+
+### **2️⃣ Lambda 2: Process Messages in Parallel (Triggered by SQS)**
+- **SQS triggers multiple concurrent Lambda executions.**
+- Each Lambda retrieves a **batch of messages** (e.g., 100 per execution).
+- Queries **Elasticsearch** for full message details.
+- **Generates JSON files** and uploads to **S3**.
+- Updates `message_tracking` in MySQL (`completed` or `failed`).  
+
+### **3️⃣ Lambda 3: Retry Failed Messages (Triggered Periodically)**
+- Scheduled every **X minutes**.
+- Retrieves **failed messages** from `message_tracking`.
+- Pushes them back to **SQS** for reprocessing.  
+/expand  
+
+---
+
+/divide  
+
+/expand  
+## **🔹 AWS Architecture Flow for Parallel Processing**  
+1️⃣ **AWS EventBridge** triggers **Lambda 1** (Extract Message IDs).  
+2️⃣ **Lambda 1**:
+   - Retrieves **message_id** from **Elasticsearch**.
+   - Stores message IDs in **MySQL (`message_tracking`)**.
+   - Pushes **batches of message IDs to SQS**.  
+3️⃣ **SQS triggers multiple parallel Lambda executions** (**Lambda 2**).  
+4️⃣ **Lambda 2 (parallel execution) processes each batch**:
+   - Queries **ES for full message details**.
+   - Generates **JSON files**.
+   - Uploads **JSON files to S3**.
+   - Updates **MySQL with status updates** (`completed` or `failed`).  
+5️⃣ **Lambda 3 retries failed messages** by:
+   - Fetching **failed messages** from `message_tracking`.
+   - Re-pushing them to **SQS for reprocessing**.  
+/expand  
+
+---
+
+/expand  
+## **🔹 Technical Implementation**  
+
+### **1️⃣ Lambda 1: Extract Message IDs from Elasticsearch**  
+/code:python  
+from elasticsearch import Elasticsearch  
+import mysql.connector  
+import boto3  
+import json  
+
+sqs = boto3.client('sqs')  
+queue_url = "https://sqs.amazonaws.com/your-queue"  
+
+def extract_message_ids(event, context):  
+    es = Elasticsearch("http://your-elasticsearch-host")  
+
+    query = {"query": {"range": {"timestamp": {"gte": "2024-10-01", "lte": "2024-10-02"}}}}  
+    results = es.search(index="messages", body=query, size=10000)  
+
+    message_ids = [hit["_id"] for hit in results["hits"]["hits"]]  
+
+    conn = mysql.connector.connect(host="your-db", user="user", password="pass", database="your_db")  
+    cursor = conn.cursor()  
+
+    batch_id = int(time.time())  
+    for msg in message_ids:  
+        cursor.execute("INSERT INTO message_tracking (message_id, batch_id, status) VALUES (%s, %s, 'pending')", (msg, batch_id))  
+        sqs.send_message(QueueUrl=queue_url, MessageBody=json.dumps({"message_id": msg}))  
+
+    conn.commit()  
+    cursor.close()  
+    conn.close()  
+/code  
+
+✅ **Extracts IDs from ES and pushes them to SQS.**  
+✅ **Stores messages in MySQL for tracking.**  
+
+---
+
+/expand  
+## **🔹 Conclusion**  
+✅ **AWS Lambda + SQS ensures scalable, parallel processing.**  
+✅ **Batch tracking prevents duplicate processing.**  
+✅ **CloudWatch logs help with debugging.**  
+✅ **S3 stores processed messages for future use.**  
+
+🚀 **This design ensures high performance, fault tolerance, and real-time tracking!** 🚀  
+/expand  
