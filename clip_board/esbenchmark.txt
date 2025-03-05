@@ -1,0 +1,86 @@
+To **run the AWS Lambda functions via the AWS Console for benchmarking**, follow these steps:
+
+---
+
+## **🔹 Running AWS Lambda from AWS Console for Benchmarking**
+### **1️⃣ Navigate to AWS Lambda**
+1. Log in to your **AWS Console**.
+2. Go to **AWS Lambda** service.
+3. Select the **Lambda function** you want to test:
+   - **Lambda 1:** Extract Message IDs
+   - **Lambda 2:** Process Messages
+
+---
+
+### **2️⃣ Run Lambda 1 (Extract Message IDs)**
+#### **Step 1: Create a Test Event**
+1. In the Lambda **Management Console**, click **"Test"**.
+2. Choose **"Create new test event"**.
+3. Enter a name for the test event (e.g., `"ExtractMessageIDsTest"`).
+4. Use the following **JSON input** to specify a date range:
+   ```json
+   {
+     "start_date": "2024-10-01",
+     "end_date": "2024-10-02"
+   }
+   ```
+5. Click **"Save"**.
+
+#### **Step 2: Invoke the Function**
+1. Click **"Test"** to run Lambda 1.
+2. Monitor the **Logs in CloudWatch**:
+   - Navigate to **CloudWatch Logs** (`/aws/lambda/<Lambda-1-Function-Name>`).
+   - Track execution time and number of messages processed.
+3. Verify that message IDs are stored in **RDS (MySQL)**.
+
+---
+
+### **3️⃣ Run Lambda 2 (Process Messages)**
+#### **Step 1: Create a Test Event**
+1. In the Lambda **Management Console**, select **Lambda 2**.
+2. Click **"Test"** → **Create new test event**.
+3. Use the following **JSON input**:
+   ```json
+   {
+     "batch_size": 100
+   }
+   ```
+4. Click **"Save"**.
+
+#### **Step 2: Invoke the Function**
+1. Click **"Test"** to start processing messages.
+2. Monitor:
+   - **S3 Uploads** (`Amazon S3` → `your-bucket/messages/`).
+   - **Database Updates** (`message_tracking` should update `status = completed`).
+   - **CloudWatch Logs** for execution times and failures.
+
+---
+
+### **4️⃣ Measure Benchmark Performance**
+| **Benchmark Metric** | **Where to Check** |
+|----------------------|-------------------|
+| Execution time per batch | AWS Lambda logs in CloudWatch |
+| ES query performance | Elasticsearch query duration (CloudWatch metrics) |
+| S3 upload time | CloudWatch Logs (upload timestamps) |
+| Messages processed per execution | `message_tracking` table updates |
+| Lambda memory usage | AWS Lambda metrics in CloudWatch |
+| Failures and retries | CloudWatch Error Logs |
+
+---
+
+### **5️⃣ Repeat for Different Date Ranges**
+- Change `start_date` and `end_date` in **Lambda 1** test events.
+- Test small, medium, and large volumes:
+  - **1,000 messages**
+  - **10,000 messages**
+  - **100,000+ messages**
+- Analyze **performance trends in CloudWatch**.
+
+---
+
+## **🔹 Next Steps**
+✅ **Run Lambda functions manually via AWS Console**.  
+✅ **Monitor CloudWatch Logs for performance metrics**.  
+✅ **Adjust parameters and analyze scalability**.  
+
+🚀 **Let me know if you need help automating these benchmarks!** 🚀
