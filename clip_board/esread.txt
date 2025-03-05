@@ -1,0 +1,59 @@
+# Project README
+
+## Overview
+This project consists of Python scripts to interact with Elasticsearch. The scripts extract data by ID, fetch messages within a date range, and list available indices.
+
+## Prerequisites
+Before running the scripts, ensure that the following requirements are met:
+
+1. Access to the **UAT job server** where Elasticsearch connectivity is available.
+2. Python 3 installed on your system.
+3. Required dependencies installed using the following command:
+   ```sh
+   python3 -m pip install -r req.txt
+   ```
+
+## Usage
+
+### Extract Data by ID
+To extract JSON responses based on different configurations, run the respective command:
+
+```sh
+python3 get_by_id_main.py message.ini   # Fetch message
+python3 get_by_id_main.py history.ini   # Fetch history
+python3 get_by_id_main.py status.ini    # Fetch status
+python3 get_by_id_main.py audit.ini     # Fetch audit logs
+```
+
+### Fetch Messages by Date Range
+To retrieve messages from Elasticsearch based on a date range, execute:
+
+```sh
+python3 get_daterange_message_alerts_sql_main.py messageDateRange.ini
+```
+This script also prints the dates of retrieved messages.
+
+### List Available Indices
+To list the Elasticsearch indices in a sorted order, run:
+
+```sh
+./admin.sh indices_sort
+```
+
+## Notes
+- Ensure you have the correct permissions to access Elasticsearch.
+- Modify the `.ini` configuration files as needed to specify query parameters.
+- Logs and errors will be displayed in the terminal for debugging purposes.
+
+## Troubleshooting
+If you encounter issues:
+- Check if Elasticsearch is running and accessible from the UAT job server.
+- Verify the configurations inside `.ini` files.
+- Ensure all required Python dependencies are installed.
+
+## License
+This project is intended for internal use. Contact the project maintainers for permissions and further details.
+
+---
+
+For any issues or inquiries, please reach out to the project administrator.
