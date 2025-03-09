@@ -1,0 +1,41 @@
+Cover Letter – Senior Java Developer (Spring & Kubernetes)
+
+Raghu Venkatachalapathy
+0402 590 714
+raghu.sv@hotmail.com
+
+[Date]
+
+[Hiring Manager's Name]
+[Company Name]
+[Company Address]
+[City, State, Zip Code]
+
+Subject: Application for Senior Java Developer – Spring & Kubernetes
+
+Dear [Hiring Manager's Name],
+
+I am excited to apply for the Senior Java Developer position at [Company Name]. With over 17 years of experience in software development, specializing in Java (Spring, Spring Boot, Hibernate), microservices architecture, and Kubernetes-based deployments, I am confident in my ability to contribute to your team’s success.
+
+Why Me?
+
+Spring & Microservices Expertise: Led the transformation of monolithic applications to scalable microservices using Spring Boot, Spring WebFlux, and OpenAPI, ensuring seamless API interactions and performance optimization.
+
+Kubernetes & Cloud-Native Development: Designed and deployed containerized microservices using Docker and Kubernetes (AWS EKS), automating deployments with Helm charts and maintaining efficient CI/CD pipelines.
+
+End-to-End API Development & Security: Developed and secured RESTful APIs, integrating authentication with Keycloak and implementing robust error-handling mechanisms for high availability.
+
+Automation & DevOps Integration: Created Python scripts for automating Kubernetes cluster management and streamlined deployment processes.
+
+Leadership & Code Quality: Conducted code reviews, mentored junior developers, and championed best practices in clean architecture and automated testing.
+
+
+How I Can Add Value
+
+At Capsifi, I played a pivotal role in modernizing their software landscape, leading the migration from Scala’s Play Framework to a robust Spring-based microservices architecture. My hands-on experience with Kubernetes, coupled with strong problem-solving skills, aligns well with the innovative development culture at [Company Name].
+
+I am eager to discuss how my experience and expertise can contribute to your projects. Please find my resume attached for your review. I look forward to the opportunity to speak with you.
+
+Best regards,
+Raghu Venkatachalapathy
+
