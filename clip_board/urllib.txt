@@ -1,0 +1,62 @@
+The issue seems to be related to:
+
+1. Missing pip in Python versions – You attempted to use python3 -m pip, but it may not be installed.
+
+
+2. Corrupted or mismatched urllib3 package – The expected hash does not match the one from the downloaded package.
+
+
+3. Package not found error – pip show urllib3 indicates that urllib3 is not installed.
+
+
+
+Solution Steps
+
+1. Verify Python Version and Ensure pip is Installed
+
+Run:
+
+python3 --version
+which python3
+python3 -m ensurepip --default-pip
+python3 -m pip --version
+
+If pip is not installed, install it using:
+
+sudo yum install python3-pip -y   # If on Amazon Linux or CentOS
+sudo apt install python3-pip -y   # If on Ubuntu/Debian
+
+2. Upgrade pip to Fix Dependency Issues
+
+Run:
+
+python3 -m pip install --upgrade pip
+
+3. Fix urllib3 Installation
+
+Since there is a hash mismatch issue, try removing and reinstalling urllib3:
+
+python3 -m pip uninstall urllib3 -y
+python3 -m pip install --no-cache-dir urllib3
+
+The --no-cache-dir flag ensures that the latest version is downloaded.
+
+4. Validate Installation
+
+Check if urllib3 is properly installed:
+
+python3 -m pip show urllib3
+
+If the output is empty, try installing a specific version:
+
+python3 -m pip install 'urllib3==1.26.20' --no-cache-dir
+
+5. Verify pip and Modules Work
+
+After these steps, test by running:
+
+python3 -m pip list
+python3 -c "import urllib3; print(urllib3.__version__)"
+
+Let me know if any errors persist.
+
