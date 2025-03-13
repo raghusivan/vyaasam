@@ -1,0 +1,74 @@
+Yes, the described process is technically possible and is often used to implement a self-sustaining loop with AWS Lambda and Amazon SQS. However, you need to be careful about handling infinite loops, cost implications, and message visibility settings.
+
+Detailed Rewrite with Technical Accuracy:
+
+1. Lambda Invocation:
+
+The AWS Lambda function is initially invoked, either manually, via a CloudWatch event, or by another AWS service.
+
+
+
+2. Message Addition to SQS:
+
+The Lambda function publishes a message to an Amazon SQS queue.
+
+
+
+3. Delayed Message Processing:
+
+If the SQS queue has a delay configured or a message retention period, the message waits in the queue before becoming visible.
+
+
+
+4. SQS Triggering Lambda:
+
+Once the message becomes visible, SQS invokes the same Lambda function, assuming it is configured as an event source mapping for the queue.
+
+
+
+5. Message Processing:
+
+The Lambda function retrieves and processes the message from the queue.
+
+
+
+6. Adding a New Message:
+
+After processing, the Lambda function sends a new message back to the SQS queue to continue the cycle.
+
+
+
+7. Cycle Repeats:
+
+This loop continues indefinitely unless controlled through mechanisms like:
+
+Message expiration (Time-to-Live - TTL)
+
+Dead-letter queues (DLQ) for failed messages
+
+Conditional termination logic inside the Lambda function
+
+
+
+
+
+Potential Technical Concerns and Solutions:
+
+Infinite Loops & Cost Impact:
+
+To prevent runaway execution, the Lambda function should have a condition to stop resubmitting messages.
+
+
+Visibility Timeout Consideration:
+
+Ensure that the visibility timeout of the SQS message is longer than the expected Lambda execution time.
+
+
+Monitoring & Alerting:
+
+Use CloudWatch Logs and Metrics to track execution and detect any unexpected behavior.
+
+
+
+Would you like a sample AWS Lambda (Python) implementation for this?
+
