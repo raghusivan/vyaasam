@@ -1,0 +1,67 @@
+You're trying to access the session name from environment variables with this line:
+
+os.environ["AWS_ROLE_SESSION_NAME"]
+
+This will fail because AWS does not provide a session name via environment variables in Lambda.
+
+
+---
+
+Fix: Get Session Name Dynamically via STS
+
+Replace:
+
+os.environ["AWS_ROLE_SESSION_NAME"]
+
+With code that retrieves the session name using sts.get_caller_identity() and parsing the ARN.
+
+
+---
+
+Corrected Code Snippet:
+
+import boto3
+import os
+
+def get_session_name():
+    sts_client = boto3.client('sts')
+    identity = sts_client.get_caller_identity()
+    arn = identity['Arn']
+    # Extract session name from ARN
+    if ":assumed-role/" in arn:
+        session_name = arn.split('/')[-1]
+        return session_name
+    else:
+        return "unknown-session"
+
+def event_handler(event, context):
+    try:
+        log.info(msg="Event handler started with event: %s", args=event)
+
+        # Retrieve AWS Role ARN from environment variable
+        role_arn = os.environ["AWS_ROLE_ARN"]
+        session_name = get_session_name()
+        log.info(msg="Session Name: %s", args=session_name)
+
+        # Assume role (if necessary) – your existing function
+        assumed_credentials = assume_role(role_arn, session_name)
+
+        log.info(msg="Assumed credentials: %s", args=assumed_credentials)
+
+        # Rest of your Vault logic...
+
+
+---
+
+Why This Fix Works
+
+It dynamically fetches the actual session name used by Lambda.
+
+Avoids failing on a non-existent environment variable.
+
+
+
+---
+
+Let me know if you want to integrate this fix with your Vault login code!
+
