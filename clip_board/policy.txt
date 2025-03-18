@@ -1,0 +1,101 @@
+Here’s how to fix the issue in your CloudFormation JSON.
+
+
+---
+
+What’s Wrong in Your Current Code:
+
+1. You are including this line under "Policies":
+
+"arn:aws:iam::828604310598:role/prod/roles/service/secretsmgt/VaultAuthRole"
+
+Problem: This is an IAM Role ARN, but "Policies" expects inline policy definitions, not role ARNs.
+
+
+
+
+---
+
+Corrected Version – Fixes Applied
+
+### Fixes:
+
+Remove VaultAuthRole ARN from "Policies".
+
+Leave "ManagedPolicyArns" (like ReadOnlyAccess) — that's valid.
+
+Define a proper inline policy to allow sts:GetCallerIdentity (for Vault IAM auth).
+
+Correct the "Service" in "Principal": make sure there's no typo — it should be "lambda.amazonaws.com".
+
+
+
+---
+
+Corrected JSON Snippet
+
+"LambdaRole": {
+  "Properties": {
+    "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    ],
+    "AssumeRolePolicyDocument": {
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "lambda.amazonaws.com"
+          },
+          "Action": [
+            "sts:AssumeRole"
+          ]
+        }
+      ]
+    },
+    "Policies": [
+      {
+        "PolicyName": "VaultAccessPolicy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "sts:GetCallerIdentity",
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+
+
+---
+
+Why This Works
+
+VaultAuthRole is used only inside Vault (as sts_role_arn).
+
+Your Lambda proves its identity to Vault via sts:GetCallerIdentity.
+
+This config ensures Lambda has the right permissions, and the trust relationship is valid.
+
+
+
+---
+
+Next Steps
+
+1. Use the fixed JSON above in your pipeline.
+
+
+2. Ensure Vault has your Lambda IAM Role ARN in its bound_iam_principal_arns.
+
+
+3. Redeploy and test.
+
+
+
+Let me know if you'd like help with the full JSON structure or Vault YAML config sample for your Lambda!
+
