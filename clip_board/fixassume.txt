@@ -1,0 +1,80 @@
+{
+  "hashicorpLambda": {
+    "type": "lambda-vpc",
+    "depends_on": [],
+    "release_depends_on": [],
+    "descriptor": {
+      "Resources": {
+        "SecurityGroup": {
+          "Properties": {
+            "EgressRules": [
+              {
+                "targets": [
+                  "prn:aws:syd:prod:secretsmgmt:vault:prd:nlb",
+                  "prn:aws:iad:prod:secretsmgmt:vault:prd:nlb",
+                  "prn:aws:lhr:prod:secretsmgmt:vault:prd:nlb"
+                ],
+                "ports": ["TCP:443"]
+              }
+            ]
+          }
+        },
+        "Lambda": {
+          "Type": "AWS::Lambda::Function",
+          "Properties": {
+            "Handler": "{{lambda.hashicorpLambda.handler}}",
+            "Code": "{{lambda.hashicorpLambda.code}}",
+            "Runtime": "{{lambda.runtime}}",
+            "MemorySize": "{{lambda.memory}}",
+            "Timeout": "{{lambda.timeout}}",
+            "Environment": {
+              "Variables": {
+                "environment": "{{app.environment}}"
+              }
+            }
+          }
+        },
+        "Metadata": {
+          "Pipeline:Agents": {
+            "prn:aws::secretsmgmt:vaultagent:prd::vcp:iamrolecfg": {
+              "enabled": true
+            }
+          }
+        },
+        "LambdaRole": {
+          "RoleName": "LambdaHashicorpRole",
+          "Policies": [
+            {
+              "Effect": "Allow",
+              "Action": "sts:AssumeRole",
+              "Resource": "arn:aws:iam::828604310598:role/prod/roles/service/secretsmgmt/VaultAuthRole"
+            }
+          ]
+        },
+        "LambdaPolicy": {
+          "Properties": {
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": ["invoke"],
+                  "Principal": {
+                    "AWS": "arn:aws:iam::828604310598:role/prod/roles/service/secretsmgmt/VaultAuthRole"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "LogSubTest": {
+          "Type": "AWS::Logs::SubscriptionFilter",
+          "Properties": {
+            "FilterPattern": ".",
+            "DestinationArn": "grafanalambda"
+          }
+        }
+      }
+    }
+  }
+}
