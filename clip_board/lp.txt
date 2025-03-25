@@ -1,0 +1,105 @@
+Great! Here's an enhanced version of the script that:
+
+Checks if requirements.txt exists
+
+If it doesn't exist, it auto-generates one using:
+
+pip freeze > requirements.txt
+
+Then proceeds to install the dependencies and package everything for Lambda as before.
+
+
+
+---
+
+Updated lambda_packager.py
+
+import os
+import json
+import shutil
+import zipfile
+import subprocess
+
+def load_config(config_path="config.json"):
+    with open(config_path) as f:
+        return json.load(f)
+
+def ensure_requirements_file(path):
+    if not os.path.exists(path):
+        print(f"{path} not found. Generating from current environment...")
+        subprocess.run(["pip", "freeze"], stdout=open(path, "w"))
+    else:
+        print(f"Using existing {path}")
+
+def install_dependencies(requirements_file, target_folder):
+    print(f"Installing dependencies from {requirements_file} into {target_folder} ...")
+    subprocess.check_call([
+        "pip", "install",
+        "-r", requirements_file,
+        "-t", target_folder
+    ])
+
+def copy_source_files(src_folder, dest_folder):
+    print(f"Copying .py source files from {src_folder} to {dest_folder} ...")
+    for dirpath, _, filenames in os.walk(src_folder):
+        for filename in filenames:
+            if filename.endswith(".py"):
+                src_file = os.path.join(dirpath, filename)
+                rel_path = os.path.relpath(src_file, src_folder)
+                dest_file = os.path.join(dest_folder, rel_path)
+                os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+                shutil.copy2(src_file, dest_file)
+
+def create_zip(build_dir, zip_name):
+    print(f"Zipping contents of {build_dir} into {zip_name} ...")
+    with zipfile.ZipFile(zip_name, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for dirpath, _, filenames in os.walk(build_dir):
+            for file in filenames:
+                full_path = os.path.join(dirpath, file)
+                arcname = os.path.relpath(full_path, build_dir)
+                zipf.write(full_path, arcname)
+                print(f"  + {arcname}")
+    print(f"\nLambda package created: {zip_name}")
+
+def package_lambda(config):
+    root = config["root_folder"]
+    output_zip = config["output_zip"]
+    requirements_file = config.get("requirements_file", "requirements.txt")
+    temp_build_dir = config.get("temp_build_dir", ".lambda_build")
+
+    # Clean or create build directory
+    if os.path.exists(temp_build_dir):
+        shutil.rmtree(temp_build_dir)
+    os.makedirs(temp_build_dir)
+
+    # Ensure requirements.txt exists
+    ensure_requirements_file(requirements_file)
+
+    # Install dependencies
+    install_dependencies(requirements_file, temp_build_dir)
+
+    # Copy all .py source files
+    copy_source_files(root, temp_build_dir)
+
+    # Create zip file
+    create_zip(temp_build_dir, output_zip)
+
+    # Clean up build directory
+    shutil.rmtree(temp_build_dir)
+
+if __name__ == "__main__":
+    config = load_config()
+    package_lambda(config)
+
+
+---
+
+Notes
+
+Auto-generating requirements.txt includes all installed packages in your current Python environment.
+
+This is fine for small projects, but for large or virtualenv-based setups, you might want to be more selective.
+
+
+Would you like to restrict the packages in requirements.txt to only those imported in the Lambda source code?
+
