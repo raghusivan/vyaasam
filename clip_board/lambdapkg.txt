@@ -1,0 +1,98 @@
+Here’s a Python script that reads from a config.json file to create a ZIP file for AWS Lambda deployment. It collects all necessary Python files and folders from a specified root directory and packages them into a ZIP file named as specified in the config.
+
+
+---
+
+Directory Structure (Example):
+
+project/
+│
+├── lambda_packager.py
+├── config.json
+└── src/
+    ├── lambda_function.py
+    └── utils/
+        └── helper.py
+
+
+---
+
+config.json
+
+{
+  "root_folder": "src",
+  "output_zip": "lambda_deployment_package.zip",
+  "include_folders": ["utils"],
+  "include_files": ["lambda_function.py"]
+}
+
+
+---
+
+lambda_packager.py
+
+import os
+import json
+import zipfile
+
+def load_config(config_path="config.json"):
+    with open(config_path) as f:
+        return json.load(f)
+
+def add_to_zip(zipf, filepath, arcname):
+    zipf.write(filepath, arcname)
+    print(f"Added {arcname}")
+
+def package_lambda(config):
+    root = config["root_folder"]
+    output = config["output_zip"]
+    include_files = config.get("include_files", [])
+    include_folders = config.get("include_folders", [])
+
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as zipf:
+        # Add standalone files
+        for file in include_files:
+            full_path = os.path.join(root, file)
+            if os.path.isfile(full_path):
+                add_to_zip(zipf, full_path, file)
+
+        # Add folders and their files recursively
+        for folder in include_folders:
+            folder_path = os.path.join(root, folder)
+            for dirpath, _, filenames in os.walk(folder_path):
+                for f in filenames:
+                    full_path = os.path.join(dirpath, f)
+                    arcname = os.path.relpath(full_path, root)
+                    add_to_zip(zipf, full_path, arcname)
+
+    print(f"Lambda package created: {output}")
+
+if __name__ == "__main__":
+    config = load_config()
+    package_lambda(config)
+
+
+---
+
+How to Use:
+
+1. Place your Lambda code under the root folder (src in this example).
+
+
+2. Adjust config.json to include the required files and folders.
+
+
+3. Run the script:
+
+python lambda_packager.py
+
+
+4. The ZIP file lambda_deployment_package.zip will be created and ready for Lambda upload.
+
+
+
+
+---
+
+Would you like the script to also install dependencies from a requirements.txt file before packaging?
+
