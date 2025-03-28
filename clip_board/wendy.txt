@@ -1,0 +1,42 @@
+Here’s a professional and concise email you can send to Wendy for approval:
+
+
+---
+
+Subject: Request for Approval – Shield API Whitelisting for Risk Surveillance
+
+Hi Wendy,
+
+I’ve raised a pull request to whitelist the Shield API domain required for fetching and posting alert metadata related to Risk Surveillance, under the Arturo application commsurv.
+
+Here are the details for your reference:
+
+BU / Tech Team: BFS Fraud Technology
+
+Business Reason: Integration with Shield to exchange metadata for Risk Surveillance
+
+Application: commsurv
+
+Access Type: testing/dev
+
+Data Flow: Download and Upload
+
+Data Confidentiality: [Moderate/High – please confirm]
+
+SECCON ID: SECCON-43937
+
+Security Consultant Tagged: @Michael Ferguson (on the PR)
+
+
+Could you please review and provide your approval at your earliest convenience?
+
+Let me know if you need any additional information.
+
+Kind regards,
+Raghu Venkatachalapathy
+
+
+---
+
+Let me know if you want to make it more formal, or if this is internal enough to keep it even shorter.
+
