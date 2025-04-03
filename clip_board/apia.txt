@@ -1,0 +1,63 @@
+Here's a Python script that:
+
+1. Sends a POST request to the Shield API using requests.
+
+
+2. Prints out the equivalent curl command.
+
+
+3. Includes a sample access token variable.
+
+
+
+import requests
+import json
+
+# Sample access token
+access_token = "sample-access-token-1234567890"
+
+# API endpoint
+url = "https://api.shield.com/data-extract/v1/alerts"
+
+# Request headers
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Content-Type": "application/json"
+}
+
+# Request payload
+payload = {
+    "start_date": "2023-01-01 00:00:00.000",
+    "end_date": "2023-01-31 23:59:59.999"
+}
+
+# Make the POST request
+response = requests.post(url, headers=headers, json=payload)
+
+# Print the response
+print("Response Status Code:", response.status_code)
+print("Response Body:", response.text)
+
+# Print equivalent curl command
+curl_command = f"""curl -X POST {url} \\
+-H "Authorization: Bearer {access_token}" \\
+-H "Content-Type: application/json" \\
+-d '{json.dumps(payload)}'"""
+
+print("\nEquivalent curl command:")
+print(curl_command)
+
+
+---
+
+Notes:
+
+You can replace access_token with a real one at runtime.
+
+Make sure to run pip install requests if requests is not already installed.
+
+The script formats the curl command exactly like the example shown in your image.
+
+
+Let me know if you want to read the token and date range from a config file or environment variables.
+
