@@ -1,0 +1,66 @@
+Thanks! Based on your working Postman request, here's the final, corrected Python script that matches what you tested:
+
+
+---
+
+✅ Fixed Python Script: Submits the request and prints both response and equivalent curl command
+
+import requests
+import json
+
+# Sample bearer token (replace with actual)
+access_token = "sample-access-token-1234567890"
+
+# Working API endpoint from your screenshot
+url = "https://app-52167.shieldfc.com/data-extract/v1/alerts"
+
+# Headers
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Content-Type": "application/json"
+}
+
+# Correct payload using startDate and endDate as per working request
+payload = {
+    "startDate": "2025-02-01 00:00:00.000",
+    "endDate": "2025-02-05 23:59:59.999"
+}
+
+# Send request
+response = requests.post(url, headers=headers, json=payload)
+
+# Output result
+print("Status Code:", response.status_code)
+try:
+    print("Response JSON:", json.dumps(response.json(), indent=2))
+except Exception:
+    print("Response Text:", response.text)
+
+# Print equivalent curl command
+curl_command = f"""curl -X POST {url} \\
+-H "Authorization: Bearer {access_token}" \\
+-H "Content-Type: application/json" \\
+-d '{json.dumps(payload)}'"""
+
+print("\nEquivalent curl command:")
+print(curl_command)
+
+
+---
+
+Output Example:
+
+{
+  "jobId": "3e56690a-4df4-4a0c-ba45-748f64e7632e",
+  "startDate": "2025-02-01 00:00:00.000",
+  "endDate": "2025-02-05 23:59:59.999",
+  "status": "IN_PROGRESS",
+  "jobCreationDate": "2025-04-03T23:24:54.355+00:00",
+  "type": "ALERT"
+}
+
+
+---
+
+Let me know if you'd like to automatically poll the job status or download the result when the job is complete.
+
