@@ -1,0 +1,77 @@
+Great question — Squid Proxy is a widely-used, open-source caching and forwarding HTTP proxy server. It acts as a middleman between clients (like your browser or app) and the internet (or internal services).
+
+
+---
+
+What Squid Proxy Does:
+
+1. HTTP/HTTPS Proxying
+
+It forwards client requests to target servers (like shieldfis.com), then returns the response.
+
+For HTTPS, it uses a method called CONNECT tunneling to securely pass encrypted traffic.
+
+
+2. Caching
+
+It can cache frequently requested content (like images, scripts, pages) to reduce load time and bandwidth.
+
+
+3. Access Control
+
+Squid can enforce rules to allow or deny access to certain URLs, IPs, domains, or protocols.
+
+Often used in enterprises to control and monitor internet usage.
+
+
+4. Authentication & Logging
+
+Can be configured to require user login, track who accessed what, and when.
+
+Very useful in secure or regulated environments (like banks or defense).
+
+
+5. Content Filtering
+
+Can integrate with filters to block ads, malware, or specific categories of content.
+
+
+
+---
+
+In Your Context
+
+Your request is going via:
+
+privproxy.prod.proxy.core.syd.non.cl.macquarie.com:3128
+
+This is a Squid proxy set up in your organization's network to:
+
+Route and secure outbound traffic
+
+Enforce network policies
+
+Monitor and control service access
+
+Possibly log access for compliance
+
+
+You're using it like this:
+
+curl --proxy http://squid-proxy:3128 https://your-target.com
+
+
+---
+
+Why it matters in your troubleshooting
+
+Squid itself isn’t blocking you.
+
+But Squid can’t resolve the DNS (ERR_DNS_FAIL), so it returns 503 Service Unavailable.
+
+
+
+---
+
+Let me know if you'd like a diagram or want to know how to configure or bypass it in test environments.
+
