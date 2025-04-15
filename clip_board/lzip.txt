@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""
+This script packages your AWS Lambda deployment package by:
+1. Installing dependencies from a given requirements.txt file into a build directory.
+2. Copying the source code (from a src directory) into the same build directory while excluding specified files/directories.
+3. Zipping the contents of the build directory into a deployable zip file.
+4. Cleaning up the temporary build directory.
+
+Adjust the paths and EXCLUDE_LIST as needed.
+"""
+
+import os
+import sys
+import subprocess
+import shutil
+import zipfile
+
+# Hardcoded paths for your project
+SRC_DIR = "./src"
+REQ_FILE = "requirements.txt"
+BUILD_DIR = "build"
+OUTPUT_ZIP = "deployment_package.zip"
+
+# List of files or directories to exclude from the src folder when packaging
+EXCLUDE_LIST = ['tests', 'README.md', '.git', '__pycache__']
+
+def install_dependencies():
+    """
+    Install dependencies from the requirements.txt file into the BUILD_DIR.
+    Uses pip to install packages into the specified target directory.
+    """
+    print("Installing dependencies from requirements.txt...")
+    command = [sys.executable, "-m", "pip", "install", "-r", REQ_FILE, "--target", BUILD_DIR]
+    subprocess.check_call(command)
+    print("Dependencies installed into:", BUILD_DIR)
+
+def copy_src_files():
+    """
+    Recursively copy all .py files and other resources from the SRC_DIR into BUILD_DIR,
+    excluding any paths specified in EXCLUDE_LIST.
+    """
+    print("Copying source files from", SRC_DIR, "to", BUILD_DIR)
+    for root, dirs, files in os.walk(SRC_DIR):
+        # Determine the relative path from the SRC_DIR to maintain folder structure in BUILD_DIR
+        rel_path = os.path.relpath(root, SRC_DIR)
+        target_dir = os.path.join(BUILD_DIR, rel_path)
+        
+        # Create target directory if it doesn't exist
+        os.makedirs(target_dir, exist_ok=True)
+        
+        # Modify the list of directories in-place to skip excluded ones
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_LIST]
+        
+        # Copy files, skipping those in the exclude list
+        for filename in files:
+            if filename in EXCLUDE_LIST:
+                continue
+            src_file = os.path.join(root, filename)
+            dst_file = os.path.join(target_dir, filename)
+            shutil.copy2(src_file, dst_file)
+    print("Source files copied.")
+
+def create_deployment_zip():
+    """
+    Create a ZIP archive from the contents of BUILD_DIR.
+    The archive structure will match the directory structure of BUILD_DIR.
+    """
+    print("Creating deployment package zip:", OUTPUT_ZIP)
+    with zipfile.ZipFile(OUTPUT_ZIP, "w", zipfile.ZIP_DEFLATED) as z:
+        for root, dirs, files in os.walk(BUILD_DIR):
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                # Use the relative file path to maintain the directory structure in the zip file
+                arcname = os.path.relpath(file_path, BUILD_DIR)
+                z.write(file_path, arcname)
+    print("Zip file created:", OUTPUT_ZIP)
+
+def cleanup_build_directory():
+    """
+    Clean up the temporary build directory used to collect dependencies and source code.
+    """
+    print("Cleaning up the build directory...")
+    shutil.rmtree(BUILD_DIR)
+    print("Build directory removed.")
+
+def main():
+    # Remove BUILD_DIR if it exists from a previous run.
+    if os.path.exists(BUILD_DIR):
+        shutil.rmtree(BUILD_DIR)
+    os.makedirs(BUILD_DIR, exist_ok=True)
+
+    # Install dependencies into the build folder
+    install_dependencies()
+    # Copy the source code into the build folder, excluding the specified files/directories
+    copy_src_files()
+    # Create the zip file for deployment
+    create_deployment_zip()
+    # Optionally clean up the build directory if not needed afterward
+    cleanup_build_directory()
+    print("Deployment package is ready for AWS Lambda upload.")
+
+if __name__ == "__main__":
+    main()
+
