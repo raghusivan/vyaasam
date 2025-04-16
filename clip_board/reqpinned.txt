@@ -1,0 +1,60 @@
+Based on the latest image and visible modules in your Lambda build folder, here is a clean and pinned requirements.txt that includes only the modules shown:
+
+
+---
+
+Pinned requirements.txt
+
+certifi==2025.1.31
+charset-normalizer==3.4.1
+dateutil==2.8.2  # inferred, since actual version file not shown; bundled with python-dateutil
+idna==3.10
+jmespath==1.0.1
+pydantic==2.11.3
+pydantic-core==2.33.1
+python-dateutil==2.9.0.post0
+requests==2.32.3
+s3transfer==0.11.4
+six==1.17.0
+sqlalchemy==2.0.40
+typing-extensions==4.13.2
+typing-inspection==0.4.0
+urllib3==2.4.0
+watchtower==3.4.0
+
+
+---
+
+Next Steps to Apply
+
+1. Save the above as requirements.txt.
+
+
+2. Clean your environment:
+
+
+
+rm -rf lambda_pkg lambda_function.zip
+python -m venv cleanenv
+source cleanenv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt -t lambda_pkg/
+
+3. Add your source code:
+
+
+
+cp -r alert_metadata_poc_tmp/src/* lambda_pkg/
+cd lambda_pkg && zip -r9 ../lambda_function.zip .
+
+4. Deploy the lambda_function.zip to AWS Lambda.
+
+
+
+
+---
+
+This ensures only required packages are bundled, avoiding multiple versions or bloated dependencies.
+
+Would you like a script that automates all of this?
+
