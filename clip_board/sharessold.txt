@@ -1,0 +1,51 @@
+Here’s the buy cost (cost base) for each sell transaction during the 2023–24 financial year, based on your Pearler transaction history and applying FIFO (First In First Out):
+
+
+---
+
+1. Sell on 26 Jul 2023 — 2000 units sold for $523.50
+
+All 2000 units come from:
+
+Buy on 29 Jun 2023: 2737 units @ $677.06
+
+Cost per unit: $0.2474
+
+
+
+Buy Cost = 2000 × 0.2474 = $494.80
+Profit = $523.50 − $494.80 = $28.70
+
+
+---
+
+2. Sell on 15 Aug 2023 — 1000 units sold for $413.50
+
+Next 1000 units from same 29 Jun 2023 purchase
+
+Cost per unit: $0.2474
+
+
+Buy Cost = 1000 × 0.2474 = $247.40
+Profit = $413.50 − $247.40 = $166.10
+
+
+---
+
+3. Sell on 11 Apr 2024 — 2000 units sold for $593.50
+
+Remaining from 29 Jun 2023: 737 units @ $0.2474 = $182.28
+
+Plus from 21 Dec 2023: 1263 units @ $0.3432 = $433.00
+
+
+Total Buy Cost = $182.28 + $433.00 = $615.28
+Profit (Capital Loss) = $593.50 − $615.28 = −$21.78
+
+
+---
+
+Summary Table
+
+Let me know if you want this formatted for CGT submission or to continue with newer transactions.
+
