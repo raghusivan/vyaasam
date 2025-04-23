@@ -1,0 +1,208 @@
+Absolutely! Here's the complete voice DAG code review list with each item directly shown below — including line range, issue, old code, suggested fix, and the reasoning:
+
+
+---
+
+1. Hardcoded Secret/Config Paths (Lines 40–45)
+
+Old Code:
+
+os.path.exists("/opt/artifacts/commsurv/cyberark/server_cyberark.pem")
+
+Suggested Fix:
+
+os.path.exists(os.getenv("CYBERARK_PEM_PATH", "/opt/artifacts/commsurv/cyberark/server_cyberark.pem"))
+
+Reason: Hardcoded paths reduce portability and break when environments change (e.g., dev vs prod).
+
+
+---
+
+2. Function Naming Not in snake_case (Lines 55–60)
+
+Old Code:
+
+def retrieveCredential(...)
+
+Suggested Fix:
+
+def retrieve_credential(...)
+
+Reason: Follows Python’s PEP8 naming convention for better readability and maintainability.
+
+
+---
+
+3. Logging Sensitive Certs/Keys (Line 96)
+
+Old Code:
+
+logging.info(f"CAcert is {cacert}")
+
+Suggested Fix:
+
+logging.info("CAcert successfully loaded")
+
+Reason: Avoids leaking certs to logs, which is a major security concern.
+
+
+---
+
+4. Unvalidated API Response before .json() (Line 106)
+
+Old Code:
+
+respJSON = requests.get(...).json()
+
+Suggested Fix:
+
+response = requests.get(...)
+if response.status_code == 200:
+    respJSON = response.json()
+else:
+    raise AirflowException("Invalid API response")
+
+Reason: Prevents JSONDecodeError when the response is not valid JSON.
+
+
+---
+
+5. Repeated Cert/Key Loading (Line 114+)
+
+Old Code:
+
+cert = cyberark.get("cert").get("pem")
+
+Suggested Fix:
+
+def load_certs(cyberark):
+    return cyberark["cert"]["pem"], cyberark["key"]["pem"], cyberark["cacert"]["pem"]
+
+Reason: Repeated logic should be centralized to reduce duplication and errors.
+
+
+---
+
+6. Boto3 Called Without Credential Check (Lines 130–135)
+
+Old Code:
+
+session_token = awsConfig.get("sessionToken")
+
+Suggested Fix:
+
+if not awsConfig.get("sessionToken"):
+    raise AirflowException("Missing AWS session token")
+
+Reason: Prevents silent failures or cryptic boto3 errors.
+
+
+---
+
+7. Logging Sensitive Tokens (Lines 160–180)
+
+Old Code:
+
+logging.info(f"Token: {token}")
+
+Suggested Fix:
+
+logging.info("Token retrieved successfully [REDACTED]")
+
+Reason: Logging secrets violates security standards and compliance.
+
+
+---
+
+8. Writing to Temp Files with Fixed Names (Lines 215–220)
+
+Old Code:
+
+open("/tmp/agent_id_data.json", "w")
+
+Suggested Fix:
+
+with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+
+Reason: Prevents filename collisions and ensures automatic cleanup.
+
+
+---
+
+9. S3 Upload without Validating Config (Line 239)
+
+Old Code:
+
+s3_client.upload_file(...)
+
+Suggested Fix:
+
+if bucket and key:
+    s3_client.upload_file(...)
+else:
+    raise AirflowException("Missing S3 config")
+
+Reason: Avoids runtime issues when config is misconfigured or missing.
+
+
+---
+
+10. Repeated CSV Writing Logic (Lines 310–320)
+
+Old Code:
+
+with open(csv_file_path, "w") as f:
+    writer = csv.DictWriter(...)
+
+Suggested Fix:
+
+def write_csv(data, path):
+    with open(path, "w") as f:
+        writer = csv.DictWriter(...)
+
+Reason: Centralizing CSV logic improves reuse and testing.
+
+
+---
+
+11. Unprotected Temp Dir Cleanup (Line 410)
+
+Old Code:
+
+finally:
+    tmp_dir.cleanup()
+
+Suggested Fix:
+
+finally:
+    try:
+        tmp_dir.cleanup()
+    except Exception as e:
+        logging.warning(f"Cleanup failed: {e}")
+
+Reason: Ensures cleanup errors don’t mask real issues or crash the DAG.
+
+
+---
+
+12. No Retry Logic for HTTP Requests (Multiple lines)
+
+Old Code:
+
+requests.get(...)
+
+Suggested Fix:
+
+from tenacity import retry, stop_after_attempt
+
+@retry(stop=stop_after_attempt(3))
+def call():
+    return requests.get(...)
+
+Reason: Adds resilience to transient network or API outages.
+
+
+---
+
+Let me know if you want these turned into GitHub-style PR comments or applied into code examples directly.
+
