@@ -1,0 +1,67 @@
+Here’s what you can fill out in each field of the form based on your SMTP error and recent ticket:
+
+
+---
+
+1. Details on what has occurred (required)
+
+> We have been using the SMTP configuration to send emails from commsurv.ops@macquarie.com to external recipients via an automated system. This has been working fine until the last two days.
+Now, we are receiving the following error when attempting to send emails:
+550 5.7.60 SMTP; Client does not have permissions to send as this sender
+This issue started soon after REQ000001850391 was closed. We believe permissions (e.g., "Send As") may have been inadvertently removed. Please investigate and reinstate the required permissions.
+
+
+
+
+---
+
+2. Sender’s email address (required)
+
+> commsurv.ops@macquarie.com
+
+
+
+
+---
+
+3. Recipient’s email address (required)
+
+> raghu_sv@hotmail.com
+(or any of the addresses you were using in the test run)
+
+
+
+
+---
+
+4. Date and time the email was sent (required)
+
+> Provide the latest failed attempt time.
+Example:
+22 April 2025, 09:50 UTC
+(Adjust based on the actual time your log shows)
+
+
+
+
+---
+
+5. Subject line of the email (required)
+
+> Tester EML
+(or whatever the subject was in your eml file)
+
+
+
+
+---
+
+6. Attach original copy of the email (if required)
+
+Attach one of the .eml files you were processing (e.g., from the S3 source), if the form allows.
+
+
+---
+
+Let me know if you want a short summary version of the error in case they require logs too.
+
