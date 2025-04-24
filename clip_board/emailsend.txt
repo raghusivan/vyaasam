@@ -1,0 +1,44 @@
+Thanks for confirming that, and the timing definitely helps.
+
+Since this all worked fine until two days ago and now you're seeing the 550 5.7.60 SMTP; Client does not have permissions to send as this sender error, it's almost certainly tied to a change in the Active Directory (AD) or mail system permissions — possibly triggered by the access request shown in your screenshot.
+
+The note in the ticket explicitly says:
+
+> "Make sure to provision ALL access before closing the ticket. If unable to provision ALL access, then you need to rollback any access that had been granted..."
+
+
+
+That makes it very likely someone either:
+
+Didn’t fully reapply all required permissions (especially SendAs), or
+
+Rolled back something that was previously working.
+
+
+So at this point, here’s exactly what I’d recommend:
+
+
+---
+
+Message to Chad (updated with the new context):
+
+Subject: Urgent: Loss of Email Sending Permissions for commsurv.ops@macquarie.com
+
+Hi Chad,
+
+Just flagging that we started getting SMTP errors for commsurv.ops@macquarie.com in the last two days — specifically:
+
+550 5.7.60 SMTP; Client does not have permissions to send as this sender
+
+This setup was working fine previously, and it aligns with the timeline of REQ000001850391. From the notes, it looks like access might not have been fully re-provisioned or may have been rolled back.
+
+Could you please confirm if Send As or related permissions for this email were recently removed or not reapplied? If you're not the right contact, could you let me know who I should speak to?
+
+Thanks for your help,
+Raghu
+
+
+---
+
+Want me to help draft a quick PowerShell or Exchange Online command that the admin can use to verify the permissions?
+
