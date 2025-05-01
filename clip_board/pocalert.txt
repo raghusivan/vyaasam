@@ -1,0 +1,12 @@
+Here’s a clear and professional response you can send:
+
+
+---
+
+Yes, that’s the ideal setup — the code builds, creates a zip, uploads to Artifactory, and then the infra repo triggers the deployment using that zip. However, for that to work, the Bamboo agent setup, the infra repo, and the Max application configuration all need to be completed first. Since that setup would take some time, for the purpose of this POC I’ve used the existing Avatar Lambda and uploaded the POC zip there. We can remove this once done. This approach allowed us to avoid delays and proceed independently of the infra readiness. It also helped me quickly identify what works and what doesn’t. Once infra is ready, we can reuse the same requirements file and proceed with the formal deployment.
+
+
+---
+
+Would you like a shorter version as well?
+
