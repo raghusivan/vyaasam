@@ -1,0 +1,67 @@
+To write a Unix shell script that directly queries an Elasticsearch index via HTTP using curl, you can bypass Python entirely if your need is just to execute a basic query. Below is a script that:
+
+Authenticates using a username and password
+
+Sends a query from a .json file to the Elasticsearch _search endpoint
+
+Outputs the response to a file
+
+
+
+---
+
+query_es_index.sh
+
+#!/bin/bash
+
+# Required parameters
+ES_URL="https://master.uat.digitalreasoningelasticsearch.forriskdigitalreasoning.syd.non.c1.macquarie.com:9200"
+INDEX_NAME="ecomm_production_20200929__message_types_alerts_2025"
+ES_USERNAME="rmg_dp_elastic_au_ua"
+ES_PASSWORD="qMNrip_HJKLbzz!!"
+QUERY_FILE="statusExact.json"
+OUTPUT_FILE="es_output.json"
+
+# Full endpoint
+SEARCH_URL="${ES_URL}/${INDEX_NAME}/_search"
+
+# Execute the query using curl
+curl -u "$ES_USERNAME:$ES_PASSWORD" \
+     -H "Content-Type: application/json" \
+     -X POST "$SEARCH_URL" \
+     -d @"$QUERY_FILE" \
+     -o "$OUTPUT_FILE"
+
+echo "Query complete. Output written to $OUTPUT_FILE"
+
+
+---
+
+How to Run It
+
+1. Save as query_es_index.sh.
+
+
+2. Make it executable:
+
+chmod +x query_es_index.sh
+
+
+3. Run:
+
+./query_es_index.sh
+
+
+
+
+---
+
+Optional Add-ons
+
+To pretty-print output:
+
+cat es_output.json | jq .
+
+
+Would you like this to include pagination (from / size) or export data to CSV?
+
