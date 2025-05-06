@@ -1,0 +1,15 @@
+Here are 4–5 focused bullet points for the scanning-related requirements for a JIRA story on Netskope:
+
+Enable configuration of scan levels (e.g., low, medium, high) via environment variables or a config file.
+
+Allow definition of scan scope, such as file types, endpoints, or specific metadata fields.
+
+Support toggling scan functionality on or off for different environments (dev/test/prod).
+
+Log scan results with job ID, summary of findings, and timestamps for traceability.
+
+(Optional) Provide a dashboard or API endpoint to view scan outcomes and current configuration in real time.
+
+
+Would you like these tailored for a technical story or more business-facing?
+
