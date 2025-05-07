@@ -1,0 +1,21 @@
+To get the installed version of each package listed in your requirements.txt (i.e., pydantic, requests, sqlalchemy, watchtower) on your local system, you can use the following Python command:
+
+pip freeze | grep -iE '^(pydantic|requests|sqlalchemy|watchtower)=='
+
+Or use this Python script to print versions programmatically:
+
+import pkg_resources
+
+packages = ['pydantic', 'requests', 'sqlalchemy', 'watchtower']
+
+for package in packages:
+    try:
+        version = pkg_resources.get_distribution(package).version
+        print(f"{package}=={version}")
+    except pkg_resources.DistributionNotFound:
+        print(f"{package} is not installed")
+
+This will output the exact version numbers installed locally in the format suitable for pinning in your requirements.txt.
+
+Would you like me to rewrite your requirements.txt with these versions once you run it?
+
