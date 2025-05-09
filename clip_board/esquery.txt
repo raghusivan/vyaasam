@@ -1,0 +1,45 @@
+Your error is:
+
+TypeError: Elasticsearch.search() got an unexpected keyword argument 'doc_type'
+
+Root Cause:
+
+The doc_type parameter has been removed from Elasticsearch Python client version 8.x onwards, as document types are deprecated and fully removed in newer versions of Elasticsearch.
+
+
+---
+
+Fix for es_queries.py
+
+Update the execute_search function like this:
+
+def execute_search(es, index_name, query_body):
+    logging.info(f"Executing search on index: {index_name}")
+    try:
+        response = es.search(index=index_name, body=query_body)
+        logging.debug("----- Elasticsearch Search Response -----")
+        logging.debug(json.dumps(response, indent=2))
+        total_hits = response['hits']['total']['value']  # updated for ES 7.x+
+        logging.info(f"Total Hits: {total_hits}")
+        if total_hits == 0:
+            logging.warning("No records found. Possible reasons could be:")
+            logging.warning("- Index name does not match any documents.")
+            logging.warning("- Query does not match any documents.")
+            logging.warning("- Field names in the query do not exist in the mapping.")
+        return response
+    except RequestError as e:
+        logging.error(f"Error executing search: {e}")
+        return None
+
+Other Changes:
+
+Remove doc_types parameter entirely.
+
+Update how total_hits is accessed — newer versions return {'value': <count>, 'relation': 'eq'} instead of just a number.
+
+
+
+---
+
+Let me know if you're using Elasticsearch 7.x or lower — I can revert this to support doc_type if needed.
+
