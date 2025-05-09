@@ -1,0 +1,75 @@
+
+import logging
+from typing import List, Dict, Any, Optional
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.exc import SQLAlchemyError
+
+
+class PostgreSQLDatabase:
+    def __init__(self, db_config: Dict[str, str]) -> None:
+        self.db_config = db_config
+        self.engine: Optional[Engine] = None
+        self._Session = None
+        self.session: Optional[Session] = None
+        self.logger = logging.getLogger(__name__)
+    
+    def connect(self) -> None:
+        try:
+            db_url = (
+                f"postgresql://{self.db_config['user']}:"
+                f"{self.db_config['password']}@"
+                f"{self.db_config['host']}:{self.db_config['port']}/"
+                f"{self.db_config['dbname']}"
+            )
+            self.engine = create_engine(db_url, echo=False, future=True)
+            self._Session = sessionmaker(bind=self.engine, autoflush=False, autocommit=False)
+            self.session = self._Session()
+            self.logger.info("Database connection established")
+        except Exception as e:
+            self.logger.exception("Failed to connect to the database")
+            raise
+    
+    def query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Any]:
+        try:
+            result = self.session.execute(text(query), params or {})
+            return result.fetchall()
+        except SQLAlchemyError as e:
+            self.logger.exception("Failed to execute query")
+            self.session.rollback()
+            raise
+
+    def save(self, query: str, params: Dict[str, Any]) -> None:
+        try:
+            self.session.execute(text(query), params)
+            self.session.commit()
+        except SQLAlchemyError:
+            self.session.rollback()
+            self.logger.exception("Failed to save data")
+            raise
+
+    def bulk_save(self, objs: List[Any]) -> None:
+        try:
+            self.session.bulk_save_objects(objs)
+            self.session.commit()
+        except SQLAlchemyError:
+            self.session.rollback()
+            self.logger.exception("Failed to perform bulk save")
+            raise
+
+    def update(self, query: str, params: Dict[str, Any]) -> None:
+        try:
+            self.session.execute(text(query), params)
+            self.session.commit()
+        except SQLAlchemyError:
+            self.session.rollback()
+            self.logger.exception("Failed to update data")
+            raise
+
+    def close(self) -> None:
+        if self.session:
+            self.session.close()
+        if self.engine:
+            self.engine.dispose()
