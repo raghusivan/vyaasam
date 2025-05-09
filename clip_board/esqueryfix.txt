@@ -1,0 +1,43 @@
+You need to update the es_queries.py file — specifically, the replace_placeholders function.
+
+
+---
+
+What to do:
+
+Open your file:
+
+nano es_queries.py
+
+(or your preferred editor)
+
+
+---
+
+Locate and Replace the Function
+
+Replace this faulty code:
+
+query_json = query_json.replace("{{START_DATE}}", start_date).replace("{{END_DATE}}", end_date)
+
+With the corrected version:
+
+def replace_placeholders(query_body, start_date, end_date):
+    logging.info("Replacing placeholders in the query body.")
+    
+    start_date_str = start_date.isoformat() + "Z"
+    end_date_str = end_date.isoformat() + "Z"
+
+    query_str = json.dumps(query_body)
+    query_str = query_str.replace("{{start_date}}", start_date_str)
+    query_str = query_str.replace("{{end_date}}", end_date_str)
+
+    return json.loads(query_str)
+
+Make sure the placeholder names match your JSON file (use lowercase if your JSON has {{start_date}}, not {{START_DATE}}).
+
+
+---
+
+Let me know if you'd like me to regenerate the whole es_queries.py with this fix.
+
