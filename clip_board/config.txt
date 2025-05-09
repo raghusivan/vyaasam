@@ -1,0 +1,59 @@
+Here's a clean, professional, and fully rewritten version of the code from your config.py, including the read_elasticsearch_config and replace_placeholders functions — compatible with Elasticsearch 8.x, structured for readability and maintainability:
+
+
+---
+
+config.py – Rewritten
+
+import configparser
+import json
+import logging
+from datetime import datetime, timedelta
+from dateutil import parser as date_parser
+
+def read_elasticsearch_config(config_file='c1.ini'):
+    logging.info(f"Reading configuration from {config_file}")
+
+    config = configparser.ConfigParser()
+    config.read(config_file)
+
+    es_url = config.get('elasticsearch', 'ES_URL', fallback='http://localhost:9200')
+    es_username = config.get('elasticsearch', 'ES_USERNAME', fallback='')
+    es_password = config.get('elasticsearch', 'ES_PASSWORD', fallback='')
+    index_name = config.get('elasticsearch', 'INDEX_NAME', fallback='my_index')
+    query_file = config.get('elasticsearch', 'QUERY_FILE', fallback='query.json')
+
+    start_date_str = config.get('elasticsearch', 'start_date', fallback='2025-01-01T00:00:00')
+    days_to_retrieve = config.getint('elasticsearch', 'days_to_retrieve', fallback=30)
+
+    # Convert string date to datetime object
+    start_date = date_parser.isoparse(start_date_str)
+    end_date = start_date + timedelta(days=days_to_retrieve)
+
+    return es_url, es_username, es_password, index_name, query_file, start_date, end_date
+
+def replace_placeholders(query_body, start_date, end_date):
+    logging.info("Replacing placeholders in the query body.")
+    
+    query_str = json.dumps(query_body)
+    query_str = query_str.replace("{{start_date}}", start_date.isoformat() + "Z")
+    query_str = query_str.replace("{{end_date}}", end_date.isoformat() + "Z")
+
+    return json.loads(query_str)
+
+
+---
+
+Improvements Made:
+
+Used dateutil.parser.isoparse() for flexible ISO date parsing.
+
+Returned exactly 7 values to match unpacking in get_closed_alerts.py.
+
+Appended "Z" to timestamps for UTC compliance (2025-01-01T00:00:00Z).
+
+Improved logging messages and formatting.
+
+
+Let me know if you'd like me to regenerate this as a .py file or zip all scripts together.
+
