@@ -1,0 +1,52 @@
+You're encountering this error because the Elasticsearch client you're using (from the elasticsearch Python package) no longer accepts the use_ssl keyword argument in its constructor.
+
+Error:
+
+TypeError: Elasticsearch.__init__() got an unexpected keyword argument 'use_ssl'
+
+This typically happens if:
+
+You're using Elasticsearch Python client version 8.x or later, which has different connection syntax.
+
+The use_ssl, verify_certs, ssl_show_warn arguments were part of older versions like 6.x or 7.x.
+
+
+
+---
+
+Fix
+
+Update your create_es_client function to use the correct syntax for Elasticsearch 8.x+:
+
+Updated version for Elasticsearch 8.x+
+
+from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import ConnectionError
+
+def create_es_client(es_url, es_username, es_password):
+    try:
+        print(f"Creating Elasticsearch client with URL: {es_url}")
+        es_client = Elasticsearch(
+            es_url,
+            basic_auth=(es_username, es_password),
+            verify_certs=False,
+            request_timeout=30
+        )
+        print("Elasticsearch client created successfully.")
+        return es_client
+    except ConnectionError as e:
+        print(f"Error connecting to Elasticsearch: {e}")
+        return None
+
+Key Changes:
+
+basic_auth replaces http_auth
+
+Removed use_ssl and ssl_show_warn which are no longer valid
+
+
+
+---
+
+Let me know your Elasticsearch Python client version (pip show elasticsearch), and I’ll tailor the code exactly for that.
+
