@@ -1,0 +1,61 @@
+The error you're seeing now is:
+
+AuthenticationException(401, 'security_exception', 'missing authentication token for REST request')
+
+This means the server expects authentication, but it's not being sent or isn't accepted.
+
+
+---
+
+You can't disable security from the client side.
+
+Elasticsearch/OpenSearch security settings must be disabled from the server configuration, which you likely don’t have access to.
+
+
+---
+
+✅ Fix on client side: Make sure basic auth is actually used
+
+Please update your es_connection.py with this explicitly structured version, which forces basic authentication via headers, especially useful when security plugins (like OpenSearch Security or X-Pack) are present:
+
+from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import ConnectionError
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def create_es_client(es_url, es_username, es_password):
+    try:
+        print(f"Creating Elasticsearch client with URL: {es_url}")
+        
+        # Build the full URL with embedded basic auth (acts like curl)
+        es_client = Elasticsearch(
+            hosts=[es_url],
+            headers={"Authorization": f"Basic {urllib3.util.make_headers(basic_auth=f'{es_username}:{es_password}')['authorization']}"},
+            verify_certs=False,
+            request_timeout=30
+        )
+
+        print("Elasticsearch client created successfully.")
+        return es_client
+
+    except ConnectionError as e:
+        print(f"Error connecting to Elasticsearch: {e}")
+        return None
+
+
+---
+
+If it still fails
+
+Please verify:
+
+That the ES_USERNAME and ES_PASSWORD in c1.ini are correct.
+
+That they are being passed into the function (print and check them if needed).
+
+That the server does in fact accept Basic auth and not something else like token-based or API key.
+
+
+Let me know if you’d prefer to use curl from Python instead — that’s another good workaround.
+
