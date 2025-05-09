@@ -1,0 +1,56 @@
+Thanks for sharing. Since your UNIX curl script works, it confirms the endpoint is not native Elasticsearch—it likely behaves like Elasticsearch (e.g., OpenSearch or a custom proxy). The official elasticsearch-py client is strict in v8.x and rejects unknown products.
+
+
+---
+
+✅ Fix: Modify es_connection.py to Use RequestsHttpConnection Instead
+
+We’ll bypass the product check using a lower-level connection setup with http_auth and RequestsHttpConnection (inspired by curl behavior):
+
+
+---
+
+Updated es_connection.py
+
+from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import ConnectionError
+from elasticsearch import RequestsHttpConnection
+import urllib3
+
+# Disable SSL warnings like curl's behavior
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def create_es_client(es_url, es_username, es_password):
+    try:
+        print(f"Creating Elasticsearch client with URL: {es_url}")
+        es_client = Elasticsearch(
+            hosts=[es_url],
+            basic_auth=(es_username, es_password),
+            verify_certs=False,
+            connection_class=RequestsHttpConnection,
+            request_timeout=30,
+            headers={"User-Agent": "curl/7.68.0"}
+        )
+        print("Elasticsearch client created successfully.")
+        return es_client
+    except ConnectionError as e:
+        print(f"Error connecting to Elasticsearch: {e}")
+        return None
+
+
+---
+
+Key Adjustments:
+
+connection_class=RequestsHttpConnection: behaves like curl.
+
+verify_certs=False: skips certificate verification, same as your curl.
+
+Custom User-Agent header: some proxies may expect it.
+
+
+
+---
+
+Let me know if you want a version that uses requests directly instead of the Elasticsearch client.
+
