@@ -1,0 +1,64 @@
+Here is the equivalent Python script for your working shell script (ess.sh), written in a single file with all constants defined at the top for easy modification.
+
+
+---
+
+ess_query.py
+
+import requests
+import json
+
+# ---------------------------
+# Constants (edit as needed)
+# ---------------------------
+ES_URL = "https://master.uat.digitalreasoningelasticsearch.forriskdigitalreasoning.syd.non.c1.macquarie.com:9200"
+ES_USERNAME = "rmg_dr_elastic_au_ua"
+ES_PASSWORD = "qNM1rp_HJKlbzIU"
+MESSAGE_ID = "your-message-id-here"  # not used in this script unless needed
+INDEX_NAME = "ecomm_production_20200929__message_types_alerts_2024"
+QUERY_FILE = "message_id.json"
+OUTPUT_FILE = "es_output.json"
+
+# ---------------------------
+# Build full endpoint
+# ---------------------------
+SEARCH_URL = f"{ES_URL}/{INDEX_NAME}/_search"
+
+# ---------------------------
+# Load query JSON from file
+# ---------------------------
+with open(QUERY_FILE, 'r') as f:
+    query_body = json.load(f)
+
+# ---------------------------
+# Make POST request
+# ---------------------------
+response = requests.post(
+    SEARCH_URL,
+    auth=(ES_USERNAME, ES_PASSWORD),
+    headers={"Content-Type": "application/json"},
+    json=query_body,
+    verify=False  # Skip SSL verification to match curl -k behavior
+)
+
+# ---------------------------
+# Handle and save response
+# ---------------------------
+with open(OUTPUT_FILE, 'w') as f:
+    f.write(response.text)
+
+print("Query complete. Output written to:", OUTPUT_FILE)
+print("Response Summary:", response.status_code, response.reason)
+
+
+---
+
+To Run:
+
+python ess_query.py
+
+
+---
+
+Let me know if you want to pass MESSAGE_ID as a filter in the JSON query automatically.
+
