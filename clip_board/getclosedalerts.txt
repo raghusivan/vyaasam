@@ -1,0 +1,124 @@
+Here is the rewritten and fixed version of your three files (get_closed_alerts.py, es_connection.py, and es_queries.py) to be compatible with Elasticsearch Python client v8.x+:
+
+
+---
+
+get_closed_alerts.py
+
+import logging
+from config import read_elasticsearch_config
+from es_queries import read_query_file, replace_placeholders, execute_search
+from es_connection import create_es_client
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def main():
+    # Load config.ini
+    logging.info('Loading Elasticsearch configuration.')
+    es_url, es_username, es_password, index_name, query_file, start_date, end_date = read_elasticsearch_config()
+    logging.debug(f"Elasticsearch URL: {es_url}")
+    logging.debug(f"Index Name: {index_name}")
+    logging.debug(f"Query File: {query_file}")
+
+    # Read query file
+    logging.info(f"Reading query file: {query_file}")
+    query_body = read_query_file(query_file)
+    if not query_body:
+        logging.error("Failed to read query file. Exiting.")
+        return
+
+    # Replace placeholders in query
+    logging.info("Replacing placeholders in query.")
+    query_body = replace_placeholders(query_body, start_date, end_date)
+    logging.debug(f"Query Body after replacement:\n{query_body}")
+
+    # Create Elasticsearch Client
+    logging.info("Creating Elasticsearch client.")
+    es = create_es_client(es_url, es_username, es_password)
+    if not es:
+        logging.error("Failed to create Elasticsearch client. Exiting.")
+        return
+
+    # Execute search
+    logging.info("Executing search.")
+    execute_search(es, index_name, query_body)
+
+if __name__ == "__main__":
+    main()
+
+
+---
+
+es_connection.py
+
+from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import ConnectionError
+
+def create_es_client(es_url, es_username, es_password):
+    try:
+        print(f"Creating Elasticsearch client with URL: {es_url}")
+        es_client = Elasticsearch(
+            es_url,
+            basic_auth=(es_username, es_password),
+            verify_certs=False,
+            request_timeout=30
+        )
+        print("Elasticsearch client created successfully.")
+        return es_client
+    except ConnectionError as e:
+        print(f"Error connecting to Elasticsearch: {e}")
+        return None
+
+
+---
+
+es_queries.py
+
+import json
+import logging
+from elasticsearch.exceptions import RequestError
+
+def read_query_file(query_file):
+    logging.info(f"Reading query file: {query_file}")
+    try:
+        with open(query_file, 'r') as f:
+            query_body = json.load(f)
+            logging.debug(f"Query file '{query_file}' read successfully.")
+            logging.debug(f"Query Body: {json.dumps(query_body, indent=2)}")
+            return query_body
+    except json.JSONDecodeError as e:
+        logging.error(f"Error parsing QUERY JSON: {e}")
+        return None
+    except FileNotFoundError as e:
+        logging.error(f"Error: Query file not found: {e}")
+        return None
+
+def replace_placeholders(query_body, start_date, end_date):
+    query_json = json.dumps(query_body)
+    query_json = query_json.replace("{{START_DATE}}", start_date).replace("{{END_DATE}}", end_date)
+    return json.loads(query_json)
+
+def execute_search(es, index_name, query_body):
+    logging.info(f"Executing search on index: {index_name}")
+    try:
+        response = es.search(index=index_name, body=query_body)
+        logging.debug("----- Elasticsearch Search Response -----")
+        logging.debug(json.dumps(response, indent=2))
+        total_hits = response['hits']['total']['value']
+        logging.info(f"Total Hits: {total_hits}")
+        if total_hits == 0:
+            logging.warning("No records found. Possible reasons could be:")
+            logging.warning("- Index name does not match any documents.")
+            logging.warning("- Query does not match any documents.")
+            logging.warning("- Field names in the query do not exist in the mapping.")
+        return response
+    except RequestError as e:
+        logging.error(f"Error executing search: {e}")
+        return None
+
+
+---
+
+Let me know if you’d like the same for config.py or want this bundled as a zip.
+
