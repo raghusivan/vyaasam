@@ -1,0 +1,158 @@
+Here’s how to convert the Python coding best practices and guidelines into a structured Confluence page. This includes step-by-step instructions for copying and pasting into Atlassian Confluence (Cloud version) using the standard Confluence editor.
+
+
+---
+
+Step-by-Step: Add to Confluence Cloud
+
+1. Go to Your Space
+
+Navigate to your desired Confluence space.
+
+Click “Create” to start a new page.
+
+
+2. Set the Title
+
+Recommended Title:
+Python Coding Standards and Best Practices
+
+3. Copy the Content Below
+
+Copy everything from the Start Copy Below to End Copy markers and paste into the Confluence editor.
+
+
+---
+
+Start Copy Below
+
+# Python Coding Standards and Best Practices
+
+## A. SOLID Principles (Applied in Python)
+
+1. **Single Responsibility Principle**  
+   Each class/module should have only one responsibility or reason to change.
+
+2. **Open/Closed Principle**  
+   Extend behavior using inheritance/composition, avoid modifying existing code.
+
+3. **Liskov Substitution Principle**  
+   Subtypes must be substitutable for their base types.
+
+4. **Interface Segregation Principle**  
+   Create focused interfaces using duck typing or `typing.Protocol`.
+
+5. **Dependency Inversion Principle**  
+   Rely on abstractions, not concrete implementations. Use dependency injection where possible.
+
+---
+
+## B. General Python Coding Best Practices
+
+### 1. Code Style (PEP-8)
+- Use **4 spaces per indent**.
+- Keep lines ≤ 79 characters.
+- Use `snake_case` for variables/functions, `PascalCase` for classes.
+- Add 2 blank lines before functions/classes.
+
+### 2. Readability
+- Use meaningful, descriptive names.
+- Avoid over-commenting; let the code speak.
+- Prefer **f-strings**: `f"Name is {name}"`
+- Use **type hints**: `def greet(name: str) -> None:`
+
+### 3. Function & Module Design
+- Keep functions short and focused.
+- Avoid side effects in pure functions.
+- Group code into modules, then packages.
+- Use `__init__.py` to define packages.
+
+### 4. Error Handling
+- Catch specific exceptions.
+- Avoid catching everything (`except:`).
+- Use `finally` or `with` to ensure cleanup.
+
+### 5. Data Structures
+- Prefer built-in types (`list`, `dict`, `set`, `tuple`).
+- Use `collections` and `dataclasses` where suitable.
+- Use `enumerate()`, `zip()`, and comprehensions for cleaner loops.
+
+### 6. Logging and Debugging
+- Use the `logging` module.
+- Don’t use `print()` for production debugging.
+- Log stack traces using `exc_info=True`.
+
+### 7. Documentation & Comments
+- Follow **PEP-257** for docstrings.
+- Use triple quotes for public APIs:  
+  `"""Returns the sum of two numbers."""`
+- Document *why*, not *what*.
+
+### 8. Testing
+- Use `unittest`, `pytest`, or `nose2`.
+- Place tests in a `tests/` directory.
+- Mock external dependencies.
+- Follow Arrange-Act-Assert (AAA) structure.
+
+### 9. Virtual Environments
+- Use `venv` or `virtualenv`.
+- Never commit `.venv/`, only `requirements.txt` or `pyproject.toml`.
+
+### 10. Dependency Management
+- Lock versions in `requirements.txt`.
+- Use `pip-tools`, `Poetry`, or `Pipenv`.
+- Run `pip-audit` for vulnerabilities.
+
+---
+
+## C. Python-Specific Design Tips
+
+- Follow **The Zen of Python** (`import this`).
+- Use list/dict comprehensions when readable.
+- Use `dataclass` for structured objects.
+- Prefer context managers: `with open() as f:`
+
+---
+
+## D. Automation & CI/CD
+
+- Format code using `black` or `autopep8`.
+- Lint with `flake8`, `pylint`, or `ruff`.
+- Use `pre-commit` hooks.
+- Integrate tests with GitHub Actions, Jenkins, or Bamboo.
+
+---
+
+## E. Advanced Practices
+
+- Use `asyncio` for async operations.
+- Use `typing.Protocol` and structural typing.
+- Avoid mutable default arguments.
+- Store configuration in `.env`, `.ini`, or `yaml` using `dynaconf` or `pydantic`.
+
+---
+
+## F. Summary
+
+- Clean code is readable, reusable, and testable.
+- Embrace Pythonic idioms and modern tooling.
+- Automate, validate, and document everything.
+
+End Copy
+
+
+---
+
+4. Format Using Confluence Toolbar
+
+After pasting:
+
+Use Headings (H1–H3) for structure.
+
+Use the Table of Contents macro at the top for easy navigation.
+
+Optionally add expand/collapse macros for sections like "Advanced Practices" or "SOLID Principles".
+
+
+Would you like a downloadable .md or .pdf version of this to attach to your Confluence or Git repo?
+
