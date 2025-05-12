@@ -1,0 +1,210 @@
+Here is the final version optimized specifically for Atlassian Cloud Confluence, using native Confluence editor elements (headings, code blocks, panels, and tables). This version is 100% compatible with Confluence Cloud — just copy and paste directly.
+
+
+---
+
+Instructions:
+
+1. Go to your Confluence space → Click “Create” to start a new page.
+
+
+2. Paste the full content below into the page editor.
+
+
+3. Use slash commands like /expand, /code block, /panel in Confluence Cloud to format sections if needed.
+
+
+
+
+---
+
+Confluence Cloud Copy-Paste Content
+
+
+---
+
+# Python Coding Standards and Best Practices
+
+## A. SOLID Principles in Python (With Examples)
+
+/expand
+  title=1. Single Responsibility Principle (SRP)
+  A class should only have one responsibility.
+
+  *Bad Example:*
+  ```python
+  class Report:
+      def calculate_salary(self): ...
+      def format_report(self): ...
+      def send_email(self): ...
+
+Good Example:
+
+class SalaryCalculator: 
+    def calculate(self): ...
+
+class ReportFormatter:
+    def format(self): ...
+
+class EmailSender:
+    def send(self): ...
+
+Why: Easier to test, maintain, and extend. Avoids tightly coupled logic. /expand
+
+/expand title=2. Open/Closed Principle (OCP) Classes should be open for extension but closed for modification.
+
+Bad Example:
+
+def get_discount(customer_type):
+    if customer_type == "gold":
+        return 0.2
+    elif customer_type == "silver":
+        return 0.1
+
+Good Example:
+
+class DiscountStrategy:
+    def get_discount(self): return 0.0
+
+class GoldDiscount(DiscountStrategy):
+    def get_discount(self): return 0.2
+
+class SilverDiscount(DiscountStrategy):
+    def get_discount(self): return 0.1
+
+Why: Add new strategies without changing existing logic. /expand
+
+/expand title=3. Liskov Substitution Principle (LSP) Subclasses should replace base classes without altering program behavior.
+
+Bad Example:
+
+class Bird:
+    def fly(self): pass
+
+class Ostrich(Bird):
+    def fly(self): raise Exception("Can't fly!")
+
+Good Example:
+
+class Bird: pass
+
+class FlyingBird(Bird):
+    def fly(self): ...
+
+class Ostrich(Bird): pass
+
+Why: Prevent unexpected behavior and runtime errors. /expand
+
+/expand title=4. Interface Segregation Principle (ISP) Split interfaces into specific, focused parts.
+
+class Workable:
+    def work(self): ...
+
+class Eatable:
+    def eat(self): ...
+
+class Human(Workable, Eatable): ...
+class Robot(Workable): ...
+
+Why: Avoid forcing classes to implement unused methods. /expand
+
+/expand title=5. Dependency Inversion Principle (DIP) High-level modules should not depend on low-level ones.
+
+class Logger:
+    def log(self, msg): ...
+
+class FileLogger(Logger): ...
+class ConsoleLogger(Logger): ...
+
+class App:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+
+Why: Encourages loosely coupled, testable code. /expand
+
+
+---
+
+B. Python Programming Best Practices
+
+1. Use Meaningful Names
+
+# Bad
+def d(x, y): return x + y
+
+# Good
+def calculate_total_price(base_price, tax): return base_price + tax
+
+2. Use Type Hints
+
+def greet(name: str) -> str:
+    return f"Hello, {name}"
+
+3. Avoid Mutable Default Arguments
+
+def add_item(item, items=None):
+    if items is None:
+        items = []
+
+4. Follow PEP-8 & PEP-257
+
+class Employee:
+    """Represents an employee with a name and ID."""
+    def __init__(self, name: str, id: int):
+        self.name = name
+        self.id = id
+
+5. Use List Comprehensions
+
+squares = [x**2 for x in range(10) if x % 2 == 0]
+
+6. Use Context Managers for Files
+
+with open('file.txt', 'r') as f:
+    data = f.read()
+
+7. Use Logging Instead of Print
+
+import logging
+logging.basicConfig(level=logging.INFO)
+logging.info("Starting app...")
+
+8. Write Tests Using Pytest
+
+def test_sum():
+    assert sum([1, 2, 3]) == 6
+
+9. Use Virtual Environments
+
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+venv\Scripts\activate.bat  # Windows
+
+10. Use Linters and Formatters
+
+black .
+flake8 your_project/
+
+
+---
+
+C. Summary Table
+
+|| Area || Tool / Practice || Purpose || | Formatting | black | Consistent code style | | Linting | flake8 / ruff / pylint | Detect syntax and style issues | | Testing | pytest / unittest | Validate correctness | | Dependency Mgmt | pip-tools / Poetry | Lock and manage dependencies | | Virtual Envs | venv / virtualenv | Isolate Python environments |
+
+
+---
+
+D. Final Notes
+
+Follow the Zen of Python: Readability counts.
+
+Keep code modular, testable, and well-documented.
+
+Automate wherever possible: testing, linting, deployment.
+
+
+---
+
+Would you like this published to a downloadable **`.confluence` template file** or styled PDF for team sharing?
+
