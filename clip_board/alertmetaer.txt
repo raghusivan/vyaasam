@@ -1,0 +1,204 @@
+Here’s a complete review and corrected textual ER representation based on all your screenshots. I’ve validated every entity and their relationships from the ORM definitions and now present a precise textual model:
+
+
+---
+
+1. AlertMetadataORM
+
+Table: alert_metadata
+
+Primary Key: id
+
+Relationships:
+
+language_codes → AlertMetadataLanguageCodeORM (One-to-Many)
+
+participants → ParticipantORM (One-to-Many)
+
+signals → SignalORM (One-to-Many)
+
+
+
+
+---
+
+2. AlertMetadataLanguageCodeORM
+
+Table: alert_metadata_language_code
+
+Primary Key: id
+
+Foreign Key: alert_metadata_id → alert_metadata.id
+
+Belongs to: AlertMetadataORM
+
+
+
+---
+
+3. ParticipantORM
+
+Table: participant
+
+Primary Key: id
+
+Foreign Key: alert_metadata_id → alert_metadata.id
+
+Relationships:
+
+features → FeatureORM (One-to-Many)
+
+
+Belongs to: AlertMetadataORM
+
+
+
+---
+
+4. FeatureORM
+
+Table: feature
+
+Primary Key: id
+
+Foreign Key: participant_id → participant.id
+
+Belongs to: ParticipantORM
+
+
+
+---
+
+5. SignalORM
+
+Table: signal
+
+Primary Key: id
+
+Foreign Key: alert_metadata_id → alert_metadata.id
+
+Relationships:
+
+annotations → AnnotationORM (One-to-Many)
+
+conversation_level_noise → ConversationLevelNoiseORM (One-to-One)
+
+score_boosters → ScoreBoosterORM (One-to-Many)
+
+score_multipliers → ScoreMultiplierORM (One-to-Many)
+
+alert → AlertORM (One-to-One)
+
+
+Belongs to: AlertMetadataORM
+
+
+
+---
+
+6. AnnotationORM
+
+Table: annotation
+
+Primary Key: id
+
+Foreign Key: signal_id → signal.id
+
+Belongs to: SignalORM
+
+
+
+---
+
+7. ConversationLevelNoiseORM
+
+Table: conversation_level_noise
+
+Primary Key: id
+
+Foreign Key: signal_id → signal.id
+
+Belongs to: SignalORM
+
+
+
+---
+
+8. ScoreBoosterORM
+
+Table: score_booster
+
+Primary Key: id
+
+Foreign Key: signal_id → signal.id
+
+Belongs to: SignalORM
+
+
+
+---
+
+9. ScoreMultiplierORM
+
+Table: score_multiplier
+
+Primary Key: id
+
+Foreign Key: signal_id → signal.id
+
+Belongs to: SignalORM
+
+
+
+---
+
+10. AlertORM
+
+Table: alert
+
+Primary Key: id
+
+Foreign Key: signal_id → signal.id (Unique)
+
+Relationships:
+
+language_codes → AlertLanguageCodeORM (One-to-Many)
+
+
+Belongs to: SignalORM
+
+
+
+---
+
+11. AlertLanguageCodeORM
+
+Table: alert_language_code
+
+Primary Key: id
+
+Foreign Key: alert_id → alert.id
+
+Belongs to: AlertORM
+
+
+
+---
+
+Final Entity Relationship Summary (Accurate Textual Model)
+
+AlertMetadataORM
+├── language_codes: AlertMetadataLanguageCodeORM
+├── participants: ParticipantORM
+│   └── features: FeatureORM
+└── signals: SignalORM
+    ├── annotations: AnnotationORM
+    ├── conversation_level_noise: ConversationLevelNoiseORM (1:1)
+    ├── score_boosters: ScoreBoosterORM
+    ├── score_multipliers: ScoreMultiplierORM
+    └── alert: AlertORM (1:1)
+        └── language_codes: AlertLanguageCodeORM
+
+Yes, this now covers all the ORM objects shown across all your images.
+Would you like this written as a markdown file, PDF, or ERD input file (e.g., for dbdiagram.io or Draw.io)?
+
