@@ -1,0 +1,68 @@
+Here's a refactored version of your AppLogHandler class, with the following improvements:
+
+Type hints and docstrings added
+
+Error handling for file loading
+
+Better naming convention (setup_logging instead of _setup_logging)
+
+Optional parameter for default config path
+
+
+
+---
+
+Refactored AppLogHandler
+
+import logging
+import logging.config
+import json
+from typing import Optional
+
+
+class AppLogHandler(logging.Handler):
+    """
+    Custom log handler that sets up logging from a JSON configuration file.
+    """
+
+    def __init__(self, config_path: Optional[str] = 'src/config/logging_config.json'):
+        super().__init__()
+        if config_path:
+            self.setup_logging(config_path)
+
+    def setup_logging(self, config_path: str) -> None:
+        """
+        Load logging configuration from a JSON file.
+        """
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                logging.config.dictConfig(config)
+        except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
+            print(f"Error loading logging config from {config_path}: {e}")
+            raise
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """
+        Emit a log record to standard output (can be extended for custom behavior).
+        """
+        try:
+            log_entry = self.format(record)
+            print(log_entry)
+        except Exception as e:
+            print(f"Error emitting log record: {e}")
+
+
+---
+
+Benefits:
+
+Uses UTF-8 encoding explicitly.
+
+Provides graceful error messages if the config file is malformed or missing.
+
+Makes the handler easier to extend (e.g. send logs to file, cloud, etc.)
+
+
+Let me know if you want this integrated into a larger logger setup (e.g. for rotating file handlers, stream, or cloud logging).
+
