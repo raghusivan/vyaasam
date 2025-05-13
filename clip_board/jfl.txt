@@ -1,0 +1,43 @@
+Thanks for sharing both versions of your file loader classes. Here's a clean and improved version that merges both functionalities (text and JSON handling), follows Python best practices, and adds error handling:
+
+
+---
+
+Unified and Enhanced File Loader Class
+
+import json
+from typing import Any
+
+class JsonFileLoader:
+    def load_data_from_file(self, file_path: str) -> Any:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except (json.JSONDecodeError, FileNotFoundError, IOError) as e:
+            print(f"Error loading file {file_path}: {e}")
+            raise
+
+    def save_data_to_file(self, data: Any, file_path: str) -> None:
+        try:
+            with open(file_path, 'w', encoding='utf-8') as file:
+                json.dump(data, file, indent=4)
+        except IOError as e:
+            print(f"Error saving file {file_path}: {e}")
+            raise
+
+
+---
+
+Benefits of This Version:
+
+Combines reading and writing of JSON specifically (aligns with the rest of your usage).
+
+Adds error handling with informative messages.
+
+Uses utf-8 encoding for consistency.
+
+Ensures that returned data is deserialized properly (not just plain string).
+
+
+Would you also like to include support for plain-text files alongside JSON in the same class or in a separate one?
+
