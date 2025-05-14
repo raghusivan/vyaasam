@@ -1,0 +1,184 @@
+Thanks for the clarification. Here's a full refactored and modular version with:
+
+config.ini for all hardcoded values (URLs, tokens, regions)
+
+Structured Python modules: config_loader.py, alert_service.py, sqs_client.py, lambda_handler.py
+
+Correct logic to re-invoke itself via SQS if the response is 202 (Accepted but not complete)
+
+Cleaner logging to help troubleshoot in CloudWatch
+
+
+
+---
+
+1. config.ini – Holds all hardcoded values
+
+[aws]
+region = ap-southeast-2
+queue_url = https://sqs.ap-southeast-2.amazonaws.com/828604310598/commsury_alertextract_dev_notificationsqs
+
+[auth]
+access_token = eyJhbGciOi...REDACTED
+
+[shield]
+base_url = https://app-52167.shieldfc.com
+start_date = 2025-03-01 00:00:00.000
+end_date = 2025-04-14 23:59:59.999
+
+[cert]
+path = nsrootcacert.crt
+
+
+---
+
+2. config_loader.py – Reads from config.ini
+
+import configparser
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+REGION = config['aws']['region']
+QUEUE_URL = config['aws']['queue_url']
+ACCESS_TOKEN = config['auth']['access_token']
+CERT_PATH = config['cert']['path']
+BASE_URL = config['shield']['base_url']
+START_DATE = config['shield']['start_date']
+END_DATE = config['shield']['end_date']
+
+
+---
+
+3. alert_service.py – API interaction logic
+
+import json
+import time
+import requests
+from config_loader import ACCESS_TOKEN, BASE_URL, CERT_PATH, START_DATE, END_DATE
+
+def start_alert_job():
+    url = f"{BASE_URL}/data-extract/v1/alerts"
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "startDate": START_DATE,
+        "endDate": END_DATE
+    }
+
+    response = requests.post(url, headers=headers, json=payload, verify=CERT_PATH)
+    response.raise_for_status()
+    return response.json().get("jobId")
+
+
+def check_job_status(job_id):
+    url = f"{BASE_URL}/data-extract/v1/alerts/{job_id}"
+    headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
+    return requests.get(url, headers=headers, verify=CERT_PATH)
+
+
+def download_alert_data(job_id):
+    """Polls and downloads data if available. Returns True if completed, False if still processing."""
+    response = check_job_status(job_id)
+    if response.status_code == 200:
+        data = response.json()
+        with open("response.json", "w") as f:
+            json.dump(data, f)
+        print("Downloaded and saved alert data.")
+        return True
+    elif response.status_code == 202:
+        print("Job accepted but not ready. Will re-queue.")
+        return False
+    else:
+        print(f"Unexpected status code {response.status_code}")
+        return False
+
+
+---
+
+4. sqs_client.py – Send message to SQS
+
+import boto3
+from config_loader import REGION, QUEUE_URL
+
+sqs = boto3.client("sqs", region_name=REGION)
+
+def send_job_to_sqs(job_id, delay_seconds=120):
+    print(f"Sending jobId {job_id} to SQS with delay {delay_seconds}s")
+    sqs.send_message(
+        QueueUrl=QUEUE_URL,
+        MessageBody=job_id,
+        DelaySeconds=delay_seconds
+    )
+
+
+---
+
+5. lambda_handler.py – Main Lambda logic
+
+import json
+from alert_service import start_alert_job, download_alert_data
+from sqs_client import send_job_to_sqs
+
+def lambda_handler(event, context):
+    print("Received event:", event)
+
+    try:
+        if 'Records' in event and event['Records'][0]['eventSource'] == 'aws:sqs':
+            for record in event['Records']:
+                job_id = record['body']
+                print(f"Processing job_id from SQS: {job_id}")
+
+                completed = download_alert_data(job_id)
+                if not completed:
+                    send_job_to_sqs(job_id)  # requeue if not done
+                    print(f"Job {job_id} not complete. Re-queued.")
+                else:
+                    print(f"Job {job_id} completed.")
+        else:
+            # Manual trigger, initiate a new job
+            job_id = start_alert_job()
+            print(f"Started new job with jobId: {job_id}")
+            send_job_to_sqs(job_id)
+            return {
+                "statusCode": 200,
+                "body": json.dumps({"message": "Job started and sent to SQS", "jobId": job_id})
+            }
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "An error occurred", "error": str(e)})
+        }
+
+
+---
+
+Notes:
+
+Ensure your Lambda has proper IAM permissions for:
+
+sqs:SendMessage
+
+sqs:ReceiveMessage
+
+
+Logs should now show:
+
+First invocation
+
+Status 202
+
+Requeued job
+
+New Lambda run from requeued job
+
+
+Place the config.ini in the root directory and upload with your Lambda deployment package.
+
+
+Would you like a zipped structure of all this code to deploy directly to Lambda?
+
