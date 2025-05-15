@@ -1,0 +1,44 @@
+In your current .zshrc, replace these two parts:
+
+
+---
+
+1. Remove this section completely:
+
+parse_git_branch() {
+  git branch 2>/dev/null | sed -n '/\* /s///p'
+}
+PROMPT='%n@%m %1~ $(parse_git_branch)%# '
+
+
+---
+
+2. Also remove or comment out this duplicate vcs_info block (to avoid conflict):
+
+autoload -Uz vcs_info
+precmd() { vcs_info }
+zstyle ':vcs_info:git:*' formats '(%b)'
+setopt prompt_subst
+PROMPT='%n@%m %1~ ${vcs_info_msg_0_}%# '
+
+
+---
+
+Then add this instead (new version with colors):
+
+# Git branch colored prompt
+autoload -Uz vcs_info
+precmd() { vcs_info }
+zstyle ':vcs_info:git:*' formats ' (%b)'
+setopt prompt_subst
+PROMPT='%F{blue}%n@%m%f %F{yellow}%1~%f%F{green}${vcs_info_msg_0_}%f %# '
+
+
+---
+
+Finally, reload your shell:
+
+source ~/.zshrc
+
+You’re good to go! Let me know if you want to include things like time, Python virtualenv, or Git status icons next.
+
