@@ -1,0 +1,20 @@
+Here is the full drawn table in markdown style, which you can easily paste into Confluence Cloud or view here directly:
+
+
+---
+
+Alert Metadata Ingestion – Inventory Repository
+
+Project	Component	Repo Type	Environment	Repo Name	Branch	Description	Owner	Last Updated
+
+Alert JSON Download	Code	Application	DEV	alert-json-download	dev	Lambda code to download alert JSONs and package as ZIP	Raghu Sivan	16-May-2025
+Alert JSON Download	Infra	Infrastructure	DEV / UAT / PROD	alert-json-download-infra	dev / main	AWS infrastructure to deploy Lambda, S3, IAM roles	Infra Team	16-May-2025
+Alert JSON Ingest	Code	Application	DEV	alert-json-ingest	dev	Lambda code to parse and ingest alert JSONs into reporting data store	Raghu Sivan	16-May-2025
+Alert JSON Ingest	Infra	Infrastructure	DEV / UAT / PROD	alert-json-ingest-infra	dev / main	Infrastructure repo to deploy ingestion Lambda, triggers, permissions, etc.	Infra Team	16-May-2025
+
+
+
+---
+
+Let me know if you want this also formatted in Confluence's table markup (wiki style) or with links embedded.
+
