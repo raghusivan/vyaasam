@@ -1,0 +1,50 @@
+Here is a Confluence-ready document based on Tulika’s request and the error codes provided by Shield:
+
+
+---
+
+Error Handling
+
+This section outlines the standard error codes returned by the Shield API during file retrieval and ingestion for the Alert Metadata project. The table below describes the expected behavior for each response code and indicates whether the error is recoverable.
+
+
+---
+
+Error Code Reference Table
+
+HTTP Code	Description	Expected Behavior	Recoverable?
+
+200	Success	File retrieval or ingestion completed successfully.	No action needed
+202	Accepted	Job is still processing. Retry after a short delay.	Yes
+400	Bad Request	Check request payload or parameters. Log the request and notify the dev team.	No
+401	Unauthorized	Authentication issue. Check token validity and renew if expired.	Yes (after token refresh)
+404	Not Found	File or resource not found. Investigate if the input is correct or if data is missing.	Yes (if transient), otherwise No
+500	Internal Server Error	Retry with exponential backoff. Escalate if persistent.	Yes (on retry)
+
+
+
+---
+
+Design Considerations
+
+Implement a retry mechanism for recoverable errors (202, 401, 404, and 500) with exponential backoff.
+
+For 400, detailed logging should be enabled to capture malformed requests for debugging.
+
+Log all errors with request metadata and timestamps to identify repeatable patterns.
+
+Introduce metrics and dashboards to monitor frequency and types of errors.
+
+
+
+---
+
+Next Steps
+
+We will review this table during our Monday/Tuesday design discussion to finalize the error-handling strategy per endpoint and determine any automation opportunities for common recovery paths.
+
+
+---
+
+Let me know if you'd like this exported in a specific format (Markdown, Confluence table code, or pasted directly into your page).
+
