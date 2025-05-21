@@ -1,0 +1,166 @@
+# World-Class Python Lambda Alert Extractor
+
+# src/utils/logger.py
+import logging
+import sys
+
+logger = logging.getLogger("shield_alerts")
+logger.setLevel(logging.INFO)
+
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+
+# src/config/config_loader.py
+import os
+import configparser
+
+config = configparser.ConfigParser()
+config.read("src/config/config.ini")
+
+REGION = config.get("aws", "region")
+QUEUE_URL = config.get("aws", "queue_url")
+BASE_URL = config.get("shield", "base_url")
+START_DATE = config.get("shield", "start_date")
+END_DATE = config.get("shield", "end_date")
+CERT_PATH = os.path.abspath(config.get("cert", "path"))
+DEFAULT_DELAY = int(config.get("lambda", "default_delay"))
+TMP_DIR = os.getenv("TMP_DIR", config.get("lambda", "tmp_dir", fallback="/tmp"))
+
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+BUCKET_NAME = os.getenv("BUCKET_NAME")
+PROXIES = {
+    "http": os.getenv("HTTP_PROXY"),
+    "https": os.getenv("HTTPS_PROXY")
+} if os.getenv("HTTP_PROXY") else None
+
+
+# src/services/alert_service.py
+import json
+import os
+import requests
+from src.utils.logger import logger
+from src.config.config_loader import ACCESS_TOKEN, BASE_URL, CERT_PATH, PROXIES, TMP_DIR
+
+def start_alert_job(start_date: str, end_date: str) -> str:
+    url = f"{BASE_URL}/data-extract/v1/alerts"
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {"startDate": start_date, "endDate": end_date}
+    logger.info("Starting alert job: %s", payload)
+    response = requests.post(url, headers=headers, json=payload, verify=CERT_PATH, proxies=PROXIES)
+    response.raise_for_status()
+    job_id = response.json().get("jobId")
+    logger.info("Received job_id: %s", job_id)
+    return job_id
+
+def check_job_status(job_id: str) -> requests.Response:
+    url = f"{BASE_URL}/data-extract/v1/alerts/{job_id}"
+    headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
+    logger.info("Checking status for job_id: %s", job_id)
+    return requests.get(url, headers=headers, verify=CERT_PATH, proxies=PROXIES)
+
+def download_alert_data(job_id: str) -> tuple[bool, str | None]:
+    response = check_job_status(job_id)
+    logger.info("Status %s for job_id %s", response.status_code, job_id)
+    if response.status_code == 200:
+        filepath = os.path.join(TMP_DIR, "response.json")
+        with open(filepath, "w") as f:
+            json.dump(response.json(), f)
+        logger.info("Downloaded data saved to %s", filepath)
+        return True, filepath
+    elif response.status_code == 202:
+        logger.info("Job %s is still in progress.", job_id)
+        return False, None
+    else:
+        logger.error("Unexpected status: %s", response.status_code)
+        raise Exception(f"Unexpected status code: {response.status_code}")
+
+
+# src/services/sqs_client.py
+import boto3
+from src.utils.logger import logger
+from src.config.config_loader import REGION, QUEUE_URL
+
+sqs = boto3.client("sqs", region_name=REGION)
+
+def send_job_to_sqs(job_id: str, delay_seconds: int) -> dict:
+    logger.info("Sending job_id %s to SQS with %s second delay", job_id, delay_seconds)
+    response = sqs.send_message(
+        QueueUrl=QUEUE_URL,
+        MessageBody=job_id,
+        DelaySeconds=delay_seconds
+    )
+    logger.info("MessageId: %s", response.get("MessageId"))
+    return response
+
+
+# src/services/s3_uploader.py
+import boto3
+from src.utils.logger import logger
+from src.config.config_loader import BUCKET_NAME
+
+def upload_to_s3(file_path: str, object_key: str):
+    logger.info("Uploading %s to s3://%s/%s", file_path, BUCKET_NAME, object_key)
+    s3 = boto3.client("s3")
+    s3.upload_file(file_path, BUCKET_NAME, object_key)
+    logger.info("Upload complete.")
+
+
+# src/handlers/lambda_handler.py
+import json
+import traceback
+from src.utils.logger import logger
+from src.config.config_loader import DEFAULT_DELAY, config
+from src.services.alert_service import start_alert_job, download_alert_data
+from src.services.sqs_client import send_job_to_sqs
+from src.services.s3_uploader import upload_to_s3
+
+def lambda_handler(event, context):
+    logger.info("Lambda event: %s", json.dumps(event))
+    try:
+        if "Records" in event and event["Records"][0].get("eventSource") == "aws:sqs":
+            for record in event["Records"]:
+                job_id = record.get("body")
+                logger.info("Processing job_id: %s", job_id)
+                try:
+                    completed, filepath = download_alert_data(job_id)
+                    if completed and filepath:
+                        upload_to_s3(filepath, f"alerts/{job_id}.json")
+                    else:
+                        delay = int(event.get("delaySeconds", DEFAULT_DELAY))
+                        send_job_to_sqs(job_id, delay)
+                except Exception as e:
+                    logger.exception("Failed job_id %s: %s", job_id, e)
+        else:
+            start_date = event.get("startDate") or config["shield"]["start_date"]
+            end_date = event.get("endDate") or config["shield"]["end_date"]
+            delay = int(event.get("delaySeconds", DEFAULT_DELAY))
+            job_id = start_alert_job(start_date, end_date)
+            send_job_to_sqs(job_id, delay)
+            return {"statusCode": 200, "body": json.dumps({"message": "Job created", "jobId": job_id})}
+
+    except Exception as err:
+        logger.exception("Fatal Lambda error: %s", err)
+        return {"statusCode": 500, "body": json.dumps({"message": "Error", "error": str(err)})}
+
+    logger.info("Lambda completed successfully.")
+
+
+The code is now fully aligned with your config.ini:
+
+All API requests explicitly use the certificate path defined under [cert] path in config.ini
+
+The path is resolved with os.path.abspath() to ensure compatibility in local and Lambda environments
+
+Logging and exception handling remain intact to track cert-related issues clearly
+
+
+This version is ready for secure deployments with custom cert validation.
+
+Would you like the full project zipped up and ready for deployment to AWS Lambda?
+
