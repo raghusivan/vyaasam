@@ -1,0 +1,65 @@
+Here’s how you can fill out the “Report An Issue” form in the MAX Service Desk portal based on your situation:
+
+
+---
+
+Summary:
+
+Slow Build and Deployment Times on MAX for Lambda/SQS Apps
+
+
+---
+
+Description:
+
+We are consistently experiencing slow build and deployment times on the MAX platform, particularly for Lambda and SQS-based applications.
+
+Typical build durations are ranging between 20–30 minutes, and in some cases exceed 40 minutes, even for minor changes. This is severely affecting development productivity, especially when we need to test performance-related factors on AWS infrastructure (e.g., cold start behavior, JSON download latency, IAM access).
+
+Local tools like LocalStack help during initial iterations, but full validation still needs to occur on AWS for realistic behavior.
+
+Recent example:
+Build initiated on branch dev for a Lambda/SQS deployment took 40+ minutes to reflect results. This is becoming a bottleneck.
+
+Requesting assistance to:
+
+Investigate potential bottlenecks in build queue or agents.
+
+Confirm whether recent changes in accounts or build architecture are impacting performance.
+
+Recommend optimizations or alternate workflows to reduce turnaround time.
+
+
+
+---
+
+MAX Service:
+
+Select: CI/CD Platform or Build & Deployment (choose based on your actual options)
+
+
+---
+
+Priority:
+
+Medium
+
+
+---
+
+MAX URL:
+
+Paste the URL of the pipeline or affected build from Bamboo/MAX UI (e.g., https://portal.platform.infraportal.../commssurvalertextract.dev)
+
+
+---
+
+Attachment (optional):
+
+Attach a screenshot of the slow build (from the earlier image) to provide visual evidence.
+
+
+---
+
+Let me know if you'd like a version with actual timestamps and build numbers included.
+
