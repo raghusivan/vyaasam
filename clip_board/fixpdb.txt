@@ -1,0 +1,62 @@
+The error is very clear:
+
+> psycopg2.OperationalError: could not translate host name "ss1355@reportingdb.dev.shieldrepdb.syd.commsurv.non.s1.macquarie.com"
+
+
+
+Root Cause:
+
+You're still passing a host value that incorrectly includes the username (ss1355@) in the host field.
+
+
+---
+
+Fix It Step-by-Step
+
+1. Update your config exactly like this:
+
+
+
+DB_USER = 'reporting_ops_dev'
+DB_PASSWORD = '$d3vp@ss135'
+DB_HOST = 'reportingdb.dev.shieldrepdb.syd.commsurv.non.s1.macquarie.com'
+DB_PORT = 5432
+DB_NAME = 'reporting'
+
+2. Ensure your connection URL is formed like this:
+
+
+
+db_url = (
+    f"postgresql://{self.db_config['user']}:{self.db_config['password']}"
+    f"@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['dbname']}"
+)
+
+3. Check and remove hardcoded or old values: Somewhere in your script or configs, you are still referencing:
+
+ss1355@reportingdb.dev.shieldrepdb.syd...
+
+That should never appear. Remove or override it completely.
+
+
+
+
+---
+
+Sanity Check
+
+Before running the script, you can add this debug log:
+
+self.logger.debug(f"Connecting with DB URL: {db_url}")
+
+And confirm it logs:
+
+postgresql://reporting_ops_dev:$d3vp@ss135@reportingdb.dev.shieldrepdb.syd.commsurv.non.s1.macquarie.com:5432/reporting
+
+(Or just redact the password for logs)
+
+
+---
+
+Let me know if you want help searching where the wrong value is still coming from (config file, hardcoded variable, etc.).
+
