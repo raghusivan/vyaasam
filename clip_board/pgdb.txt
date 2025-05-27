@@ -1,0 +1,122 @@
+Here is the rewritten version of your PostgreSQLDatabase class and related methods, structured using best practices, PEP8 compliance, and robust error handling. It supports both raw SQL and ORM object operations cleanly.
+
+
+---
+
+Rewritten Python Code
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from typing import List, Dict, Optional, Any
+import logging
+
+
+# Database credentials (keep these secure in production)
+DB_USER = 'reporting_ops_dev'
+DB_PASSWORD = '$d3vp@ss135'
+DB_HOST = 'reportingdb.dev.shieldrepdb.syd.commsurv.non.s1.macquarie.com'
+DB_PORT = 5432
+DB_NAME = 'reporting'
+
+
+class PostgreSQLDatabase:
+    def __init__(self):
+        self.db_config = {
+            'user': DB_USER,
+            'password': DB_PASSWORD,
+            'host': DB_HOST,
+            'port': DB_PORT,
+            'dbname': DB_NAME
+        }
+        self.engine = None
+        self.Session = None
+        self.session = None
+        self.logger = logging.getLogger("sqlalchemy.engine")
+
+    def connect(self) -> None:
+        try:
+            db_url = (
+                f"postgresql://{self.db_config['user']}:{self.db_config['password']}"
+                f"@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['dbname']}"
+            )
+            self.engine = create_engine(db_url)
+            self.Session = sessionmaker(bind=self.engine)
+            self.session = self.Session()
+            self.logger.info("Database connection established")
+        except Exception as e:
+            self.logger.error(f"Failed to connect to the database: {e}")
+            raise
+
+    def close(self) -> None:
+        if self.session:
+            self.session.close()
+        if self.engine:
+            self.engine.dispose()
+
+    def save(self, orm_object: Optional[Any] = None, query: Optional[str] = None, params: Optional[Dict] = None) -> None:
+        """
+        Save either via ORM object or raw SQL query.
+        """
+        try:
+            if orm_object is not None:
+                self.session.add(orm_object)
+            elif query:
+                self.session.execute(text(query), params or {})
+            else:
+                raise ValueError("Either orm_object or query must be provided to save()")
+            self.session.commit()
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to save data: {e}")
+            raise
+
+    def bulk_save(self, objs: List[Any]) -> None:
+        try:
+            self.session.bulk_save_objects(objs)
+            self.session.commit()
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to perform bulk save: {e}")
+            raise
+
+    def query(self, query: str, params: Optional[Dict] = None) -> List[Any]:
+        try:
+            result = self.session.execute(text(query), params or {})
+            return result.fetchall()
+        except Exception as e:
+            self.logger.error(f"Failed to execute query: {e}")
+            self.session.rollback()
+            raise
+
+    def update(self, query: str, params: Optional[Dict] = None) -> None:
+        try:
+            self.session.execute(text(query), params or {})
+            self.session.commit()
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to update data: {e}")
+            raise
+
+
+---
+
+Usage:
+
+For ORM insert:
+
+db = PostgreSQLDatabase()
+db.connect()
+db.save(orm_object=my_alert_metadata_orm_instance)
+db.close()
+
+For raw SQL insert:
+
+query = "INSERT INTO alerts (id, name) VALUES (:id, :name)"
+params = {'id': 123, 'name': 'Critical Alert'}
+db.save(query=query, params=params)
+
+
+---
+
+Let me know if you'd like the same for SQLiteDatabase or to integrate this into your insert_data logic with support for single vs bulk.
+
