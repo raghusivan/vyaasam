@@ -1,0 +1,70 @@
+Based on your traceback and schema, it appears the root cause may be:
+
+Missing or incorrect foreign key relationships between alert_metadata and related tables like alert_metadata_language_code, participant, or signal.
+
+SQLAlchemy is failing to configure the joins (_setup_join_conditions) because of either missing ForeignKey declarations or mismatched schema references.
+
+
+
+---
+
+✅ Fixed alert_metadata_language_code Table — SQL DDL
+
+Here is a clean SQL DDL to create or replace the alert_metadata_language_code table with the correct foreign key:
+
+CREATE TABLE metadata.alert_metadata_language_code (
+    id SERIAL PRIMARY KEY,
+    alert_metadata_id TEXT NOT NULL,
+    code TEXT,
+    percentage TEXT,
+    CONSTRAINT fk_alert_metadata
+        FOREIGN KEY (alert_metadata_id)
+        REFERENCES metadata.alert_metadata(id)
+        ON DELETE CASCADE
+);
+
+
+---
+
+✅ Matching ORM for the Table
+
+Ensure your ORM matches:
+
+class AlertMetadataLanguageCodeORM(Base):
+    __tablename__ = 'alert_metadata_language_code'
+    __table_args__ = {'schema': 'metadata'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    alert_metadata_id = Column(
+        String,
+        ForeignKey('metadata.alert_metadata.id', ondelete='CASCADE'),
+        nullable=False
+    )
+    code = Column(String)
+    percentage = Column(String)
+
+    alert_metadata = relationship('AlertMetadataORM', back_populates='language_codes')
+
+
+---
+
+Extra Tip: Add ForeignKeyConstraint If Needed for Composite Keys
+
+If your model uses compound joins or manually defined constraints, consider:
+
+from sqlalchemy import ForeignKeyConstraint
+
+__table_args__ = (
+    ForeignKeyConstraint(
+        ['alert_metadata_id'],
+        ['metadata.alert_metadata.id'],
+        ondelete='CASCADE'
+    ),
+    {'schema': 'metadata'}
+)
+
+
+---
+
+Would you like me to generate SQL for participant and signal tables next with the matching ForeignKey constraints?
+
