@@ -1,0 +1,56 @@
+Thanks for the screenshots. The error you're encountering:
+
+psycopg2.OperationalError: could not translate host name "es1355@reportingdb.dev.shieldrepdb.syd.commsurv.non.s1.macquarie.com" to address: nodename nor servname provided, or not known
+
+Root Cause:
+
+Your host string accidentally includes the username (es1355@) inside the host value. That format is incorrect.
+
+
+---
+
+Correct Format:
+
+In the connection string:
+
+postgresql://<user>:<password>@<host>:<port>/<dbname>
+
+You must not include the @ symbol in the host value unless it separates the user and host.
+
+
+---
+
+Fix:
+
+Update your database configuration in Python to:
+
+DB_USER = 'es1355'  # or reporting_ops_dev based on your setup
+DB_PASSWORD = '$d3vp@ss135'
+DB_HOST = 'reportingdb.dev.shieldrepdb.syd.commsurv.non.s1.macquarie.com'
+DB_PORT = 5432
+DB_NAME = 'reporting'
+
+Make sure this is your connection code:
+
+db_url = (
+    f"postgresql://{self.db_config['user']}:{self.db_config['password']}"
+    f"@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['dbname']}"
+)
+
+
+---
+
+Next Steps:
+
+1. Restart your script after fixing the host string.
+
+
+2. If this is running inside a virtual environment or Docker container, verify that DNS resolution to the host is allowed and reachable from your network/VPC.
+
+
+3. Optionally, try pinging or doing nslookup to confirm the hostname resolves.
+
+
+
+Let me know if you want help validating network connectivity to the database host.
+
