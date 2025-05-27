@@ -1,0 +1,56 @@
+Yes — the password $d3vp@ss135 can cause issues in the connection string because of special characters like $ and @.
+
+These symbols are reserved in URLs and must be URL-encoded to avoid breaking the connection string.
+
+
+---
+
+URL-Encoding Fix
+
+Update your password using URL encoding:
+
+$ → %24
+
+@ → %40
+
+
+So your password:
+
+$d3vp@ss135
+
+becomes:
+
+%24d3vp%40ss135
+
+
+---
+
+Fixed Config + Connection Code
+
+DB_USER = 'reporting_ops_dev'
+DB_PASSWORD = '%24d3vp%40ss135'  # URL-encoded
+DB_HOST = 'reportingdb.dev.shieldrepdb.syd.commsurv.non.s1.macquarie.com'
+DB_PORT = 5432
+DB_NAME = 'reporting'
+
+And connection string (unchanged):
+
+db_url = (
+    f"postgresql://{self.db_config['user']}:{self.db_config['password']}"
+    f"@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['dbname']}"
+)
+
+
+---
+
+Best Practice:
+
+Instead of hardcoding, it's safer to load credentials from:
+
+.env file using python-dotenv, or
+
+os.environ[...] with secrets from a secure store
+
+
+Let me know if you'd like to implement .env support next.
+
