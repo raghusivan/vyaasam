@@ -1,0 +1,154 @@
+Here is the fully rewritten, production-ready PostgreSQLDatabase class with:
+
+Clean configuration
+
+PEP8 compliance
+
+Optional ORM or raw SQL insert support
+
+Built-in logger
+
+A test_connection() method
+
+
+
+---
+
+Full Code: postgresql_database.py
+
+import logging
+from typing import Optional, Dict, Any, List
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+
+# PostgreSQL connection configuration
+DB_USER = 'reporting_ops_dev'
+DB_PASSWORD = '$d3vp@ss135'
+DB_HOST = 'reportingdb.dev.shieldrepdb.syd.commsurv.non.s1.macquarie.com'
+DB_PORT = 5432
+DB_NAME = 'reporting'
+
+
+class PostgreSQLDatabase:
+    def __init__(self):
+        self.db_config = {
+            'user': DB_USER,
+            'password': DB_PASSWORD,
+            'host': DB_HOST,
+            'port': DB_PORT,
+            'dbname': DB_NAME
+        }
+        self.engine = None
+        self.Session = None
+        self.session = None
+        self.logger = logging.getLogger("PostgreSQLDatabase")
+        logging.basicConfig(level=logging.INFO)
+
+    def connect(self) -> None:
+        """Establishes a database connection."""
+        try:
+            db_url = (
+                f"postgresql://{self.db_config['user']}:{self.db_config['password']}"
+                f"@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['dbname']}"
+            )
+            self.engine = create_engine(db_url)
+            self.Session = sessionmaker(bind=self.engine)
+            self.session = self.Session()
+            self.logger.info("Database connection established.")
+        except Exception as e:
+            self.logger.error(f"Failed to connect to the database: {e}")
+            raise
+
+    def close(self) -> None:
+        """Closes the session and disposes the engine."""
+        if self.session:
+            self.session.close()
+        if self.engine:
+            self.engine.dispose()
+        self.logger.info("Database connection closed.")
+
+    def save(
+        self,
+        orm_object: Optional[Any] = None,
+        query: Optional[str] = None,
+        params: Optional[Dict] = None
+    ) -> None:
+        """
+        Saves data via ORM object or raw SQL query.
+        """
+        try:
+            if orm_object is not None:
+                self.session.add(orm_object)
+            elif query:
+                self.session.execute(text(query), params or {})
+            else:
+                raise ValueError("Either orm_object or query must be provided to save()")
+
+            self.session.commit()
+            self.logger.info("Data saved successfully.")
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to save data: {e}")
+            raise
+
+    def bulk_save(self, objs: List[Any]) -> None:
+        """Performs bulk save of ORM objects."""
+        try:
+            self.session.bulk_save_objects(objs)
+            self.session.commit()
+            self.logger.info(f"{len(objs)} objects bulk saved successfully.")
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to perform bulk save: {e}")
+            raise
+
+    def query(self, query: str, params: Optional[Dict] = None) -> List[Any]:
+        """Executes a SELECT query."""
+        try:
+            result = self.session.execute(text(query), params or {})
+            return result.fetchall()
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to execute query: {e}")
+            raise
+
+    def update(self, query: str, params: Optional[Dict] = None) -> None:
+        """Executes an UPDATE query."""
+        try:
+            self.session.execute(text(query), params or {})
+            self.session.commit()
+            self.logger.info("Update executed successfully.")
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to update data: {e}")
+            raise
+
+    def test_connection(self) -> None:
+        """Simple test method to verify DB connection is working."""
+        try:
+            self.connect()
+            result = self.query("SELECT 1")
+            if result and result[0][0] == 1:
+                self.logger.info("Test connection successful.")
+            else:
+                self.logger.warning("Test connection executed but unexpected result.")
+        finally:
+            self.close()
+
+
+---
+
+How to Use It
+
+from postgresql_database import PostgreSQLDatabase
+
+if __name__ == "__main__":
+    db = PostgreSQLDatabase()
+    db.test_connection()
+
+
+---
+
+Let me know if you'd like to make the credentials dynamic (e.g., via config.ini or environment variables).
+
