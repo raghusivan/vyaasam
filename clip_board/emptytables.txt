@@ -1,0 +1,39 @@
+To truncate (empty) all rows from all tables under the metadata schema in PostgreSQL safely and efficiently, you can generate and run the following dynamic SQL.
+
+This version:
+
+Works specifically for PostgreSQL
+
+Maintains foreign key dependencies order (using CASCADE)
+
+Assumes you're okay with completely removing all data from these tables
+
+
+✅ SQL to Truncate All Tables in metadata Schema:
+
+DO
+$$
+DECLARE
+    table_rec RECORD;
+BEGIN
+    FOR table_rec IN
+        SELECT table_schema, table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'metadata' AND table_type = 'BASE TABLE'
+    LOOP
+        EXECUTE format('TRUNCATE TABLE metadata.%I CASCADE;', table_rec.table_name);
+    END LOOP;
+END;
+$$;
+
+🔒 Notes:
+
+CASCADE ensures it handles foreign key relationships by deleting dependent data.
+
+This only affects metadata schema tables, not others like public.
+
+Run this only if you are sure about clearing all data — it is irreversible.
+
+
+Let me know if you want a version that only deletes rows (DELETE FROM ...) instead of truncating (which is faster but skips triggers and cannot be rolled back in some configurations).
+
