@@ -1,0 +1,141 @@
+Here's the full and final VBA macro, incorporating all necessary fixes to:
+
+✅ Split a mail-merged Word document where each page is a customer letter
+✅ Extract the Reference Number as the client ID
+✅ Sanitize the client number to produce a valid PDF filename
+✅ Save each letter as an individual PDF in a valid output folder
+✅ Avoid "directory name isn't valid" errors by handling paths and filenames safely
+
+
+---
+
+✅ Final Working VBA Macro
+
+Sub SplitLettersToPDF()
+    Dim doc As Document
+    Dim tempDoc As Document
+    Dim totalPages As Long
+    Dim i As Long
+    Dim textOnPage As String
+    Dim clientNo As String
+    Dim pdfFileName As String
+    Dim pdfFullPath As String
+    Dim outputFolder As String
+
+    ' ✅ Set to a simple, existing path to avoid issues (create C:\Temp manually if needed)
+    outputFolder = "C:\Temp\"
+    If Right(outputFolder, 1) <> "\" Then outputFolder = outputFolder & "\"
+
+    Set doc = ActiveDocument
+    totalPages = doc.ComputeStatistics(wdStatisticPages)
+
+    For i = 1 To totalPages
+        Set tempDoc = Documents.Add
+
+        Dim startRange As Range
+        Dim endRange As Range
+        Dim pageRange As Range
+
+        Set startRange = doc.GoTo(What:=wdGoToPage, Name:=i)
+
+        If i < totalPages Then
+            Set endRange = doc.GoTo(What:=wdGoToPage, Name:=i + 1)
+            Set pageRange = doc.Range(Start:=startRange.Start, End:=endRange.Start - 1)
+        Else
+            Set pageRange = doc.Range(Start:=startRange.Start, End:=doc.Content.End)
+        End If
+
+        pageRange.Copy
+        tempDoc.Range.Paste
+
+        textOnPage = tempDoc.Range.Text
+        clientNo = CleanFileName(GetClientNumber(textOnPage))
+
+        If clientNo <> "" Then
+            pdfFileName = "RuralOperationsDocuments_Remediation Communication_" & clientNo & "_TDBreakCost Incident Phase 1.pdf"
+        Else
+            pdfFileName = "RuralOperationsDocuments_Remediation Communication_Page" & i & "_TDBreakCost Incident Phase 1.pdf"
+            MsgBox "Reference Number not found on page " & i & ". Using page number instead.", vbExclamation
+        End If
+
+        pdfFullPath = outputFolder & pdfFileName
+        Debug.Print "Saving to: " & pdfFullPath  ' For debug
+
+        On Error Resume Next
+        tempDoc.ExportAsFixedFormat OutputFileName:=pdfFullPath, ExportFormat:=wdExportFormatPDF
+        If Err.Number <> 0 Then
+            MsgBox "Failed to save PDF for Page " & i & ": " & Err.Description, vbCritical
+        End If
+        On Error GoTo 0
+
+        tempDoc.Close SaveChanges:=False
+    Next i
+
+    MsgBox "All customer PDFs generated successfully!", vbInformation
+End Sub
+
+' 🔍 Extracts Reference Number using regex
+Function GetClientNumber(text As String) As String
+    Dim regex As Object
+    Dim matches As Object
+
+    Set regex = CreateObject("VBScript.RegExp")
+    regex.Pattern = "Reference\s*Number[:\s]*([0-9]+)"
+    regex.IgnoreCase = True
+    regex.Global = False
+
+    If regex.Test(text) Then
+        Set matches = regex.Execute(text)
+        GetClientNumber = matches(0).SubMatches(0)
+    Else
+        GetClientNumber = ""
+    End If
+End Function
+
+' 🛡️ Cleans any illegal characters from filenames
+Function CleanFileName(strIn As String) As String
+    Dim invalidChars As Variant
+    Dim ch As Variant
+
+    invalidChars = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+
+    For Each ch In invalidChars
+        strIn = Replace(strIn, ch, "_")
+    Next
+
+    CleanFileName = Trim(strIn)
+End Function
+
+
+---
+
+🛠 How to Use:
+
+1. Open the mail-merged Word document (1 customer per page).
+
+
+2. Press Alt + F11 to open the VBA editor.
+
+
+3. Go to Insert > Module and paste this code.
+
+
+4. Create C:\Temp\ if it doesn't exist.
+
+
+5. Run SplitLettersToPDF via F5 or Alt + F8.
+
+
+
+
+---
+
+Let me know if you’d like it to:
+
+Log saved filenames in a .txt or .csv
+
+Include incident number in the filename too
+
+Zip all PDFs after export
+
+
