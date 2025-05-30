@@ -1,0 +1,171 @@
+Perfect — your goal is clear:
+
+> 🔄 Take a multi-page Word document (e.g., 60 letters on 60 pages)
+🧾 Create one separate PDF file per page, with the content and layout preserved
+🏷️ Name each PDF based on the Reference Number found on that page
+
+
+
+
+---
+
+✅ Final VBA Macro — Split Word Document by Page into PDFs
+
+This macro:
+
+Processes each physical page in your Word document
+
+Copies that page’s content into a new Word file
+
+Extracts the Reference Number from the text
+
+Generates a clean, valid PDF file for each page
+
+
+
+---
+
+💡 Assumptions
+
+Each letter is 1 page
+
+File contains exactly 60 pages
+
+Reference Number: ####### exists on each page
+
+
+
+---
+
+✅ Copy & Paste This VBA Macro
+
+Sub SplitEachPageToPDF()
+
+    Dim doc As Document, tempDoc As Document
+    Dim pageRange As Range, startRange As Range, endRange As Range
+    Dim i As Long
+    Dim referenceNumber As String, pdfFileName As String
+    Dim outputFolder As String
+    Dim totalPages As Long
+
+    ' ✅ Set your output folder here
+    outputFolder = "C:\Temp\"
+    If Right(outputFolder, 1) <> "\" Then outputFolder = outputFolder & "\"
+    If Dir(outputFolder, vbDirectory) = "" Then
+        MsgBox "Output folder doesn't exist: " & outputFolder, vbCritical
+        Exit Sub
+    End If
+
+    Set doc = ActiveDocument
+    totalPages = 60 ' You mentioned it's 60 pages
+
+    For i = 1 To totalPages
+        On Error GoTo PageError
+
+        ' Define the page range
+        Set startRange = doc.GoTo(What:=wdGoToPage, Name:=i)
+        If i < totalPages Then
+            Set endRange = doc.GoTo(What:=wdGoToPage, Name:=i + 1)
+            Set pageRange = doc.Range(Start:=startRange.Start, End:=endRange.Start - 1)
+        Else
+            Set pageRange = doc.Range(Start:=startRange.Start, End:=doc.Content.End)
+        End If
+
+        ' Create a new document with just this page
+        Set tempDoc = Documents.Add
+        tempDoc.Range.FormattedText = pageRange.FormattedText
+
+        ' Extract reference number
+        referenceNumber = ExtractReferenceNumber(tempDoc.Range.Text)
+        If referenceNumber = "" Then
+            pdfFileName = "Page_" & i & ".pdf"
+        Else
+            pdfFileName = "Remediation_" & CleanFileName(referenceNumber) & ".pdf"
+        End If
+
+        ' Export to PDF
+        tempDoc.ExportAsFixedFormat OutputFileName:=outputFolder & pdfFileName, ExportFormat:=wdExportFormatPDF
+        tempDoc.Close SaveChanges:=False
+
+        On Error GoTo 0
+    Next i
+
+    MsgBox "Split completed. PDFs saved to: " & outputFolder, vbInformation
+    Exit Sub
+
+PageError:
+    MsgBox "Error on page " & i & ": " & Err.Description, vbExclamation
+    Resume Next
+End Sub
+
+' Extracts Reference Number (e.g. Reference Number: 1014717)
+Function ExtractReferenceNumber(text As String) As String
+    Dim regex As Object, matches As Object
+    Set regex = CreateObject("VBScript.RegExp")
+    regex.Pattern = "Reference\s*Number[:\s]*([0-9]+)"
+    regex.IgnoreCase = True
+    regex.Global = False
+
+    If regex.Test(text) Then
+        Set matches = regex.Execute(text)
+        ExtractReferenceNumber = matches(0).SubMatches(0)
+    Else
+        ExtractReferenceNumber = ""
+    End If
+End Function
+
+' Cleans any invalid characters from filename
+Function CleanFileName(fileName As String) As String
+    Dim invalidChars As Variant, ch As Variant
+    invalidChars = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+    For Each ch In invalidChars
+        fileName = Replace(fileName, ch, "_")
+    Next
+    CleanFileName = Trim(fileName)
+End Function
+
+
+---
+
+📌 To Run This:
+
+1. Open the Word document with all pages.
+
+
+2. Press Alt + F11 → Insert → Module → Paste the code.
+
+
+3. Change outputFolder if needed.
+
+
+4. Press F5 or run SplitEachPageToPDF from Macros (Alt + F8).
+
+
+
+
+---
+
+✅ Output:
+
+60 PDFs, saved as:
+
+Remediation_1014717.pdf (from “Reference Number: 1014717”)
+
+Remediation_1022333.pdf etc.
+
+If no ref number found, it’ll be: Page_5.pdf etc.
+
+
+
+
+---
+
+Let me know if you want:
+
+To also include Incident Number in filename
+
+To log all exported file paths in a .txt file
+
+To ZIP all PDFs after export
+
+
