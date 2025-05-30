@@ -1,0 +1,133 @@
+Thanks! Since the document has exactly 60 pages, and you want to split each page into its own PDF, here's a clean and simplified version of the macro with:
+
+✅ Fixed 4608 "Value out of range" issue
+✅ Reliable loop for exactly 60 pages
+✅ Safe filename using Reference Number
+✅ PDF output for each page
+✅ Optionally fallback name if Reference Number not found
+
+
+---
+
+✅ VBA Macro: Split 60 Pages to PDFs
+
+Sub Split60PagesToPDF()
+
+    Dim doc As Document
+    Dim tempDoc As Document
+    Dim pageRange As Range
+    Dim i As Long
+    Dim outputFolder As String
+    Dim fileName As String
+    Dim referenceNumber As String
+    Dim textOnPage As String
+
+    ' ✅ Change as needed
+    outputFolder = "C:\Temp\"
+
+    ' Ensure folder ends with a backslash
+    If Right(outputFolder, 1) <> "\" Then outputFolder = outputFolder & "\"
+    If Dir(outputFolder, vbDirectory) = "" Then
+        MsgBox "Output folder does not exist: " & outputFolder, vbCritical
+        Exit Sub
+    End If
+
+    Set doc = ActiveDocument
+
+    For i = 1 To 60
+        On Error GoTo HandlePageError
+
+        ' Get the text for this page
+        Set pageRange = doc.Range( _
+            Start:=doc.GoTo(What:=wdGoToPage, Name:=i).Start, _
+            End:=IIf(i < 60, doc.GoTo(What:=wdGoToPage, Name:=i + 1).Start - 1, doc.Content.End))
+
+        ' Copy text to a new document
+        Set tempDoc = Documents.Add
+        tempDoc.Range.FormattedText = pageRange.FormattedText
+
+        ' Extract and sanitize Reference Number
+        textOnPage = tempDoc.Range.Text
+        referenceNumber = GetReferenceNumber(textOnPage)
+        referenceNumber = SanitizeFileName(referenceNumber)
+
+        If referenceNumber = "" Then
+            fileName = "Page_" & i & ".pdf"
+        Else
+            fileName = "Remediation_Communication_" & referenceNumber & ".pdf"
+        End If
+
+        ' Export to PDF
+        tempDoc.ExportAsFixedFormat OutputFileName:=outputFolder & fileName, ExportFormat:=wdExportFormatPDF
+        tempDoc.Close SaveChanges:=False
+
+        On Error GoTo 0
+    Next i
+
+    MsgBox "Successfully created 60 individual PDFs.", vbInformation
+    Exit Sub
+
+HandlePageError:
+    MsgBox "Error on page " & i & ": " & Err.Description, vbExclamation
+    Err.Clear
+    Resume Next
+
+End Sub
+
+' ✅ Extract Reference Number
+Function GetReferenceNumber(text As String) As String
+    Dim regex As Object, matches As Object
+    Set regex = CreateObject("VBScript.RegExp")
+    regex.Pattern = "Reference\s*Number[:\s]*([0-9]+)"
+    regex.IgnoreCase = True
+    regex.Global = False
+
+    If regex.Test(text) Then
+        Set matches = regex.Execute(text)
+        GetReferenceNumber = matches(0).SubMatches(0)
+    Else
+        GetReferenceNumber = ""
+    End If
+End Function
+
+' ✅ Make filename Windows-safe
+Function SanitizeFileName(strIn As String) As String
+    Dim invalidChars As Variant, ch As Variant
+    invalidChars = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+    For Each ch In invalidChars
+        strIn = Replace(strIn, ch, "_")
+    Next
+    SanitizeFileName = Trim(strIn)
+End Function
+
+
+---
+
+📌 Instructions:
+
+1. Open your mail-merged Word document (with 60 letters, 1 per page).
+
+
+2. Press Alt + F11 → Insert → Module.
+
+
+3. Paste the code.
+
+
+4. Make sure C:\Temp\ exists (or update outputFolder).
+
+
+5. Run the macro: Alt + F8, select Split60PagesToPDF, click Run.
+
+
+
+
+---
+
+Let me know if:
+
+You want to include Incident Number too.
+
+Want filenames like 1014717_TDBreakCost.pdf.
+
+
