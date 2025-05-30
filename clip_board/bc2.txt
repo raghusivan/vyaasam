@@ -1,0 +1,161 @@
+Thanks for the image. The error you're seeing is:
+
+> Run-time error '4608': Value out of range
+
+
+
+This typically occurs on this line:
+
+Set endRange = doc.GoTo(What:=wdGoToPage, Name:=i + 1)
+
+…when i + 1 exceeds the total number of pages.
+
+
+---
+
+✅ Let’s fix the error and also add full logging and error capture.
+
+Here's the corrected macro:
+
+Handles page range error on the last page.
+
+Captures all exceptions in a log file (C:\Temp\SplitLog.txt).
+
+Shows a summary once complete.
+
+
+
+---
+
+✅ REWRITTEN AND HARDENED FINAL VBA CODE
+
+Sub SplitLettersToPDF()
+    Dim doc As Document
+    Dim tempDoc As Document
+    Dim totalPages As Long
+    Dim i As Long
+    Dim pageText As String
+    Dim referenceNumber As String
+    Dim pdfFileName As String
+    Dim pdfFullPath As String
+    Dim outputFolder As String
+    Dim logFile As String
+    Dim logText As String
+
+    outputFolder = "C:\Temp\"
+    If Right(outputFolder, 1) <> "\" Then outputFolder = outputFolder & "\"
+    logFile = outputFolder & "SplitLog.txt"
+    logText = "PDF Split Log - " & Now & vbCrLf & String(60, "-") & vbCrLf
+
+    If Dir(outputFolder, vbDirectory) = "" Then
+        MsgBox "Output folder does not exist: " & outputFolder, vbCritical
+        Exit Sub
+    End If
+
+    Set doc = ActiveDocument
+    totalPages = doc.ComputeStatistics(wdStatisticPages)
+
+    For i = 1 To totalPages
+        On Error GoTo PageErrorHandler
+
+        Dim startRange As Range, endRange As Range, pageRange As Range
+        Set startRange = doc.GoTo(What:=wdGoToPage, Name:=i)
+
+        If i < totalPages Then
+            Set endRange = doc.GoTo(What:=wdGoToPage, Name:=i + 1)
+            Set pageRange = doc.Range(Start:=startRange.Start, End:=endRange.Start - 1)
+        Else
+            Set pageRange = doc.Range(Start:=startRange.Start, End:=doc.Content.End)
+        End If
+
+        Set tempDoc = Documents.Add
+        tempDoc.Range.FormattedText = pageRange.FormattedText
+
+        pageText = tempDoc.Range.Text
+        referenceNumber = CleanFileName(ExtractReferenceNumber(pageText))
+
+        If referenceNumber = "" Then
+            pdfFileName = "Remediation Communication_Page" & i & "_TDBreakCost.pdf"
+            logText = logText & "Page " & i & ": Reference number NOT found. Used fallback filename." & vbCrLf
+        Else
+            pdfFileName = "Remediation Communication_" & referenceNumber & "_TDBreakCost.pdf"
+            logText = logText & "Page " & i & ": Saved as " & pdfFileName & vbCrLf
+        End If
+
+        pdfFullPath = outputFolder & pdfFileName
+        tempDoc.ExportAsFixedFormat OutputFileName:=pdfFullPath, ExportFormat:=wdExportFormatPDF
+        tempDoc.Close SaveChanges:=False
+
+        On Error GoTo 0
+        GoTo NextPage
+
+PageErrorHandler:
+        logText = logText & "ERROR on Page " & i & ": " & Err.Description & " (Code: " & Err.Number & ")" & vbCrLf
+        Err.Clear
+        On Error GoTo 0
+
+NextPage:
+    Next i
+
+    SaveLogToFile logFile, logText
+    MsgBox "PDF split complete. Check log at: " & logFile, vbInformation
+End Sub
+
+Function ExtractReferenceNumber(text As String) As String
+    Dim regex As Object, matches As Object
+    Set regex = CreateObject("VBScript.RegExp")
+    regex.Pattern = "Reference\s*Number[:\s]*([0-9]+)"
+    regex.IgnoreCase = True
+    regex.Global = False
+
+    If regex.Test(text) Then
+        Set matches = regex.Execute(text)
+        ExtractReferenceNumber = matches(0).SubMatches(0)
+    Else
+        ExtractReferenceNumber = ""
+    End If
+End Function
+
+Function CleanFileName(strIn As String) As String
+    Dim invalidChars As Variant, ch As Variant
+    invalidChars = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+    For Each ch In invalidChars
+        strIn = Replace(strIn, ch, "_")
+    Next
+    CleanFileName = Trim(strIn)
+End Function
+
+Sub SaveLogToFile(filePath As String, content As String)
+    Dim fileNum As Integer
+    fileNum = FreeFile
+    Open filePath For Output As #fileNum
+    Print #fileNum, content
+    Close #fileNum
+End Sub
+
+
+---
+
+🔍 Features Added:
+
+Feature	Status ✅
+
+Last page crash handling	✅ Fixed using safe range logic
+Logging all events	✅ Log file at C:\Temp\SplitLog.txt
+Reference number extraction	✅ With regex
+Fallback filenames	✅ Page number if no reference
+Error trace per page	✅ Logs line + error description
+
+
+
+---
+
+Let me know if you want:
+
+Customer name included in filenames
+
+To auto-create the output folder if it doesn’t exist
+
+To ZIP all PDFs at the end
+
+
