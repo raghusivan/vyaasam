@@ -1,0 +1,155 @@
+Thanks for the clarification. The files you've uploaded are JPEG images, not ZIP or code files. Since the images show the project structure and code in main.py, I can help you write unit tests based on that.
+
+
+---
+
+✅ Observed Function: lambda_handler(event, context) in main.py
+
+This function:
+
+Handles two types of inputs:
+
+SQS event with job ID
+
+Direct event with startDate, endDate, etc.
+
+
+Calls:
+
+download_alert_data(job_id)
+
+upload_to_s3(filepath)
+
+start_alert_job(start_date, end_date)
+
+send_job_to_sqs(job_id, delay)
+
+
+Logs success and error scenarios.
+
+
+
+---
+
+✅ Assumptions Based on Folder Structure
+
+Module Path	Function to Mock
+
+src.services.alert_service	start_alert_job, download_alert_data
+src.services.s3_uploader	upload_to_s3
+src.services.sqs_client	send_job_to_sqs
+src.config.config_loader	DEFAULT_DELAY, config
+src.utils.logger	logger
+
+
+
+---
+
+✅ Suggested Unit Test Coverage
+
+1. Valid SQS event with success upload
+
+
+2. Valid SQS event with download_alert_data but upload_to_s3 skipped
+
+
+3. Valid SQS event with exception during download
+
+
+4. Non-SQS event with direct params → valid job creation
+
+
+5. Non-SQS event with config fallback
+
+
+6. Fatal exception in handler
+
+
+
+
+---
+
+✅ Example Unit Test File: tests/TestMain.py
+
+import unittest
+from unittest.mock import patch, MagicMock
+import json
+from src.main import lambda_handler
+
+class TestLambdaHandler(unittest.TestCase):
+
+    @patch("src.main.download_alert_data")
+    @patch("src.main.upload_to_s3")
+    @patch("src.main.logger")
+    def test_sqs_event_upload_success(self, mock_logger, mock_upload, mock_download):
+        mock_download.return_value = (True, "file.json")
+        event = {
+            "Records": [{"eventSource": "aws:sqs", "body": "job123"}]
+        }
+        lambda_handler(event, None)
+        mock_upload.assert_called_once_with("file.json", "f/alerts/job123.json")
+
+    @patch("src.main.download_alert_data")
+    @patch("src.main.send_job_to_sqs")
+    def test_sqs_event_no_upload(self, mock_send, mock_download):
+        mock_download.return_value = (False, None)
+        event = {
+            "Records": [{"eventSource": "aws:sqs", "body": "job123"}],
+            "delaySeconds": "3"
+        }
+        lambda_handler(event, None)
+        mock_send.assert_called_once()
+
+    @patch("src.main.download_alert_data", side_effect=Exception("fail"))
+    @patch("src.main.logger")
+    def test_sqs_event_download_exception(self, mock_logger, mock_download):
+        event = {
+            "Records": [{"eventSource": "aws:sqs", "body": "job123"}]
+        }
+        lambda_handler(event, None)
+        self.assertTrue(mock_logger.exception.called)
+
+    @patch("src.main.send_job_to_sqs")
+    @patch("src.main.start_alert_job", return_value="new_job")
+    def test_direct_event_success(self, mock_start, mock_send):
+        event = {
+            "startDate": "2024-01-01",
+            "endDate": "2024-01-02",
+            "delaySeconds": "2"
+        }
+        result = lambda_handler(event, None)
+        self.assertEqual(result["statusCode"], 200)
+        self.assertIn("new_job", result["body"])
+
+    @patch("src.main.config", {"shield": {"start_date": "2024-01-01", "end_date": "2024-01-02"}})
+    @patch("src.main.start_alert_job", return_value="cfg_job")
+    @patch("src.main.send_job_to_sqs")
+    def test_config_fallback_event(self, mock_send, mock_start):
+        event = {}
+        result = lambda_handler(event, None)
+        self.assertIn("cfg_job", result["body"])
+
+    @patch("src.main.logger")
+    def test_lambda_fatal_error(self, mock_logger):
+        event = None  # triggers TypeError
+        result = lambda_handler(event, None)
+        self.assertEqual(result["statusCode"], 500)
+        self.assertIn("Error", result["body"])
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+---
+
+✅ How to Run Tests
+
+From your root project directory:
+
+python3 -m unittest tests/TestMain.py
+
+
+---
+
+Would you like me to generate a TestMain.py file and save it for direct download as well?
+
