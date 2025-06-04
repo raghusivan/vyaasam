@@ -1,0 +1,161 @@
+To follow best practices without hardcoding the config path and without modifying production logic directly, here's a clean and scalable approach using dependency injection via os.environ, applied only in tests.
+
+
+---
+
+✅ Step-by-Step Final Best Practice
+
+
+---
+
+✅ 1. Update config_loader.py (minimal and reusable)
+
+Do not hardcode the path or comment/uncomment lines.
+
+Instead, do:
+
+import os
+import configparser
+
+config = configparser.ConfigParser()
+
+# Allow path to be overridden by test or environment
+config_path = os.environ.get("CONFIG_INI_PATH", "src/config/config.ini")
+config.read(config_path)
+
+REGION = config.get("aws", "region")
+QUEUE_URL = config.get("aws", "queue_url")
+BASE_URL = config.get("shield", "base_url")
+START_DATE = config.get("shield", "start_date")
+END_DATE = config.get("shield", "end_date")
+CERT_PATH = os.path.abspath(config.get("cert", "path"))
+DEFAULT_DELAY = int(config.get("Lambda", "default_delay"))
+TMP_DIR = os.getenv("TMP_DIR", config.get("Lambda", "tmp_dir", fallback="/tmp"))
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")  # optional fallback logic
+
+✅ Now your config path is dynamic but controlled via environment, so no changes are needed to the main logic for testing or prod.
+
+
+---
+
+✅ 2. Keep tests/test_config.ini
+
+[aws]
+region = test-region
+queue_url = https://test-queue-url.com
+
+[shield]
+base_url = https://test.shield.api
+start_date = 2024-01-01
+end_date = 2024-01-02
+
+[cert]
+path = tests/testcert.crt
+
+[Lambda]
+default_delay = 60
+tmp_dir = /tmp
+
+
+---
+
+✅ 3. Update test_main.py to Inject Path Before Import
+
+import sys
+import os
+import unittest
+from unittest.mock import patch
+import json
+
+# Add src to PYTHONPATH
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# Inject CONFIG_INI_PATH before importing anything
+os.environ["CONFIG_INI_PATH"] = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_config.ini"))
+
+from src.main import lambda_handler
+
+class TestLambdaHandler(unittest.TestCase):
+
+    @patch("src.main.download_alert_data")
+    @patch("src.main.upload_to_s3")
+    @patch("src.main.logger")
+    def test_sqs_event_upload_success(self, mock_logger, mock_upload, mock_download):
+        mock_download.return_value = (True, "file.json")
+        event = {
+            "Records": [{"eventSource": "aws:sqs", "body": "job123"}]
+        }
+        lambda_handler(event, None)
+        mock_upload.assert_called_once_with("file.json", "f/alerts/job123.json")
+
+    @patch("src.main.download_alert_data")
+    @patch("src.main.send_job_to_sqs")
+    def test_sqs_event_no_upload(self, mock_send, mock_download):
+        mock_download.return_value = (False, None)
+        event = {
+            "Records": [{"eventSource": "aws:sqs", "body": "job123"}],
+            "delaySeconds": "3"
+        }
+        lambda_handler(event, None)
+        mock_send.assert_called_once()
+
+    @patch("src.main.download_alert_data", side_effect=Exception("fail"))
+    @patch("src.main.logger")
+    def test_sqs_event_download_exception(self, mock_logger, mock_download):
+        event = {
+            "Records": [{"eventSource": "aws:sqs", "body": "job123"}]
+        }
+        lambda_handler(event, None)
+        self.assertTrue(mock_logger.exception.called)
+
+    @patch("src.main.send_job_to_sqs")
+    @patch("src.main.start_alert_job", return_value="new_job")
+    def test_direct_event_success(self, mock_start, mock_send):
+        event = {
+            "startDate": "2024-01-01",
+            "endDate": "2024-01-02",
+            "delaySeconds": "2"
+        }
+        result = lambda_handler(event, None)
+        self.assertEqual(result["statusCode"], 200)
+        self.assertIn("new_job", result["body"])
+
+    @patch("src.main.start_alert_job", return_value="cfg_job")
+    @patch("src.main.send_job_to_sqs")
+    def test_config_fallback_event(self, mock_send, mock_start):
+        event = {}
+        result = lambda_handler(event, None)
+        self.assertIn("cfg_job", result["body"])
+
+    @patch("src.main.logger")
+    def test_lambda_fatal_error(self, mock_logger):
+        event = None  # triggers TypeError
+        result = lambda_handler(event, None)
+        self.assertEqual(result["statusCode"], 500)
+        self.assertIn("Error", result["body"])
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+---
+
+✅ 4. Run with:
+
+python3 -m unittest tests/test_main.py
+
+
+---
+
+✅ Summary
+
+✅ Best Practice	Result
+
+Source code clean	✔️ No test hacks inside prod code
+Config is swappable	✔️ Via env var CONFIG_INI_PATH
+No mocking config_loader in tests	✔️ Clean test logic
+Suitable for CI/CD or prod	✔️ Configurable per environment
+
+
+Would you like the updated test_main.py and test_config.ini files for direct download again?
+
