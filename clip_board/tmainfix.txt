@@ -1,0 +1,45 @@
+You're getting the error:
+
+ModuleNotFoundError: No module named 'src'
+
+This is happening because Python does not automatically include the alert_metadata_downloader directory (which contains src/) in its PYTHONPATH.
+
+
+---
+
+✅ Solution: Add alert_metadata_downloader to your PYTHONPATH
+
+Before running the test, set the PYTHONPATH like this:
+
+export PYTHONPATH=$(pwd)/..
+python3 TestMain.py
+
+Explanation:
+
+$(pwd)/.. makes sure Python sees src as a top-level module.
+
+This works because your tests directory is inside alert_metadata_downloader, and src is a sibling of tests.
+
+
+
+---
+
+✅ Alternative: Modify sys.path in TestMain.py
+
+Add this at the top of TestMain.py:
+
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+This line prepends the parent directory (alert_metadata_downloader) to the Python path dynamically.
+
+Then keep your import:
+
+from src.main import lambda_handler
+
+
+---
+
+Let me know if you'd like me to rewrite TestMain.py with the fix included.
+
