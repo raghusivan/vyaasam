@@ -1,0 +1,238 @@
+Certainly! Below are the Pydantic models, each written as if in its own Python file, with:
+
+Class name matching the file name.
+
+populate_by_name = True inside the Config class.
+
+Clean naming (no _schema suffix).
+
+
+
+---
+
+base.py
+
+from pydantic import BaseModel
+from typing import List, Optional
+
+
+---
+
+ConversationLevelNoise.py
+
+from .base import BaseModel
+
+class ConversationLevelNoise(BaseModel):
+    suppressor: str
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+LanguageCode.py
+
+from .base import BaseModel
+
+class LanguageCode(BaseModel):
+    percentage: float
+    languageCode: str
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+Annotation.py
+
+from .base import BaseModel
+
+class Annotation(BaseModel):
+    patternLanguage: str
+    annotatedText: str
+    propertyName: str
+    lexiconDisplayName: str
+    extractor: str
+    extractedText: str
+    type: str
+    patternText: str
+    lexicon: str
+    objectType: str
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+ScoreMultiplier.py
+
+from .base import BaseModel
+
+class ScoreMultiplier(BaseModel):
+    name: str
+    type: str
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+ScoreBooster.py
+
+from .base import BaseModel
+
+class ScoreBooster(BaseModel):
+    type: str
+    phrase: str
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+Signal.py
+
+from typing import List, Optional
+from .base import BaseModel
+from .Annotation import Annotation
+from .ScoreMultiplier import ScoreMultiplier
+from .ScoreBooster import ScoreBooster
+
+class Signal(BaseModel):
+    modelId: str
+    ruleText: str
+    behaviourName: str
+    modelLName: str
+    mergeOf: str
+    behaviourId: str
+    scenarioDescription: str
+    ruleId: str
+    compoundScore: float
+    scenarioId: str
+    annotations: Optional[List[Annotation]] = []
+    score_multipliers: Optional[List[ScoreMultiplier]] = []
+    score_boosters: Optional[List[ScoreBooster]] = []
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+Alert.py
+
+from typing import List
+from .base import BaseModel
+
+class Alert(BaseModel):
+    participantsCount: int
+    languages: str
+    modelId: List[str]
+    modelName: str
+    stepId: int
+    stepName: str
+    assigneeUserName: str
+    assigneeUser: int
+    totalScore: float
+    workFlowDueDate: str
+    workflowId: int
+    workflowObjectId: int
+    assignedGroupName: str
+    dateCreated: str
+    behaviours: List[str]
+    monitoredGroupId: List[int]
+    signalIds: List[int]
+    workflowCloseReason: str
+    workflowCloseReasonId: int
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+Feature.py
+
+from .base import BaseModel
+
+class Feature(BaseModel):
+    type: str
+    featureValue: str
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+Participant.py
+
+from typing import List, Optional
+from .base import BaseModel
+from .Feature import Feature
+
+class Participant(BaseModel):
+    id: str
+    participantUniqueId: str
+    emailAddress: str
+    type: str
+    country: str
+    region: str
+    participantName: str
+    custom1: str
+    custom4: str
+    orgUnitLevel3: str
+    originalOrgAlias: str
+    features: Optional[List[Feature]] = []
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+AlertMetadata.py
+
+from typing import List, Optional
+from .base import BaseModel
+from .ConversationLevelNoise import ConversationLevelNoise
+from .LanguageCode import LanguageCode
+from .Signal import Signal
+from .Alert import Alert
+from .Participant import Participant
+
+class AlertMetadata(BaseModel):
+    id: str
+    modelVersion: str
+    source: str
+    customizationVersion: str
+    ecommType: str
+    pipes: List[str]
+    startTimestamp: int
+    direction: str
+    conversation_level_noise: Optional[List[ConversationLevelNoise]] = []
+    language_codes: Optional[List[LanguageCode]] = []
+    signals: Optional[List[Signal]] = []
+    alerts: Optional[List[Alert]] = []
+    participants: Optional[List[Participant]] = []
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+Let me know if you'd like:
+
+Example usage or unit test for one of these.
+
+A FastAPI route to POST/GET AlertMetadata.
+
+An ORM ↔ Pydantic conversion utility function.
+
+
