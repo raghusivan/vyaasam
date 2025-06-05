@@ -1,0 +1,175 @@
+Here is the updated ORMMapper that maps Pydantic camelCase models ➜ to SQLAlchemy snake_case ORM models, fully aligned with your database schema (metadata1.alert_metadata, etc.).
+
+
+---
+
+✅ Updated ORMMapper.py
+
+from models.pydantic import (
+    AlertMetadata,
+    Participant,
+    LanguageCode,
+    ConversationLevelNoise,
+    Signal,
+    Annotation,
+    ScoreBooster,
+    ScoreMultiplier,
+    Alert,
+    Feature,
+)
+
+from models.orm.merged_orm import (
+    AlertMetadata as AlertMetadataORM,
+    Participant as ParticipantORM,
+    LanguageCode as LanguageCodeORM,
+    ConversationLevelNoise as ConversationLevelNoiseORM,
+    Signal as SignalORM,
+    Annotation as AnnotationORM,
+    ScoreBooster as ScoreBoosterORM,
+    ScoreMultiplier as ScoreMultiplierORM,
+    Alert as AlertORM,
+    Feature as FeatureORM,
+)
+
+
+class ORMMapper:
+
+    @staticmethod
+    def map_alert_metadata(p: AlertMetadata) -> AlertMetadataORM:
+        return AlertMetadataORM(
+            id=p.id,
+            model_version=p.modelVersion,
+            source=p.source,
+            customization_version=p.customizationVersion,
+            ecomm_type=p.ecommType,
+            pipes=",".join(p.pipes) if isinstance(p.pipes, list) else p.pipes,
+            start_timestamp=p.startTimestamp,
+            direction=p.direction,
+            language_codes=[
+                LanguageCodeORM(
+                    language_code=lang.languageCode,
+                    percentage=lang.percentage,
+                ) for lang in (p.language_codes or [])
+            ],
+            conversation_level_noise=[
+                ConversationLevelNoiseORM(
+                    suppressor=noise.suppressor
+                ) for noise in (p.conversation_level_noise or [])
+            ],
+            participants=[
+                ORMMapper.map_participant(part) for part in (p.participants or [])
+            ],
+            signals=[
+                ORMMapper.map_signal(s) for s in (p.signals or [])
+            ],
+            alerts=[
+                ORMMapper.map_alert(a) for a in (p.alerts or [])
+            ]
+        )
+
+    @staticmethod
+    def map_participant(p: Participant) -> ParticipantORM:
+        return ParticipantORM(
+            id=p.id,
+            participant_unique_id=p.participantUniqueId,
+            email_address=p.emailAddress,
+            type=p.type,
+            country=p.country,
+            region=p.region,
+            participant_name=p.participantName,
+            custom1=p.custom1,
+            custom4=p.custom4,
+            org_unit_level3=p.orgUnitLevel3,
+            original_org_alias=p.originalOrgAlias,
+            features=[
+                FeatureORM(
+                    type=f.type,
+                    feature_value=f.featureValue
+                ) for f in (p.features or [])
+            ]
+        )
+
+    @staticmethod
+    def map_signal(s: Signal) -> SignalORM:
+        return SignalORM(
+            model_id=s.modelId,
+            rule_text=s.ruleText,
+            behaviour_name=s.behaviourName,
+            model_l_name=s.modelLName,
+            merge_of=s.mergeOf,
+            behaviour_id=s.behaviourId,
+            scenario_description=s.scenarioDescription,
+            rule_id=s.ruleId,
+            compound_score=s.compoundScore,
+            scenario_id=s.scenarioId,
+            annotations=[
+                AnnotationORM(
+                    pattern_language=a.patternLanguage,
+                    annotated_text=a.annotatedText,
+                    property_name=a.propertyName,
+                    lexicon_display_name=a.lexiconDisplayName,
+                    extractor=a.extractor,
+                    extracted_text=a.extractedText,
+                    type=a.type,
+                    pattern_text=a.patternText,
+                    lexicon=a.lexicon,
+                    object_type=a.objectType
+                ) for a in (s.annotations or [])
+            ],
+            score_multipliers=[
+                ScoreMultiplierORM(
+                    name=m.name,
+                    type=m.type
+                ) for m in (s.score_multipliers or [])
+            ],
+            score_boosters=[
+                ScoreBoosterORM(
+                    type=b.type,
+                    phrase=b.phrase
+                ) for b in (s.score_boosters or [])
+            ]
+        )
+
+    @staticmethod
+    def map_alert(a: Alert) -> AlertORM:
+        return AlertORM(
+            participants_count=a.participantsCount,
+            languages=a.languages,
+            model_id=a.modelId,
+            model_name=a.modelName,
+            step_id=a.stepId,
+            step_name=a.stepName,
+            assignee_user_name=a.assigneeUserName,
+            assignee_user=a.assigneeUser,
+            total_score=a.totalScore,
+            workflow_due_date=a.workFlowDueDate,
+            workflow_id=a.workflowId,
+            workflow_object_id=a.workflowObjectId,
+            assigned_group_name=a.assignedGroupName,
+            date_created=a.dateCreated,
+            behaviours=a.behaviours,
+            monitored_group_id=a.monitoredGroupId,
+            signal_ids=a.signalIds,
+            workflow_close_reason=a.workflowCloseReason,
+            workflow_close_reason_id=a.workflowCloseReasonId
+        )
+
+
+---
+
+✅ Notes
+
+All ORM field names are now snake_case, to match your DB columns.
+
+Pydantic → ORM mapping handles lists like pipes as comma-separated strings (adjust if your DB expects JSON).
+
+Optional fields are handled gracefully via or [].
+
+
+Let me know if you'd like:
+
+A reverse mapper (ORM → Pydantic),
+
+pipes field mapped as PostgreSQL JSON type instead of string.
+
+
