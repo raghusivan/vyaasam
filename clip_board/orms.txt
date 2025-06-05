@@ -1,0 +1,161 @@
+Sure! Here's the complete SQLAlchemy ORM mapper with all the models merged into a single Python file. You can copy this directly into your models.py or similar.
+
+
+---
+
+✅ models.py (Full SQLAlchemy ORM Mapper)
+
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, ARRAY
+from sqlalchemy.orm import declarative_base, relationship
+
+Base = declarative_base()
+
+class AlertMetadata(Base):
+    __tablename__ = "alert_metadata"
+    id = Column(String, primary_key=True)
+    modelVersion = Column(String)
+    source = Column(String)
+    customizationVersion = Column(String)
+    ecommType = Column(String)
+    pipes = Column(ARRAY(String))
+    startTimestamp = Column(Integer)
+    direction = Column(String)
+
+    conversation_level_noise = relationship("ConversationLevelNoise", backref="alert_metadata")
+    language_codes = relationship("LanguageCode", backref="alert_metadata")
+    signals = relationship("Signal", backref="alert_metadata")
+    alerts = relationship("Alert", backref="alert_metadata")
+    participants = relationship("Participant", backref="alert_metadata")
+
+
+class ConversationLevelNoise(Base):
+    __tablename__ = "conversation_level_noise"
+    id = Column(Integer, primary_key=True)
+    alert_metadata_id = Column(String, ForeignKey("alert_metadata.id"))
+    suppressor = Column(String)
+
+
+class LanguageCode(Base):
+    __tablename__ = "language_code"
+    id = Column(Integer, primary_key=True)
+    alert_metadata_id = Column(String, ForeignKey("alert_metadata.id"))
+    percentage = Column(Float)
+    languageCode = Column(String)
+
+
+class Signal(Base):
+    __tablename__ = "signal"
+    id = Column(Integer, primary_key=True)
+    alert_metadata_id = Column(String, ForeignKey("alert_metadata.id"))
+    modelId = Column(String)
+    ruleText = Column(String)
+    behaviourName = Column(String)
+    modelLName = Column(String)
+    mergeOf = Column(String)
+    behaviourId = Column(String)
+    scenarioDescription = Column(String)
+    ruleId = Column(String)
+    compoundScore = Column(Float)
+    scenarioId = Column(String)
+
+    annotations = relationship("Annotation", backref="signal")
+    score_multipliers = relationship("ScoreMultiplier", backref="signal")
+    score_boosters = relationship("ScoreBooster", backref="signal")
+
+
+class Annotation(Base):
+    __tablename__ = "annotation"
+    id = Column(Integer, primary_key=True)
+    signal_id = Column(Integer, ForeignKey("signal.id"))
+    patternLanguage = Column(String)
+    annotatedText = Column(String)
+    propertyName = Column(String)
+    lexiconDisplayName = Column(String)
+    extractor = Column(String)
+    extractedText = Column(String)
+    type = Column(String)
+    patternText = Column(String)
+    lexicon = Column(String)
+    objectType = Column(String)
+
+
+class ScoreMultiplier(Base):
+    __tablename__ = "score_multiplier"
+    id = Column(Integer, primary_key=True)
+    signal_id = Column(Integer, ForeignKey("signal.id"))
+    name = Column(String)
+    type = Column(String)
+
+
+class ScoreBooster(Base):
+    __tablename__ = "score_booster"
+    id = Column(Integer, primary_key=True)
+    signal_id = Column(Integer, ForeignKey("signal.id"))
+    type = Column(String)
+    phrase = Column(String)
+
+
+class Alert(Base):
+    __tablename__ = "alert"
+    id = Column(Integer, primary_key=True)
+    alert_metadata_id = Column(String, ForeignKey("alert_metadata.id"))
+    participantsCount = Column(Integer)
+    languages = Column(String)
+    modelId = Column(ARRAY(String))
+    modelName = Column(String)
+    stepId = Column(Integer)
+    stepName = Column(String)
+    assigneeUserName = Column(String)
+    assigneeUser = Column(Integer)
+    totalScore = Column(Float)
+    workFlowDueDate = Column(String)
+    workflowId = Column(Integer)
+    workflowObjectId = Column(Integer)
+    assignedGroupName = Column(String)
+    dateCreated = Column(String)
+    behaviours = Column(ARRAY(String))
+    monitoredGroupId = Column(ARRAY(Integer))
+    signalIds = Column(ARRAY(Integer))
+    workflowCloseReason = Column(String)
+    workflowCloseReasonId = Column(Integer)
+
+
+class Participant(Base):
+    __tablename__ = "participant"
+    id = Column(String, primary_key=True)
+    alert_metadata_id = Column(String, ForeignKey("alert_metadata.id"))
+    participantUniqueId = Column(String)
+    emailAddress = Column(String)
+    type = Column(String)
+    country = Column(String)
+    region = Column(String)
+    participantName = Column(String)
+    custom1 = Column(String)
+    custom4 = Column(String)
+    orgUnitLevel3 = Column(String)
+    originalOrgAlias = Column(String)
+
+    features = relationship("Feature", backref="participant")
+
+
+class Feature(Base):
+    __tablename__ = "feature"
+    id = Column(Integer, primary_key=True)
+    participant_id = Column(String, ForeignKey("participant.id"))
+    type = Column(String)
+    featureValue = Column(String)
+
+
+---
+
+Let me know if you want me to now:
+
+Include a sample DB connection + create_all() code,
+
+Generate dummy data to test inserts,
+
+Or help integrate with a FastAPI backend.
+
+
+I'm ready when you are.
+
