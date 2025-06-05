@@ -1,0 +1,64 @@
+The error you're seeing:
+
+pydantic_core._pydantic_core.ValidationError: Field required [type=missing, ...]
+
+means your Pydantic model has fields marked as required, but the JSON input is missing those fields.
+
+
+---
+
+✅ Solution: Make All Annotation Fields Optional
+
+Open your Annotation.py Pydantic model file and change this:
+
+class Annotation(BaseModel):
+    patternLanguage: str
+    annotatedText: str
+    propertyName: str
+    lexiconDisplayName: str
+    extractor: str
+    extractedText: str
+    type: str
+    patternText: str
+    lexicon: str
+    objectType: str
+
+To this:
+
+from typing import Optional
+from .base import BaseModel
+
+class Annotation(BaseModel):
+    patternLanguage: Optional[str] = None
+    annotatedText: Optional[str] = None
+    propertyName: Optional[str] = None
+    lexiconDisplayName: Optional[str] = None
+    extractor: Optional[str] = None
+    extractedText: Optional[str] = None
+    type: Optional[str] = None
+    patternText: Optional[str] = None
+    lexicon: Optional[str] = None
+    objectType: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+
+
+---
+
+🧠 Why This Works
+
+If the JSON you're parsing is missing some of those fields (which is common with APIs or pre-cleaned datasets), Pydantic will fail validation unless you make those fields optional.
+
+
+---
+
+Let me know if you want me to:
+
+Automatically update other models the same way,
+
+Print missing fields for inspection before validation, or
+
+Validate only known fields and ignore extra ones.
+
+
