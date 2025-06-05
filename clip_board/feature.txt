@@ -1,0 +1,80 @@
+The new error message shows:
+
+> Input should be a valid string [type=string_type, input_value={'string': 'high'}, input_type=dict]
+
+
+
+
+---
+
+🔍 Root Cause
+
+Your input JSON for fields like featureValue looks like:
+
+"featureValue": { "string": "high" }
+
+But your Pydantic model expects:
+
+featureValue: Optional[str] = None
+
+So it's failing because it's receiving a dict instead of a str.
+
+
+---
+
+✅ Solution Options
+
+🔧 Option 1: Fix the JSON Structure
+
+If you control the JSON file, update the data like:
+
+"featureValue": "high"
+
+Instead of:
+
+"featureValue": { "string": "high" }
+
+
+---
+
+🔧 Option 2: Adjust the Pydantic Model Logic
+
+If you cannot change the input, add a validator to extract the string:
+
+In Feature.py:
+
+from pydantic import BaseModel, validator
+from typing import Optional, Union
+
+class Feature(BaseModel):
+    type: Optional[str] = None
+    featureValue: Optional[Union[str, dict]] = None
+
+    @validator("featureValue", pre=True)
+    def extract_string(cls, v):
+        if isinstance(v, dict) and "string" in v:
+            return v["string"]
+        return v
+
+    class Config:
+        populate_by_name = True
+
+This will safely accept both formats:
+
+"featureValue": "high"
+
+"featureValue": { "string": "high" }
+
+
+
+---
+
+Let me know if you want:
+
+The same fix applied to other fields (originalOrgAlias, etc.)
+
+Auto-detection and logging of nested dicts during deserialization
+
+A tool to clean your JSON input before parsing
+
+
