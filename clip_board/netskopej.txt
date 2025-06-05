@@ -1,0 +1,85 @@
+Here's a Cloud Support Ticket Summary and Description draft with a clear request focused on understanding Netskope metrics and the ethics dashboard for file scanning visibility:
+
+
+---
+
+Issue Type:
+
+Advice
+
+
+---
+
+Summary:
+
+Need Access/Information on Netskope Ethics Dashboard for File Scan Metrics
+
+
+---
+
+Description:
+
+We have migrated from PrivProxy to Netskope proxy (port 2128) for external API access in our Lambda function (alert metadata file ingestion). The switch was made to enable malicious URL and file scanning as part of Macquarie's security enhancement.
+
+Our Lambda now uses the updated proxy configuration and the Netskope root CA certificate has been integrated.
+
+However, we need help with the following:
+
+
+---
+
+Request:
+
+We are looking for access or information on the Netskope dashboard (or any other available interface) that:
+
+Shows metrics or logs of scanned files initiated via our Lambda/API
+
+Provides visibility into scan success/failure, blocked threats, or any policy violations
+
+Supports audit/compliance visibility, especially for file download APIs related to alert metadata ingestion
+
+
+
+---
+
+Context:
+
+Lambda Environment:
+
+Uses updated proxy: privproxy.prod-v2.proxy.core.syd.non.c1.macquarie.com:2128
+
+Integrated with Netskope root CA cert
+
+
+We’re currently not seeing any scan-related telemetry or dashboard visibility
+
+No clear documentation or contact found on this yet
+
+
+
+---
+
+Goal:
+
+We want to ensure:
+
+Scans are happening as expected
+
+There’s a way to monitor scan results
+
+Metrics can be accessed by our team (or ethics/security teams)
+
+
+
+---
+
+Links:
+
+Migration ref: AWS Proxy Migration to Netskope
+
+
+
+---
+
+Let me know if you'd like this adapted into a Confluence-ready or Jira markdown version.
+
