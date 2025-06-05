@@ -1,0 +1,139 @@
+Here is the complete Pydantic model implementation (models.py style) that corresponds to the ORM mapper, with each class structured properly to support validation and nested parsing, just like the database schema:
+
+
+---
+
+✅ pydantic_models.py (Full Pydantic Models)
+
+from pydantic import BaseModel
+from typing import List, Optional
+
+
+class FeatureSchema(BaseModel):
+    type: str
+    featureValue: str
+
+
+class ParticipantSchema(BaseModel):
+    id: str
+    participantUniqueId: str
+    emailAddress: str
+    type: str
+    country: str
+    region: str
+    participantName: str
+    custom1: str
+    custom4: str
+    orgUnitLevel3: str
+    originalOrgAlias: str
+    features: Optional[List[FeatureSchema]] = []
+
+
+class AlertSchema(BaseModel):
+    participantsCount: int
+    languages: str
+    modelId: List[str]
+    modelName: str
+    stepId: int
+    stepName: str
+    assigneeUserName: str
+    assigneeUser: int
+    totalScore: float
+    workFlowDueDate: str
+    workflowId: int
+    workflowObjectId: int
+    assignedGroupName: str
+    dateCreated: str
+    behaviours: List[str]
+    monitoredGroupId: List[int]
+    signalIds: List[int]
+    workflowCloseReason: str
+    workflowCloseReasonId: int
+
+
+class ScoreBoosterSchema(BaseModel):
+    type: str
+    phrase: str
+
+
+class ScoreMultiplierSchema(BaseModel):
+    name: str
+    type: str
+
+
+class AnnotationSchema(BaseModel):
+    patternLanguage: str
+    annotatedText: str
+    propertyName: str
+    lexiconDisplayName: str
+    extractor: str
+    extractedText: str
+    type: str
+    patternText: str
+    lexicon: str
+    objectType: str
+
+
+class SignalSchema(BaseModel):
+    modelId: str
+    ruleText: str
+    behaviourName: str
+    modelLName: str
+    mergeOf: str
+    behaviourId: str
+    scenarioDescription: str
+    ruleId: str
+    compoundScore: float
+    scenarioId: str
+    annotations: Optional[List[AnnotationSchema]] = []
+    score_multipliers: Optional[List[ScoreMultiplierSchema]] = []
+    score_boosters: Optional[List[ScoreBoosterSchema]] = []
+
+
+class LanguageCodeSchema(BaseModel):
+    percentage: float
+    languageCode: str
+
+
+class ConversationLevelNoiseSchema(BaseModel):
+    suppressor: str
+
+
+class AlertMetadataSchema(BaseModel):
+    id: str
+    modelVersion: str
+    source: str
+    customizationVersion: str
+    ecommType: str
+    pipes: List[str]
+    startTimestamp: int
+    direction: str
+    conversation_level_noise: Optional[List[ConversationLevelNoiseSchema]] = []
+    language_codes: Optional[List[LanguageCodeSchema]] = []
+    signals: Optional[List[SignalSchema]] = []
+    alerts: Optional[List[AlertSchema]] = []
+    participants: Optional[List[ParticipantSchema]] = []
+
+
+---
+
+These models are:
+
+Ready to be used in a FastAPI API or Python-based data ingestion pipeline.
+
+Fully nested and support validation of deeply structured JSON objects.
+
+Designed to serialize and deserialize data that matches the PostgreSQL ORM schema.
+
+
+Would you like:
+
+A JSON example that fits this model?
+
+A save_to_postgres.py to map these into ORM and persist?
+
+Unit test templates to validate the model inputs?
+
+
+Let me know what you'd like next.
+
