@@ -1,0 +1,86 @@
+Got it! You want your __init__.py files to automatically re-export (import) the classes or modules from their folder—so when you do:
+
+from src.models.pydantic import AlertMetadata
+
+—it works seamlessly.
+
+
+---
+
+✅ Example for models/pydantic/__init__.py
+
+Assuming these Pydantic files exist in src/models/pydantic/:
+
+AlertMetadata.py → defines AlertMetadata
+
+Participant.py → defines Participant
+
+LanguageCode.py → defines LanguageCode
+
+ConversationLevelNoise.py → defines ConversationLevelNoise
+
+Signal.py → defines Signal
+
+Annotation.py → defines Annotation
+
+ScoreBooster.py → defines ScoreBooster
+
+ScoreMultiplier.py → defines ScoreMultiplier
+
+Alert.py → defines Alert
+
+Feature.py → defines Feature
+
+base.py → defines shared BaseModel
+
+
+
+---
+
+✅ Recommended src/models/pydantic/__init__.py
+
+from .AlertMetadata import AlertMetadata
+from .Participant import Participant
+from .LanguageCode import LanguageCode
+from .ConversationLevelNoise import ConversationLevelNoise
+from .Signal import Signal
+from .Annotation import Annotation
+from .ScoreBooster import ScoreBooster
+from .ScoreMultiplier import ScoreMultiplier
+from .Alert import Alert
+from .Feature import Feature
+
+Now you can do:
+
+from src.models.pydantic import AlertMetadata, Signal
+
+
+---
+
+✅ Similarly, for models/orm/__init__.py
+
+If you have:
+
+merged_orm.py that defines all ORM models,
+
+
+Then your __init__.py would look like:
+
+from .merged_orm import (
+    AlertMetadata,
+    Participant,
+    LanguageCode,
+    ConversationLevelNoise,
+    Signal,
+    Annotation,
+    ScoreBooster,
+    ScoreMultiplier,
+    Alert,
+    Feature
+)
+
+
+---
+
+Would you like a script that automatically generates these __init__.py files with the appropriate imports based on file/class names?
+
