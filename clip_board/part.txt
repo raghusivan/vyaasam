@@ -1,0 +1,112 @@
+To fix the type field conflict across the three layers (ORM, Pydantic, and mapping logic), you need to:
+
+✅ Fixes Applied:
+
+1. ORM Model (merged_orm.py):
+
+Renamed type_ to type (correct keyword)
+
+Used name='type' instead of _name_pos='type' which was incorrect
+
+
+
+2. Pydantic Model (Participant.py):
+
+Defined type_: Optional[str] = Field(alias="type") to avoid conflict with Python reserved keyword
+
+Allowed population by both field name and alias
+
+
+
+3. ORM Mapper (orm_mapper.py):
+
+Used type_=p.type_ instead of type=p.type
+
+
+
+
+
+---
+
+✅ Final Version: All 3 files
+
+1. merged_orm.py (SQLAlchemy ORM model)
+
+class Participant(Base):
+    __tablename__ = "participant"
+
+    id = Column(String, primary_key=True)
+    alert_metadata_id = Column(String, ForeignKey("alert_metadata.id"))
+    participant_unique_id = Column(String)
+    email_address = Column(String)
+    type = Column("type", String)  # Use actual column name here
+    country = Column(String)
+    region = Column(String)
+    participant_name = Column(String)
+    custom1 = Column(String)
+    custom4 = Column(String)
+    org_unit_level3 = Column(String)
+    original_org_alias = Column(String)
+
+    features = relationship("Feature", backref="participant")
+
+
+---
+
+2. Participant.py (Pydantic model)
+
+from typing import List, Optional
+from .base import BaseModel
+from pydantic import Field
+from .Feature import Feature
+
+class Participant(BaseModel):
+    id: str
+    participantUniqueId: str
+    emailAddress: str
+    type_: Optional[str] = Field(alias="type")  # renamed here to avoid Python keyword conflict
+    country: str
+    region: str
+    participantName: str
+    custom1: str
+    custom4: str
+    orgUnitLevel3: str
+    originalOrgAlias: Optional[str] = None
+    features: Optional[List[Feature]] = []
+
+    class Config:
+        populate_by_name = True
+        allow_population_by_field_name = True
+
+
+---
+
+3. orm_mapper.py (Mapper logic)
+
+@staticmethod
+def map_participant(p: Participant) -> ParticipantORM:
+    return ParticipantORM(
+        id=p.id,
+        participant_unique_id=p.participantUniqueId,
+        email_address=p.emailAddress,
+        type=p.type_,  # correctly maps alias type_ → type
+        country=p.country,
+        region=p.region,
+        participant_name=p.participantName,
+        custom1=p.custom1,
+        custom4=p.custom4,
+        org_unit_level3=p.orgUnitLevel3,
+        original_org_alias=p.originalOrgAlias,
+        features=[
+            FeatureORM(
+                type=f.type,
+                feature_value=f.featureValue
+            ) for f in p.features or []
+        ]
+    )
+
+
+---
+
+Let me know if you’d like the full end-to-end zipped project folder with these changes applied.
+
