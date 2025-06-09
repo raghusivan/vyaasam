@@ -1,0 +1,36 @@
+Here’s a side-by-side comparison matrix of using Stripped-Down Django vs Pure Python for your AWS Lambda-based Elasticsearch scraping project:
+
+
+---
+
+✅ Django vs Pure Python for AWS Lambda – Comparison Matrix
+
+Criteria	🟡 Stripped-Down Django Lambda	🟢 Pure Python Lambda
+
+Cold Start Performance	❌ Slow (~1.5–5 sec) due to framework overhead	✅ Fast (~100–300ms) – lightweight startup
+Deployment Package Size	⚠️ ~35MB+ (zipped), needs careful trimming	✅ ~11MB zipped – well within limits
+Ease of Packaging	❌ Often requires Docker or Lambda Layers	✅ Simple ZIP deploy, works with sam, serverless
+Framework Overhead	❌ Includes unused components (ORM, middleware)	✅ Only includes what you need
+Team Familiarity	✅ May align with existing team experience	⚠️ Might need a little structure if new
+Future UI/API Expansion	✅ Easy to extend using Django REST/admin	❌ Requires migration to a web framework
+Observability & Logging	❌ Requires tweaking to integrate into Lambda logs	✅ Simple, native logging via print or logging
+Best Fit for Lambda Model	❌ Not serverless-native	✅ Designed for stateless, short-lived exec
+Testing & Local Dev	⚠️ Heavier, Django setup needed for tests	✅ Fast local testing, fewer dependencies
+Security Surface	❌ Larger attack surface due to framework bloat	✅ Minimal, easier to secure
+Infrastructure Simplicity	❌ Tightly coupled to Django structure	✅ Clean, modular, loosely coupled
+Suitability for Cron Jobs	⚠️ Possible via management commands	✅ Natural fit via lambda_handler or schedulers
+
+
+
+---
+
+🧠 Conclusion for a Team Lead Using Lambda
+
+Recommendation
+
+✅ Use Pure Python Lambda to get the best performance, simplest deployment, and most maintainable codebase for your scraper job.
+💡 If Django must be used, treat it as a temporary scaffold and abstract core logic into reusable modules, so you can move to pure Python later if needed.
+
+
+Let me know if you’d like this as a downloadable PDF or Confluence-ready table!
+
