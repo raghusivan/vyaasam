@@ -1,0 +1,68 @@
+import pytest
+from unittest.mock import patch, MagicMock
+
+# Fixture to patch all external calls and import insert_data safely
+@pytest.fixture
+def setup_test_env():
+    # Patch boto3.client to prevent real S3 access
+    mock_s3 = MagicMock()
+    mock_s3.get_object.return_value = {
+        'Body': MagicMock(read=lambda: b'dummy_cert_data')
+    }
+    patch("boto3.client", return_value=mock_s3).start()
+
+    # Patch CyberArk and requests
+    patch("core.handlers.cyberark_client.get_service_password_from_cyberark",
+          MagicMock(return_value="dummy_password")).start()
+    patch("core.handlers.cyberark_client", MagicMock()).start()
+    patch("requests.get", MagicMock()).start()
+
+    # Now import your target function AFTER patching
+    from src.main import insert_data
+    return insert_data
+
+# Logger fixture
+@pytest.fixture
+def logger():
+    mock_logger = MagicMock()
+    mock_logger.debug = MagicMock()
+    mock_logger.info = MagicMock()
+    mock_logger.error = MagicMock()
+    mock_logger.warning = MagicMock()
+    mock_logger.exception = MagicMock()
+    return mock_logger
+
+# ====== Actual Unit Tests ======
+
+def test_insert_data_single(setup_test_env, logger):
+    insert_data = setup_test_env
+    db = MagicMock()
+    objs = [MagicMock(), MagicMock()]
+    result = insert_data(logger, db, objs, "single", 100)
+    assert result == objs
+    assert db.save.call_count == 2
+
+def test_insert_data_bulk(setup_test_env, logger):
+    insert_data = setup_test_env
+    db = MagicMock()
+    objs = [MagicMock() for _ in range(5)]
+    result = insert_data(logger, db, objs, "bulk", 2)
+    assert result == objs
+    assert db.bulk_save.call_count == 3
+
+def test_insert_data_invalid_method(setup_test_env, logger):
+    insert_data = setup_test_env
+    db = MagicMock()
+    objs = [MagicMock()]
+    result = insert_data(logger, db, objs, "invalid", 100)
+    logger.error.assert_called_with("Invalid insert method. Use 'bulk' or 'single'.")
+    assert result == []
+
+def test_insert_data_exception(setup_test_env, logger):
+    insert_data = setup_test_env
+    db = MagicMock()
+    db.save.side_effect = Exception("fail")
+    objs = [MagicMock()]
+    with pytest.raises(Exception):
+        insert_data(logger, db, objs, "single", 100)
+    logger.error.assert_called()
