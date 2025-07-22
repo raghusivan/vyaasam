@@ -1,0 +1,67 @@
+import pytest
+from unittest.mock import patch, MagicMock
+
+# ========== Patch External Dependencies BEFORE Import ==========
+# Patch boto3 S3 client and .get_object().read()
+mock_s3_client = MagicMock()
+mock_s3_client.get_object.return_value = {
+    'Body': MagicMock(read=lambda: b'dummy_cert_data')
+}
+patch("boto3.client", return_value=mock_s3_client).start()
+
+# Patch CyberArk password fetch
+patch("core.handlers.cyberark_client.get_service_password_from_cyberark",
+      MagicMock(return_value="dummy_password")).start()
+
+# Patch CyberArk client
+patch("core.handlers.cyberark_client", MagicMock()).start()
+
+# Patch requests.get
+patch("requests.get", MagicMock()).start()
+
+# ========== Now Import Application Code ==========
+from src.main import insert_data
+
+# ========== Pytest Fixtures ==========
+@pytest.fixture
+def logger():
+    mock_logger = MagicMock()
+    mock_logger.debug = MagicMock()
+    mock_logger.info = MagicMock()
+    mock_logger.error = MagicMock()
+    mock_logger.warning = MagicMock()
+    mock_logger.exception = MagicMock()
+    return mock_logger
+
+# ========== Unit Tests ==========
+def test_insert_data_single(logger):
+    db = MagicMock()
+    objs = [MagicMock(), MagicMock()]
+    result = insert_data(logger, db, objs, "single", 100)
+    assert result == objs
+    assert db.save.call_count == 2
+
+
+def test_insert_data_bulk(logger):
+    db = MagicMock()
+    objs = [MagicMock() for _ in range(5)]
+    result = insert_data(logger, db, objs, "bulk", 2)
+    assert result == objs
+    assert db.bulk_save.call_count == 3  # 2+2+1
+
+
+def test_insert_data_invalid_method(logger):
+    db = MagicMock()
+    objs = [MagicMock()]
+    result = insert_data(logger, db, objs, "invalid", 100)
+    logger.error.assert_called_with("Invalid insert method. Use 'bulk' or 'single'.")
+    assert result == []
+
+
+def test_insert_data_exception(logger):
+    db = MagicMock()
+    db.save.side_effect = Exception("fail")
+    objs = [MagicMock()]
+    with pytest.raises(Exception):
+        insert_data(logger, db, objs, "single", 100)
+    logger.error.assert_called()
