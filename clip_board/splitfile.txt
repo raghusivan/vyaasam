@@ -1,0 +1,108 @@
+Option Explicit
+
+Sub ExportPagesToPDF_ByReference_NoFooter()
+    Const OUTPUT_FOLDER As String = "C:\pdfs"
+    Const MAX_NAME_LEN As Long = 120   ' keep filenames reasonable
+
+    Dim doc As Document
+    Dim totalPages As Long, i As Long
+    Dim rngPage As Range
+    Dim pageText As String, fileName As String
+    Dim re As Object, m As Object, used As Object
+    Dim sec As Section, hf As HeaderFooter
+
+    If Documents.Count = 0 Then
+        MsgBox "Open a Word document first.", vbCritical: Exit Sub
+    End If
+    Set doc = ActiveDocument
+
+    ' Ensure output folder exists
+    On Error Resume Next
+    If Dir(OUTPUT_FOLDER, vbDirectory) = "" Then MkDir OUTPUT_FOLDER
+    On Error GoTo 0
+    If Dir(OUTPUT_FOLDER, vbDirectory) = "" Then
+        MsgBox "Can't create/find " & OUTPUT_FOLDER, vbCritical: Exit Sub
+    End If
+
+    ' Remove all footers so page numbers don't render
+    For Each sec In doc.Sections
+        For Each hf In sec.Footers
+            hf.Range.Delete
+        Next hf
+    Next sec
+
+    totalPages = doc.ComputeStatistics(wdStatisticPages)
+
+    ' Regex to capture EVERYTHING after "Reference:" on that page (first line only)
+    Set re = CreateObject("VBScript.RegExp")
+    With re
+        .Pattern = "Reference:\s*(.+)"
+        .IgnoreCase = True
+        .Global = False
+    End With
+
+    ' Track used names to avoid overwriting
+    Set used = CreateObject("Scripting.Dictionary")
+
+    For i = 1 To totalPages
+        ' Build a range covering page i
+        Set rngPage = doc.GoTo(What:=wdGoToPage, Which:=wdGoToAbsolute, Count:=i)
+        If i = totalPages Then
+            rngPage.End = doc.Range.End
+        Else
+            rngPage.End = doc.GoTo(What:=wdGoToPage, Which:=wdGoToAbsolute, Count:=i + 1).Start - 1
+        End If
+
+        pageText = rngPage.Text
+
+        ' Default name if no Reference line found
+        fileName = "Page_" & CStr(i)
+
+        ' If we find "Reference: <something>", use that "something" as the base name
+        If re.Test(pageText) Then
+            Set m = re.Execute(pageText)(0)
+            fileName = m.SubMatches(0)
+
+            ' keep only the first line after "Reference:"
+            If InStr(fileName, vbCr) > 0 Then fileName = Split(fileName, vbCr)(0)
+            If InStr(fileName, vbLf) > 0 Then fileName = Split(fileName, vbLf)(0)
+            fileName = Trim(fileName)
+            If fileName = "" Then fileName = "Page_" & CStr(i)
+        End If
+
+        ' Sanitize filename
+        fileName = Replace(fileName, "\", "_")
+        fileName = Replace(fileName, "/", "_")
+        fileName = Replace(fileName, ":", "_")
+        fileName = Replace(fileName, "*", "_")
+        fileName = Replace(fileName, "?", "_")
+        fileName = Replace(fileName, """", "_")
+        fileName = Replace(fileName, "<", "_")
+        fileName = Replace(fileName, ">", "_")
+        fileName = Replace(fileName, "|", "_")
+        fileName = Replace(fileName, vbTab, " ")
+        fileName = Replace(fileName, "  ", " ")
+        If Len(fileName) > MAX_NAME_LEN Then fileName = Left$(fileName, MAX_NAME_LEN)
+
+        ' Deduplicate if needed
+        If used.Exists(LCase$(fileName)) Then
+            used(LCase$(fileName)) = used(LCase$(fileName)) + 1
+            fileName = fileName & "_" & used(LCase$(fileName))
+        Else
+            used.Add LCase$(fileName), 1
+        End If
+
+        ' Export page i
+        doc.ExportAsFixedFormat _
+            OutputFileName:=OUTPUT_FOLDER & "\" & fileName & ".pdf", _
+            ExportFormat:=wdExportFormatPDF, _
+            Range:=wdExportFromTo, From:=i, To:=i, _
+            Item:=wdExportDocumentContent, _
+            IncludeDocProps:=False, KeepIRM:=True, _
+            CreateBookmarks:=wdExportCreateNoBookmarks, _
+            DocStructureTags:=True, BitmapMissingFonts:=True, _
+            UseISO19005_1:=False
+    Next i
+
+    MsgBox "Done! Exported " & totalPages & " page(s) to " & OUTPUT_FOLDER, vbInformation
+End Sub
