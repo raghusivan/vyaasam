@@ -1,0 +1,152 @@
+Option Explicit
+
+Sub ExportPagesToPDF_RuralOps_Naming()
+    Const OUT_DIR As String = "C:\temp"
+    Const MAX_NAME_LEN As Long = 160
+
+    Dim doc As Document, totalPages As Long, i As Long
+    Dim rngPage As Range, pageText As String
+    Dim docType As String, clientNo As String, clientName As String, fileSeg As String
+    Dim baseName As String, finalName As String
+    Dim sec As Section, hf As HeaderFooter
+    Dim used As Object
+
+    If Documents.Count = 0 Then
+        MsgBox "Open a Word document first.", vbCritical: Exit Sub
+    End If
+    Set doc = ActiveDocument
+
+    ' Create output folder if missing
+    On Error Resume Next
+    If Dir(OUT_DIR, vbDirectory) = "" Then MkDir OUT_DIR
+    On Error GoTo 0
+    If Dir(OUT_DIR, vbDirectory) = "" Then
+        MsgBox "Couldn't create/find " & OUT_DIR, vbCritical: Exit Sub
+    End If
+
+    Application.ScreenUpdating = False
+
+    ' Remove ALL footers so page numbers don't render
+    For Each sec In doc.Sections
+        For Each hf In sec.Footers
+            hf.Range.Delete
+        Next hf
+    Next sec
+
+    totalPages = doc.ComputeStatistics(wdStatisticPages)
+    Set used = CreateObject("Scripting.Dictionary")
+
+    For i = 1 To totalPages
+        ' Build a range for page i
+        Set rngPage = doc.GoTo(What:=wdGoToPage, Which:=wdGoToAbsolute, Count:=i)
+        If i = totalPages Then
+            rngPage.End = doc.Range.End
+        Else
+            rngPage.End = doc.GoTo(What:=wdGoToPage, Which:=wdGoToAbsolute, Count:=i + 1).Start - 1
+        End If
+        pageText = rngPage.Text
+
+        ' Extract fields from page text (very forgiving patterns)
+        docType = FindFirst(pageText, _
+            "Document\s*Type\s*(?:will\s*be|is|:|=)\s*[""“']?([^""”'\r\n\.]+)")
+        clientNo = FindFirst(pageText, _
+            "Client\s*No(?:\.|:|=)?\s*([A-Za-z0-9_-]+)")
+        If clientNo = "" Then clientNo = FindFirst(pageText, _
+            "Client\s*Number(?:\.|:|=)?\s*([A-Za-z0-9_-]+)")
+        clientName = FindFirst(pageText, _
+            "Client\s*Name(?:\.|:|=)?\s*([^\r\n]+)")
+        fileSeg = FindFirst(pageText, _
+            "File\s*Name(?:\.|:|=)?\s*([^\r\n]+)")
+        If fileSeg = "" Then fileSeg = FindFirst(pageText, _
+            "Filename(?:\.|:|=)?\s*([^\r\n]+)")
+
+        ' Clean/trim segments
+        docType = CleanSeg(docType)
+        clientNo = CleanSeg(clientNo)
+        clientName = CleanSeg(clientName)
+        fileSeg = CleanSeg(fileSeg)
+
+        ' Build base name using your convention (leave blanks as blanks)
+        If docType = "" And clientNo = "" And clientName = "" And fileSeg = "" Then
+            baseName = "RuralOperationsDocuments_Page_" & CStr(i)
+        Else
+            baseName = "RuralOperationsDocuments_" & docType & "_" & clientNo & "_" & clientName & "_" & fileSeg
+        End If
+
+        ' Final file name: sanitize OS-illegal chars, limit length, dedupe
+        finalName = SanitizeFileName(baseName, MAX_NAME_LEN)
+        finalName = Dedupe(finalName, used)
+
+        ' Export page i as PDF
+        doc.ExportAsFixedFormat _
+            OutputFileName:=OUT_DIR & "\" & finalName & ".pdf", _
+            ExportFormat:=wdExportFormatPDF, _
+            Range:=wdExportFromTo, From:=i, To:=i, _
+            Item:=wdExportDocumentContent, _
+            IncludeDocProps:=False, KeepIRM:=True, _
+            CreateBookmarks:=wdExportCreateNoBookmarks, _
+            DocStructureTags:=True, BitmapMissingFonts:=True, _
+            UseISO19005_1:=False
+    Next i
+
+    Application.ScreenUpdating = True
+    MsgBox "Done! Exported " & totalPages & " PDF(s) to " & OUT_DIR, vbInformation
+End Sub
+
+'---- helpers ----
+
+Private Function FindFirst(ByVal text As String, ByVal pattern As String) As String
+    Dim rx As Object, m As Object
+    Set rx = CreateObject("VBScript.RegExp")
+    With rx
+        .Pattern = pattern
+        .IgnoreCase = True
+        .Global = False
+        .MultiLine = True
+    End With
+    If rx.Test(text) Then
+        Set m = rx.Execute(text)(0)
+        FindFirst = Trim$(m.SubMatches(0))
+        ' take only first line if remainder contains newline
+        If InStr(FindFirst, vbCr) > 0 Then FindFirst = Split(FindFirst, vbCr)(0)
+        If InStr(FindFirst, vbLf) > 0 Then FindFirst = Split(FindFirst, vbLf)(0)
+    Else
+        FindFirst = ""
+    End If
+End Function
+
+Private Function CleanSeg(ByVal s As String) As String
+    s = Trim$(s)
+    s = Replace(s, vbTab, " ")
+    s = Replace(s, "  ", " ")
+    ' Strip trailing dots/commas/quotes
+    Do While Len(s) > 0 And InStr(".,""’”' ", Right$(s, 1)) > 0
+        s = Left$(s, Len(s) - 1)
+    Loop
+    CleanSeg = s
+End Function
+
+Private Function SanitizeFileName(ByVal s As String, ByVal maxLen As Long) As String
+    Dim bad As Variant, i As Long
+    bad = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+    For i = LBound(bad) To UBound(bad)
+        s = Replace$(s, bad(i), "_")
+    Next i
+    s = Replace$(s, vbTab, " ")
+    s = Trim$(s)
+    If Len(s) > maxLen Then s = Left$(s, maxLen)
+    SanitizeFileName = s
+End Function
+
+Private Function Dedupe(ByVal base As String, ByVal used As Object) As String
+    Dim key As String, n As Long
+    key = LCase$(base)
+    If Not used.Exists(key) Then
+        used.Add key, 1
+        Dedupe = base
+    Else
+        n = used(key) + 1
+        used(key) = n
+        Dedupe = base & "_" & n
+    End If
+End Function
