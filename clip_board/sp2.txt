@@ -1,0 +1,132 @@
+Option Explicit
+
+Sub ExportPagesToPDF_RuralOps_ByReference()
+    Const OUT_DIR As String = "C:\temp"
+    Const MAXLEN As Long = 160
+
+    Dim doc As Document
+    Dim totalPages As Long, i As Long
+    Dim rngPage As Range, pageText As String
+    Dim refVal As String, baseName As String, finalName As String
+    Dim sec As Section, hf As HeaderFooter
+    Dim used As Object
+
+    If Documents.Count = 0 Then
+        MsgBox "Open a Word document first.", vbCritical: Exit Sub
+    End If
+    Set doc = ActiveDocument
+
+    ' Ensure output folder exists (create if missing)
+    On Error Resume Next
+    If Dir(OUT_DIR, vbDirectory) = "" Then MkDir OUT_DIR
+    On Error GoTo 0
+    If Dir(OUT_DIR, vbDirectory) = "" Then
+        MsgBox "Couldn't create/find " & OUT_DIR, vbCritical: Exit Sub
+    End If
+
+    Application.ScreenUpdating = False
+
+    ' Remove ALL footers (prevents page numbers appearing in PDFs)
+    For Each sec In doc.Sections
+        For Each hf In sec.Footers
+            hf.Range.Delete
+        Next hf
+    Next sec
+
+    totalPages = doc.ComputeStatistics(wdStatisticPages)
+    Set used = CreateObject("Scripting.Dictionary")
+
+    For i = 1 To totalPages
+        ' Build a range for page i
+        Set rngPage = doc.GoTo(What:=wdGoToPage, Which:=wdGoToAbsolute, Count:=i)
+        If i = totalPages Then
+            rngPage.End = doc.Range.End
+        Else
+            rngPage.End = doc.GoTo(What:=wdGoToPage, Which:=wdGoToAbsolute, Count:=i + 1).Start - 1
+        End If
+        pageText = rngPage.Text
+
+        ' Get Reference Number from the page (robust patterns)
+        refVal = FindFirstMatch(pageText, "Reference\s*Number\s*[:#]?\s*([A-Za-z0-9\-\/]+)")
+        If refVal = "" Then refVal = FindFirstMatch(pageText, "Reference\s*No\.?\s*[:#]?\s*([A-Za-z0-9\-\/]+)")
+        If refVal = "" Then refVal = FindFirstMatch(pageText, "Reference\s*[:#]?\s*([A-Za-z0-9\-\/]+)")
+        ' Optional fallback to Incident Number if Reference missing
+        If refVal = "" Then refVal = FindFirstMatch(pageText, "Incident\s*Number\s*[:#]?\s*([A-Za-z0-9\-\/]+)")
+        If refVal = "" Then refVal = "UNKNOWN"
+
+        refVal = CleanSeg(refVal)
+
+        ' Build file name per your convention
+        baseName = "RuralOperationsDocuments_Remediation Communication_" & refVal & _
+                   "_TDBreakCostIssue_" & refVal
+
+        finalName = SanitizeFileName(baseName, MAXLEN)
+        finalName = Dedupe(finalName, used)
+
+        ' Export page i
+        doc.ExportAsFixedFormat _
+            OutputFileName:=OUT_DIR & "\" & finalName & ".pdf", _
+            ExportFormat:=wdExportFormatPDF, _
+            Range:=wdExportFromTo, From:=i, To:=i, _
+            Item:=wdExportDocumentContent, _
+            IncludeDocProps:=False, KeepIRM:=True, _
+            CreateBookmarks:=wdExportCreateNoBookmarks, _
+            DocStructureTags:=True, BitmapMissingFonts:=True, _
+            UseISO19005_1:=False
+    Next i
+
+    Application.ScreenUpdating = True
+    MsgBox "Done! Exported " & totalPages & " PDF(s) to " & OUT_DIR, vbInformation
+End Sub
+
+' --- helpers ---
+
+Private Function FindFirstMatch(ByVal text As String, ByVal pattern As String) As String
+    Dim rx As Object, m As Object
+    Set rx = CreateObject("VBScript.RegExp")
+    With rx
+        .Pattern = pattern
+        .IgnoreCase = True
+        .Global = False
+        .MultiLine = True
+    End With
+    If rx.Test(text) Then
+        Set m = rx.Execute(text)(0)
+        FindFirstMatch = Trim$(m.SubMatches(0))
+    Else
+        FindFirstMatch = ""
+    End If
+End Function
+
+Private Function CleanSeg(ByVal s As String) As String
+    s = Trim$(s)
+    s = Replace$(s, vbTab, " ")
+    Do While Len(s) > 0 And InStr(" .,'""’”", Right$(s, 1)) > 0
+        s = Left$(s, Len(s) - 1)
+    Loop
+    CleanSeg = s
+End Function
+
+Private Function SanitizeFileName(ByVal s As String, ByVal maxLen As Long) As String
+    Dim bad As Variant, i As Long
+    bad = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+    For i = LBound(bad) To UBound(bad)
+        s = Replace$(s, bad(i), "_")
+    Next i
+    s = Trim$(s)
+    If Len(s) > maxLen Then s = Left$(s, maxLen)
+    SanitizeFileName = s
+End Function
+
+Private Function Dedupe(ByVal base As String, ByVal used As Object) As String
+    Dim key As String, n As Long
+    key = LCase$(base)
+    If Not used.Exists(key) Then
+        used.Add key, 1
+        Dedupe = base
+    Else
+        n = used(key) + 1
+        used(key) = n
+        Dedupe = base & "_" & n
+    End If
+End Function
