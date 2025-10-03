@@ -1,0 +1,581 @@
+Python Coding Best Practices for AWS Lambda (VS Code + Tooling)
+
+> Audience: Python developers building small, fast, reliable Lambda functions. This guide lays out coding standards, folder structure, tooling, extensions, and CI checks I use as a senior Python engineer.
+
+
+
+
+---
+
+1) Engineering Principles
+
+Small, single‑purpose functions: one Lambda = one responsibility. Compose with events (SQS, EventBridge) rather than branches.
+
+Fast cold starts: keep dependencies lean; avoid heavy frameworks; lazy‑import optional libs inside handlers only when needed.
+
+Stateless & idempotent: design handlers so replays don’t cause duplicate effects; persist idempotency keys (e.g., DynamoDB) for exactly‑once semantics.
+
+Observable by default: structured JSON logs, metrics (EMF), and tracing. Every invocation emits context + outcome.
+
+Secure by default: least‑privilege IAM, no secrets in code, use SSM/Secrets Manager, validate all inputs.
+
+Typed, tested, and lint‑clean: PEP 8, type hints, 100% lint/format on save, unit tests + contract tests.
+
+
+
+---
+
+2) Recommended Folder Structure
+
+repo/
+└── src/
+    └── my_service/
+        ├── __init__.py
+        ├── handler.py          # AWS Lambda handler(s)
+        ├── app.py              # domain logic, pure/side-effect free where possible
+        ├── adapters/           # I/O: s3, sqs, dynamodb, http clients
+        ├── models/             # pydantic models / dataclasses
+        ├── utils/              # logging, config, retry helpers
+        └── validation/         # schemas, guards, input validation
+└── tests/
+    ├── unit/
+    ├── integration/
+    └── contract/
+└── infra/                      # SAM/CDK/Terraform if used
+└── pyproject.toml              # build + tooling config (ruff, black, pytest)
+└── requirements.in             # human-edited deps (if using pip-tools)
+└── requirements.txt            # locked deps (generated)
+└── pre-commit-config.yaml
+└── .editorconfig
+└── .vscode/settings.json
+└── Makefile
+
+Why this structure?
+
+Keeps the handler thin; business logic testable in app.py.
+
+Decouples adapters so they are easy to stub/moto‑mock.
+
+Consistent with import rules and packaging for Lambda.
+
+
+
+---
+
+3) Coding Standards (What I do day‑to‑day)
+
+Type everything: use from __future__ import annotations + type hints everywhere, including dict literals and return types.
+
+No implicit I/O in handlers: parse event → validate → call pure functions → invoke adapters → return. Makes unit tests trivial.
+
+Structured logging: always log JSON with fixed fields (requestId, functionName, correlationId, outcome, latencyMs, level).
+
+Input validation: model events with pydantic (v2) or lightweight guards; fail fast with clear error messages.
+
+Retry where safe: use exponential backoff (tenacity) around transient calls; make retries idempotent.
+
+Time‑boxing: respect context.get_remaining_time_in_millis(). Bail out early and signal retry if low.
+
+Resource reuse: create AWS clients/DB pools outside the handler, so execution environment reuse hits warm paths.
+
+Constants & configuration: centralize in utils/config.py using env vars; validate at cold start.
+
+Small dependencies: prefer stdlib; for JSON use orjson only if worth the size; otherwise builtin json is fine.
+
+
+
+---
+
+4) Lambda Handler Pattern (Reference Implementation)
+
+# src/my_service/handler.py
+from __future__ import annotations
+import json
+import os
+import time
+from typing import Any, Dict
+
+from aws_lambda_powertools import Logger, Metrics, Tracer
+from aws_lambda_powertools.metrics import MetricUnit
+from pydantic import BaseModel, ValidationError
+
+logger = Logger(service="my_service")
+metrics = Metrics(namespace="MyCompany/MyService")
+tracer = Tracer(service="my_service")
+
+class InputEvent(BaseModel):
+    id: str
+    action: str
+    payload: dict
+
+@tracer.capture_lambda_handler
+@metrics.log_metrics
+@logger.inject_lambda_context
+def handler(event: Dict[str, Any], context):
+    start = time.perf_counter()
+    try:
+        model = InputEvent.model_validate(event)
+        result = process(model)
+        latency = int((time.perf_counter() - start) * 1000)
+        metrics.add_metric(name="Success", unit=MetricUnit.Count, value=1)
+        metrics.add_metric(name="LatencyMs", unit=MetricUnit.Milliseconds, value=latency)
+        logger.info({"outcome": "ok", "latencyMs": latency, "id": model.id})
+        return {"statusCode": 200, "body": json.dumps(result)}
+    except ValidationError as ve:
+        logger.warning({"outcome": "invalid", "errors": ve.errors()})
+        return {"statusCode": 400, "body": json.dumps({"error": "Bad Request"})}
+    except Exception as e:  # noqa: BLE001 - last resort trap, log + rethrow for DLQ/retry
+        logger.exception({"outcome": "error", "error": str(e)})
+        raise
+
+# src/my_service/app.py
+from pydantic import BaseModel
+
+class Output(BaseModel):
+    message: str
+
+
+def process(evt) -> dict:
+    # Pure business logic where possible
+    out = Output(message=f"Processed {evt.id} with {evt.action}")
+    return out.model_dump()
+
+Key ideas
+
+Powertools adds consistent logs, metrics (EMF), and X‑Ray tracing.
+
+Validation keeps bad events out of your logic.
+
+Exceptions bubble to retry/DLQ per event source semantics.
+
+
+
+---
+
+5) Library Recommendations (Lean set)
+
+AWS: boto3, botocore, aws-lambda-powertools (logger/metrics/tracer, idempotency, parser, batch processing)
+
+Validation/Config: pydantic>=2, pydantic-settings (env var parsing)
+
+HTTP: httpx (sync/async, timeouts & retries), or stdlib urllib.request for very small footprints
+
+Resilience: tenacity (exponential backoff)
+
+Serialization: stdlib json; consider orjson only if measured benefit > size cost
+
+Testing: pytest, pytest-cov, moto (AWS mocks), freezegun, responses/respx (HTTP mocks)
+
+Typing: boto3-stubs[lambda,s3,sqs,dynamodb,…] for completion & types in VS Code
+
+Security/SCA: bandit, pip-audit (or safety)
+
+
+> Keep zipped artifact < 50 MB; Lambda /tmp is ephemeral (configurable up to 10 GiB). Prefer Layers for shared heavy deps.
+
+
+
+
+---
+
+6) VS Code Setup (Extensions + Settings)
+
+Must‑have extensions
+
+Python (ms-python.python)
+
+Pylance (ms-python.vscode-pylance) – blazing fast type checking (Pyright)
+
+Ruff (charliermarsh.ruff) – linter + import sorter (replaces flake8/isort)
+
+Black Formatter (ms-python.black-formatter) – opinionated formatter
+
+AWS Toolkit (amazonwebservices.aws-toolkit-vscode) – run/debug Lambda locally, deploy, view logs
+
+YAML (redhat.vscode-yaml) – for SAM/CloudFormation
+
+Better TOML (bungcip.better-toml) – for pyproject.toml
+
+EditorConfig, GitLens, Error Lens, Makefile Tools
+
+Optional: Remote – SSH, Dev Containers, Docker, Markdown All in One
+
+
+.vscode/settings.json
+
+{
+  "python.defaultInterpreterPath": "/usr/bin/python3",
+  "python.testing.pytestEnabled": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true,
+    "source.organizeImports": true
+  },
+  "black-formatter.args": ["--line-length=88"],
+  "python.formatting.provider": "none", // use Black extension
+  "ruff.enable": true,
+  "ruff.lint.args": ["--fix"],
+  "ruff.organizeImports": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  }
+}
+
+
+---
+
+7) Tooling & Config (pyproject, lint, type‑check, tests)
+
+pyproject.toml
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my-service"
+version = "0.1.0"
+description = "Lambda service"
+requires-python = ">=3.11"
+dependencies = [
+  "boto3>=1.34",
+  "aws-lambda-powertools>=2",
+  "pydantic>=2",
+  "pydantic-settings>=2",
+  "httpx>=0.27",
+  "tenacity>=8"
+]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+fix = true
+select = ["E","F","I","B","UP","RUF"]
+ignore = ["E203","E501"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --cov=src --cov-report=term-missing"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/my_service"]
+
+pyrightconfig.json (optional stricter typing)
+
+{
+  "venvPath": ".venv",
+  "typeCheckingMode": "strict",
+  "reportMissingTypeStubs": false,
+  "reportUnknownArgumentType": true,
+  "reportUnknownMemberType": true
+}
+
+pre-commit-config.yaml
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: ["-c", "bandit.yaml", "-r", "src"]
+  - repo: https://github.com/pypa/pip-audit
+    rev: v2.7.3
+    hooks:
+      - id: pip-audit
+
+.editorconfig
+
+root = true
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+
+---
+
+8) Dependency Management
+
+Prefer pyproject.toml for first‑class metadata. If your pipeline requires requirements.txt, generate it.
+
+Use pip‑tools (pip-compile) to lock versions:
+
+
+pip install pip-tools
+pip-compile requirements.in   # -> requirements.txt
+pip-sync                       # reconcile venv with lockfile
+
+Alternative: uv (very fast) or Poetry if you need workspaces. For simple Lambdas, pip‑tools is minimal and CI‑friendly.
+
+
+
+---
+
+9) Packaging & Deployment
+
+Keep artifacts tiny
+
+Avoid large libs (e.g., full pandas) unless necessary; prefer Layers if you must.
+
+Use --platform matching Lambda runtime when building wheels in CI (or build on Amazon Linux container).
+
+
+Zip packaging (simple)
+
+# from repo root
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt --target build
+rsync -a src/ build/
+(cd build && zip -r ../artifact.zip .)
+
+With AWS SAM (local run & deploy)
+
+Use SAM for templates, local invoke, and packaging.
+
+sam build --use-container && sam deploy --guided
+
+
+CI Quality Gates (run in Bamboo/GitHub Actions/etc.)
+
+ruff .
+black --check .
+pytest
+mypy .  # or pyright via Pylance in editor
+bandit -r src
+pip-audit
+
+Makefile convenience
+
+.PHONY: init lint test pack
+init:
+	python -m venv .venv && . .venv/bin/activate && pip install -U pip wheel && pip install -r requirements.txt -r requirements-dev.txt
+lint:
+	ruff . && black --check .
+test:
+	pytest
+pack:
+	rm -rf build && pip install -r requirements.txt --target build && rsync -a src/ build/ && (cd build && zip -r ../artifact.zip .)
+
+
+---
+
+10) Observability & Ops
+
+Logging: JSON logs only. Include correlationId (propagate from headers or event), requestId, outcome, latencyMs. Use Powertools Logger.
+
+Metrics: Publish business metrics via EMF (Powertools Metrics). Alarm in CloudWatch.
+
+Tracing: Enable X‑Ray on functions; use Powertools Tracer decorators.
+
+Dead‑letters/Failures: For async sources (S3, EventBridge), configure DLQ/SFN catchers; for SQS streams, use partial batch response with Powertools batch utility.
+
+Config & Secrets: pull from SSM/Secrets Manager at cold start; cache in memory; refresh with TTL if needed.
+
+Timeouts: set client timeouts (HTTP/S3/etc.). Don’t rely on defaults. Respect remaining time and bail out gracefully.
+
+
+
+---
+
+11) Security Practices
+
+Least privilege IAM per function (read/write only what’s needed).
+
+No secrets in env/code; use KMS‑encrypted SSM/Secrets Manager.
+
+Validate all inputs (schema + length + whitelist enums). Treat event data as untrusted.
+
+Outbound HTTP: set allow‑lists and TLS verification on; pin hosts where possible.
+
+Dependency hygiene: run pip-audit/safety in CI; renovate/dependabot as applicable.
+
+
+
+---
+
+12) Testing Strategy
+
+Unit tests for pure logic modules (app.py).
+
+Adapter tests using moto for AWS calls; responses/respx for HTTP.
+
+Contract tests for event shapes; fixate JSON fixtures for SNS/SQS/S3 events.
+
+Integration tests with LocalStack or ephemeral test stack (SAM + dedicated stage).
+
+Coverage: aim 85%+ lines/branches for core logic.
+
+
+tests/unit/test_app.py
+
+from src.my_service.app import process
+
+class DummyEvt:
+    id = "123"; action = "do"; payload = {}
+
+def test_process_ok():
+    out = process(DummyEvt)
+    assert out["message"].startswith("Processed 123")
+
+
+---
+
+13) Runtime Performance Tips
+
+Choose Python 3.11 runtime (better perf). Benchmark 3.12/3.13 as they become available.
+
+Right‑size memory; more memory => more CPU => lower latency for CPU‑bound work.
+
+Reuse clients (boto3.client("s3")) outside handler.
+
+Prefer batch APIs (SQS send_message_batch, DynamoDB batch_write_item).
+
+Avoid datetime.utcnow() naïvely; use timezone‑aware datetime.now(timezone.utc).
+
+Cache lookups (env/config) at import time; invalidate on error.
+
+
+
+---
+
+14) Example Requirements Files
+
+requirements.in
+
+aws-lambda-powertools>=2
+boto3>=1.34
+pydantic>=2
+pydantic-settings>=2
+httpx>=0.27
+tenacity>=8
+
+requirements-dev.in
+
+pytest
+pytest-cov
+moto
+freezegun
+responses
+ruff
+black
+mypy
+bandit
+pip-audit
+boto3-stubs[lambda,s3,sqs,dynamodb]
+
+(Generate locked requirements*.txt with pip-compile.)
+
+
+---
+
+15) Editor Workflows I Use
+
+Format & lint on save: Black + Ruff keep diffs tiny and consistent.
+
+Quick Fixes: let Ruff auto‑apply fixes (imports/order, many flake8 rules, pyupgrade).
+
+Code Actions: extract method, rename symbol, inline variable; keep functions < 50 lines.
+
+Run tests in editor: Pytest discovery + status bar; watch mode via pytest -f.
+
+AWS Toolkit: Invoke on AWS SAM CLI for local event JSONs; tail CloudWatch logs from the panel.
+
+
+
+---
+
+16) Common Checklists
+
+PR checklist
+
+[ ] Lints/format pass, types pass
+
+[ ] Unit tests added/updated, coverage >= target
+
+[ ] Observability fields present (log, metric, trace)
+
+[ ] IAM policy reviewed (least privilege)
+
+[ ] Error paths exercised (invalid input, downstream failure)
+
+[ ] Package size checked; cold start within SLO
+
+
+Go‑live checklist
+
+[ ] Alarms for errors, throttles, and key business metrics
+
+[ ] DLQ/SFN catches configured
+
+[ ] Dashboards show p50/p90 latency & error rates
+
+[ ] Provisioned Concurrency set if latency SLO is tight
+
+
+
+---
+
+17) Quickstart: Zero‑to‑Deploy
+
+# 0) Create and activate venv
+python -m venv .venv && source .venv/bin/activate
+
+# 1) Install tools
+pip install -U pip wheel pip-tools
+pip-compile requirements.in && pip-compile requirements-dev.in
+pip-sync requirements.txt requirements-dev.txt
+
+# 2) Run quality checks
+ruff . && black --check . && pytest
+
+# 3) Build artifact
+make pack  # produces artifact.zip
+
+# 4) Deploy
+# via SAM: sam deploy --guided
+# or upload artifact.zip via your CI/CD (Bamboo/GitHub Actions) to target Lambda
+
+
+---
+
+18) FAQ
+
+Ruff vs Flake8 + isort? Ruff is faster and replaces both; keep Black for formatting.
+
+Mypy or Pyright? Use Pyright in VS Code (Pylance) for realtime; optional mypy in CI if you prefer its rule set.
+
+Do I need pydantic for tiny Lambdas? Not strictly; for trivial events, light guards may suffice. For anything non‑trivial, pydantic’s clarity is worth it.
+
+Local testing of AWS services? Prefer moto for unit tests; use LocalStack or SAM for selective integration tests.
+
+
+
+---
+
+Template complete. Duplicate this page per service, changing names, metrics namespaces, and IAM notes.
+
+
+
+I’ve drafted a full Confluence-ready guide covering Python coding best practices for AWS Lambda, plus VS Code setup, extensions, libraries, formatters/linters, packaging, CI checks, observability, security, and sample configs.
+
+Want me to tailor it to your org’s Bamboo pipeline (tasks, artifacts, build container, Amazon Linux wheels) or add a one-click “starter repo” zip with the templates and Makefile?
+
