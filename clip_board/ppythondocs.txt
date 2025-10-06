@@ -1,0 +1,1507 @@
+research and with examples write complete best practices python coding. research what sn expert python puts up a confluence doc for everyone to follow. the python code is mainly written and used by aws lambda. focus on libraries to use and also code format and follow best practices
+
+# Python Best Practices for AWS Lambda Development: Complete Expert Guidelines
+
+This comprehensive guide establishes the definitive coding standards and best practices for Python development in AWS Lambda environments. These guidelines are designed for enterprise-grade development teams and represent industry best practices compiled from expert sources and real-world production experience.
+## Executive Summary
+
+**Key Recommendations:**
+- **Code Formatting**: Use Black with line length of 100 characters[1][2]
+- **Project Structure**: Follow src-based layout with clear separation of concerns[3][4]
+- **Testing**: Implement comprehensive unit testing with pytest and moto[5][6]
+- **Libraries**: Prioritize boto3, requests, and aws-lambda-powertools[7][8]
+- **Performance**: Optimize for cold start reduction and memory efficiency[9][10]
+- **Security**: Use environment variables and AWS Secrets Manager for sensitive data[11][12]
+
+## Code Style and Formatting Standards
+
+### PEP 8 Compliance
+
+All Python code must adhere to PEP 8 standards[13]. Key requirements include:
+
+**Indentation and Line Length:**
+- Use 4 spaces per indentation level (never tabs)
+- Maximum line length: 100 characters (deviation from PEP 8's 79 for better readability in modern editors)
+- Use hanging indents for function parameters and long expressions
+
+**Naming Conventions:**
+- **Functions and Variables**: `snake_case` (e.g., `process_customer_data`)
+- **Classes**: `PascalCase` (e.g., `CustomerDataProcessor`) 
+- **Constants**: `UPPER_SNAKE_CASE` (e.g., `MAX_RETRY_ATTEMPTS`)
+- **Private Methods**: Single leading underscore (e.g., `_validate_input`)
+- **Lambda Handlers**: Always use `lambda_handler` as the function name
+
+### Automated Code Formatting
+
+**Black Configuration (Recommended):**
+```python
+# pyproject.toml
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+```
+
+**Pre-commit Hook Setup:**
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.9.1
+    hooks:
+      - id: black
+        language_version: python3.11
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+```
+
+### Import Organization
+
+Follow the three-tier import structure[13]:
+
+```python
+# Standard library imports
+import json
+import logging
+import os
+from typing import Dict, Any, Optional
+
+# Third-party imports
+import boto3
+import requests
+from aws_lambda_powertools import Logger, Tracer, Metrics
+
+# Local application imports
+from .models import CustomerData
+from .services import ValidationService
+from .utils import format_response
+```
+
+## Project Structure and Organization
+
+
+
+### Recommended Directory Structure
+
+```
+my-lambda-project/
+├── src/
+│   ├── handlers/                 # Lambda function handlers
+│   │   ├── __init__.py
+│   │   ├── customer_handler.py
+│   │   └── order_handler.py
+│   ├── services/                 # Business logic
+│   │   ├── __init__.py
+│   │   ├── customer_service.py
+│   │   └── validation_service.py
+│   ├── models/                   # Data models and schemas
+│   │   ├── __init__.py
+│   │   └── customer_model.py
+│   ├── utils/                    # Utility functions
+│   │   ├── __init__.py
+│   │   ├── decorators.py
+│   │   └── helpers.py
+│   └── __init__.py
+├── tests/
+│   ├── unit/
+│   │   ├── test_handlers/
+│   │   ├── test_services/
+│   │   └── test_models/
+│   ├── integration/
+│   ├── fixtures/
+│   └── conftest.py
+├── layers/
+│   └── dependencies/
+│       └── python/
+├── requirements.txt
+├── requirements-dev.txt
+├── pytest.ini
+├── pyproject.toml
+├── .gitignore
+└── README.md
+```
+
+### Handler Pattern Implementation
+
+**Recommended Lambda Handler Structure:**
+```python
+import json
+import logging
+from typing import Dict, Any
+from aws_lambda_powertools import Logger, Tracer, Metrics
+from aws_lambda_powertools.logging import correlation_paths
+from aws_lambda_powertools.metrics import MetricUnit
+
+from src.services.customer_service import CustomerService
+from src.utils.decorators import error_handler
+from src.utils.helpers import format_response
+
+logger = Logger()
+tracer = Tracer()
+metrics = Metrics()
+
+# Initialize service outside handler for reuse
+customer_service = CustomerService()
+
+@logger.inject_lambda_context(correlation_id_path=correlation_paths.API_GATEWAY_REST)
+@tracer.capture_lambda_handler
+@metrics.log_metrics(capture_cold_start_metric=True)
+@error_handler
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """
+    Process customer data from API Gateway request.
+    
+    Args:
+        event: API Gateway event data
+        context: Lambda runtime context
+        
+    Returns:
+        API Gateway response format
+    """
+    try:
+        # Extract and validate input
+        customer_data = _extract_customer_data(event)
+        
+        # Process business logic
+        result = customer_service.process_customer(customer_data)
+        
+        # Add custom metrics
+        metrics.add_metric(name="CustomerProcessed", unit=MetricUnit.Count, value=1)
+        
+        logger.info("Customer processed successfully", 
+                   extra={"customer_id": customer_data.get("id")})
+        
+        return format_response(200, result)
+        
+    except ValueError as e:
+        logger.error("Validation error", extra={"error": str(e)})
+        return format_response(400, {"error": "Invalid input data"})
+    except Exception as e:
+        logger.error("Unexpected error", extra={"error": str(e)})
+        return format_response(500, {"error": "Internal server error"})
+
+def _extract_customer_data(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract customer data from event body."""
+    body = event.get('body')
+    if isinstance(body, str):
+        return json.loads(body)
+    return body or {}
+```
+
+## Essential Libraries and Dependencies
+### Core AWS Libraries
+
+**boto3 and botocore** - AWS SDK for Python[7][14]:
+```python
+import boto3
+from botocore.exceptions import ClientError
+
+# Resource vs Client patterns
+dynamodb = boto3.resource('dynamodb')  # High-level, object-oriented
+dynamodb_client = boto3.client('dynamodb')  # Low-level, service operations
+
+# Best practice: Initialize outside handler
+s3_client = boto3.client('s3')
+
+def lambda_handler(event, context):
+    try:
+        response = s3_client.get_object(
+            Bucket='my-bucket',
+            Key='my-file.json'
+        )
+        return json.loads(response['Body'].read())
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            return {"error": "File not found"}
+        raise
+```
+
+**AWS Lambda Powertools** - Production-ready utilities[8]:
+```python
+from aws_lambda_powertools import Logger, Tracer, Metrics
+from aws_lambda_powertools.utilities.validation import validate
+from aws_lambda_powertools.utilities.parser import parse
+from aws_lambda_powertools.utilities.typing import LambdaContext
+
+logger = Logger()
+tracer = Tracer()
+metrics = Metrics()
+
+@tracer.capture_method
+def process_data(data: dict) -> dict:
+    # Automatic tracing and logging
+    return {"processed": data}
+```
+
+### HTTP and API Libraries
+
+**requests** - HTTP client library:
+```python
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+# Configure retry strategy
+session = requests.Session()
+retry_strategy = Retry(
+    total=3,
+    status_forcelist=[429, 500, 502, 503, 504],
+    method_whitelist=["HEAD", "GET", "OPTIONS"]
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+session.mount("http://", adapter)
+session.mount("https://", adapter)
+```
+
+### Recommended Dependencies
+
+**requirements.txt for Production:**
+```txt
+# AWS Core
+boto3>=1.26.0
+botocore>=1.29.0
+aws-lambda-powertools[all]>=2.0.0
+
+# HTTP and API
+requests>=2.28.0
+urllib3>=1.26.0
+
+# Data Processing
+pydantic>=1.10.0
+python-dateutil>=2.8.0
+
+# Logging
+structlog>=22.0.0
+
+# Environment
+python-dotenv>=0.19.0
+```
+
+**requirements-dev.txt for Development:**
+```txt
+# Testing
+pytest>=7.0.0
+pytest-mock>=3.8.0
+pytest-cov>=4.0.0
+moto[all]>=4.0.0
+
+# Code Quality
+black>=22.0.0
+flake8>=5.0.0
+mypy>=1.0.0
+isort>=5.10.0
+
+# Development Tools
+pre-commit>=2.20.0
+bandit>=1.7.0
+```
+
+## Error Handling and Logging Best Practices
+
+### Structured JSON Logging
+
+**AWS Lambda Logging Configuration:**
+```python
+import json
+import logging
+from aws_lambda_powertools import Logger
+
+# Configure structured logging
+logger = Logger(
+    service="customer-service",
+    log_level="INFO",
+    json_serializer=json.dumps
+)
+
+def lambda_handler(event, context):
+    logger.info("Processing request", 
+               extra={
+                   "request_id": context.aws_request_id,
+                   "customer_id": event.get("customer_id"),
+                   "event_type": event.get("eventType")
+               })
+    
+    try:
+        result = process_customer_data(event)
+        logger.info("Request processed successfully",
+                   extra={"result_count": len(result)})
+        return result
+    except ValueError as e:
+        logger.error("Validation failed", 
+                    extra={"error": str(e), "input_data": event})
+        raise
+    except Exception as e:
+        logger.error("Unexpected error occurred",
+                    extra={"error": str(e), "error_type": type(e).__name__})
+        raise
+```
+
+### Error Handling Patterns
+
+**Standardized Error Response Format:**
+```python
+from enum import Enum
+from typing import Dict, Any, Optional
+
+class ErrorCode(Enum):
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    NOT_FOUND = "NOT_FOUND"
+    PERMISSION_DENIED = "PERMISSION_DENIED"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
+
+def create_error_response(
+    status_code: int,
+    error_code: ErrorCode,
+    message: str,
+    details: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Create standardized error response."""
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "error": {
+                "code": error_code.value,
+                "message": message,
+                "details": details or {}
+            }
+        })
+    }
+
+# Usage example
+def lambda_handler(event, context):
+    try:
+        # Business logic here
+        pass
+    except ValueError as e:
+        return create_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            "Invalid input data",
+            {"field": str(e)}
+        )
+```
+
+### Exception Handling Decorator
+
+```python
+from functools import wraps
+import traceback
+
+def error_handler(func):
+    """Decorator for consistent error handling across Lambda functions."""
+    @wraps(func)
+    def wrapper(event, context):
+        try:
+            return func(event, context)
+        except ValueError as e:
+            logger.error("Validation error", extra={"error": str(e)})
+            return create_error_response(400, ErrorCode.VALIDATION_ERROR, str(e))
+        except PermissionError as e:
+            logger.error("Permission denied", extra={"error": str(e)})
+            return create_error_response(403, ErrorCode.PERMISSION_DENIED, str(e))
+        except Exception as e:
+            logger.error("Unhandled exception",
+                        extra={
+                            "error": str(e),
+                            "traceback": traceback.format_exc()
+                        })
+            return create_error_response(500, ErrorCode.INTERNAL_ERROR, 
+                                       "Internal server error")
+    return wrapper
+```
+
+## Testing Best Practices
+
+### Unit Testing with pytest and moto
+
+**Test Configuration (pytest.ini):**
+```ini
+[tool:pytest]
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+addopts = 
+    --strict-markers
+    --disable-socket
+    --cov=src
+    --cov-report=html
+    --cov-report=term-missing
+    --cov-fail-under=85
+markers =
+    unit: Unit tests
+    integration: Integration tests
+    slow: Slow running tests
+```
+
+**Test Fixtures (conftest.py):**
+```python
+import pytest
+import boto3
+import os
+from moto import mock_dynamodb, mock_s3
+from unittest.mock import patch
+
+@pytest.fixture(scope='function')
+def aws_credentials():
+    """Mocked AWS Credentials for moto."""
+    os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'testing'
+    os.environ['AWS_SECURITY_TOKEN'] = 'testing'
+    os.environ['AWS_SESSION_TOKEN'] = 'testing'
+    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+
+@pytest.fixture(scope='function')
+def dynamodb_mock(aws_credentials):
+    """Create mocked DynamoDB resource."""
+    with mock_dynamodb():
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        
+        # Create test table
+        table = dynamodb.create_table(
+            TableName='customers',
+            KeySchema=[
+                {
+                    'AttributeName': 'id',
+                    'KeyType': 'HASH'
+                }
+            ],
+            AttributeDefinitions=[
+                {
+                    'AttributeName': 'id',
+                    'AttributeType': 'S'
+                }
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+        
+        # Wait for table to be created
+        table.wait_until_exists()
+        
+        yield dynamodb
+
+@pytest.fixture
+def sample_event():
+    """Sample API Gateway event for testing."""
+    return {
+        "httpMethod": "POST",
+        "path": "/customers",
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": json.dumps({
+            "name": "John Doe",
+            "email": "john@example.com"
+        }),
+        "requestContext": {
+            "requestId": "test-request-id"
+        }
+    }
+```
+
+**Unit Test Example:**
+```python
+import pytest
+import json
+from unittest.mock import patch, MagicMock
+from src.handlers.customer_handler import lambda_handler
+
+class TestCustomerHandler:
+    """Test suite for customer handler."""
+    
+    def test_successful_customer_creation(self, dynamodb_mock, sample_event):
+        """Test successful customer creation."""
+        # Act
+        response = lambda_handler(sample_event, MagicMock())
+        
+        # Assert
+        assert response['statusCode'] == 200
+        body = json.loads(response['body'])
+        assert body['name'] == 'John Doe'
+        assert 'id' in body
+    
+    def test_invalid_input_validation(self, sample_event):
+        """Test validation of invalid input."""
+        # Arrange - invalid email
+        sample_event['body'] = json.dumps({
+            "name": "John Doe",
+            "email": "invalid-email"
+        })
+        
+        # Act
+        response = lambda_handler(sample_event, MagicMock())
+        
+        # Assert
+        assert response['statusCode'] == 400
+        body = json.loads(response['body'])
+        assert 'error' in body
+    
+    @patch('src.services.customer_service.requests.post')
+    def test_external_api_failure(self, mock_post, sample_event):
+        """Test handling of external API failures."""
+        # Arrange
+        mock_post.side_effect = requests.RequestException("API unavailable")
+        
+        # Act
+        response = lambda_handler(sample_event, MagicMock())
+        
+        # Assert
+        assert response['statusCode'] == 503
+    
+    @pytest.mark.parametrize("method,expected_status", [
+        ("GET", 200),
+        ("PUT", 200),
+        ("DELETE", 204),
+        ("PATCH", 405)  # Method not allowed
+    ])
+    def test_http_methods(self, sample_event, method, expected_status):
+        """Test different HTTP methods."""
+        sample_event['httpMethod'] = method
+        response = lambda_handler(sample_event, MagicMock())
+        assert response['statusCode'] == expected_status
+```
+
+### Integration Testing
+
+**Integration Test Example:**
+```python
+import boto3
+import pytest
+from moto import mock_dynamodb, mock_s3
+
+@pytest.mark.integration
+class TestCustomerWorkflow:
+    """Integration tests for complete customer workflow."""
+    
+    @mock_dynamodb
+    @mock_s3
+    def test_complete_customer_workflow(self):
+        """Test complete customer creation and processing workflow."""
+        # Setup AWS resources
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        s3 = boto3.client('s3', region_name='us-east-1')
+        
+        # Create necessary resources
+        self._setup_test_resources(dynamodb, s3)
+        
+        # Test workflow
+        event = self._create_test_event()
+        result = lambda_handler(event, MagicMock())
+        
+        # Verify results in multiple services
+        assert result['statusCode'] == 200
+        self._verify_dynamodb_record(dynamodb)
+        self._verify_s3_file(s3)
+```
+
+## Security Best Practices
+
+### Environment Variables and Secrets Management
+
+**Environment Variables Configuration:**
+```python
+import os
+from typing import Optional
+
+class Config:
+    """Configuration management for Lambda function."""
+    
+    # Database configuration
+    DB_HOST: str = os.getenv('DB_HOST', 'localhost')
+    DB_NAME: str = os.getenv('DB_NAME', 'default')
+    DB_PORT: int = int(os.getenv('DB_PORT', '5432'))
+    
+    # API configuration
+    API_BASE_URL: str = os.getenv('API_BASE_URL', 'https://api.example.com')
+    TIMEOUT_SECONDS: int = int(os.getenv('TIMEOUT_SECONDS', '30'))
+    
+    # Feature flags
+    ENABLE_DEBUG: bool = os.getenv('ENABLE_DEBUG', 'false').lower() == 'true'
+    
+    @classmethod
+    def validate_config(cls) -> None:
+        """Validate required configuration."""
+        required_vars = ['DB_HOST', 'DB_NAME']
+        missing_vars = [var for var in required_vars if not getattr(cls, var)]
+        
+        if missing_vars:
+            raise ValueError(f"Missing required environment variables: {missing_vars}")
+
+# Initialize and validate configuration
+Config.validate_config()
+```
+
+**AWS Secrets Manager Integration:**
+```python
+import boto3
+import json
+from typing import Dict, Any
+from botocore.exceptions import ClientError
+
+class SecretsManager:
+    """Manage AWS Secrets Manager integration."""
+    
+    def __init__(self, region_name: str = 'us-east-1'):
+        self.client = boto3.client('secretsmanager', region_name=region_name)
+        self._cache: Dict[str, Any] = {}
+    
+    def get_secret(self, secret_name: str, use_cache: bool = True) -> Dict[str, Any]:
+        """
+        Retrieve secret from AWS Secrets Manager.
+        
+        Args:
+            secret_name: Name of the secret
+            use_cache: Whether to use local caching
+            
+        Returns:
+            Secret value as dictionary
+        """
+        if use_cache and secret_name in self._cache:
+            return self._cache[secret_name]
+        
+        try:
+            response = self.client.get_secret_value(SecretId=secret_name)
+            secret_value = json.loads(response['SecretString'])
+            
+            if use_cache:
+                self._cache[secret_name] = secret_value
+                
+            return secret_value
+            
+        except ClientError as e:
+            logger.error(f"Failed to retrieve secret {secret_name}: {e}")
+            raise
+    
+    def get_db_credentials(self, secret_name: str) -> Dict[str, str]:
+        """Get database credentials from secrets manager."""
+        secret = self.get_secret(secret_name)
+        return {
+            'host': secret['host'],
+            'username': secret['username'],
+            'password': secret['password'],
+            'database': secret['dbname'],
+            'port': secret.get('port', 5432)
+        }
+
+# Usage
+secrets_manager = SecretsManager()
+db_creds = secrets_manager.get_db_credentials('prod/database/credentials')
+```
+
+### Input Validation and Sanitization
+
+```python
+from pydantic import BaseModel, validator, ValidationError
+from typing import Optional, List
+import re
+
+class CustomerInput(BaseModel):
+    """Customer data validation schema."""
+    
+    name: str
+    email: str
+    phone: Optional[str] = None
+    age: Optional[int] = None
+    tags: List[str] = []
+    
+    @validator('name')
+    def validate_name(cls, v):
+        if not v or len(v.strip()) < 2:
+            raise ValueError('Name must be at least 2 characters')
+        if len(v) > 100:
+            raise ValueError('Name must be less than 100 characters')
+        # Remove potentially dangerous characters
+        if re.search(r'[<>"\']', v):
+            raise ValueError('Name contains invalid characters')
+        return v.strip()
+    
+    @validator('email')
+    def validate_email(cls, v):
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError('Invalid email format')
+        return v.lower()
+    
+    @validator('age')
+    def validate_age(cls, v):
+        if v is not None and (v < 0 or v > 150):
+            raise ValueError('Age must be between 0 and 150')
+        return v
+    
+    @validator('tags')
+    def validate_tags(cls, v):
+        if len(v) > 10:
+            raise ValueError('Maximum 10 tags allowed')
+        return [tag.strip().lower() for tag in v if tag.strip()]
+
+def validate_input(event: Dict[str, Any]) -> CustomerInput:
+    """Validate and parse input data."""
+    try:
+        body = event.get('body', '{}')
+        if isinstance(body, str):
+            data = json.loads(body)
+        else:
+            data = body
+            
+        return CustomerInput(**data)
+    except ValidationError as e:
+        logger.error("Validation failed", extra={"errors": e.errors()})
+        raise ValueError(f"Invalid input: {e}")
+    except json.JSONDecodeError as e:
+        logger.error("JSON decode failed", extra={"error": str(e)})
+        raise ValueError("Invalid JSON format")
+```
+
+## Performance Optimization
+
+### Cold Start Optimization
+
+**Initialization Best Practices:**
+```python
+import boto3
+import json
+from typing import Optional
+
+# Initialize outside handler to reuse across invocations
+dynamodb = boto3.resource('dynamodb')
+s3_client = boto3.client('s3')
+secrets_manager = boto3.client('secretsmanager')
+
+# Cache frequently used data
+_config_cache: Optional[dict] = None
+_db_credentials_cache: Optional[dict] = None
+
+def get_cached_config() -> dict:
+    """Get configuration with caching."""
+    global _config_cache
+    if _config_cache is None:
+        _config_cache = load_configuration()
+    return _config_cache
+
+def lambda_handler(event, context):
+    """Optimized handler with minimal cold start overhead."""
+    # Use cached resources and configuration
+    config = get_cached_config()
+    
+    # Process request
+    return process_request(event, config)
+```
+
+### Memory and CPU Optimization
+
+**Memory Allocation Strategy:**
+```python
+import os
+from typing import Dict, Any
+
+def get_optimal_memory_config() -> Dict[str, int]:
+    """
+    Determine optimal memory configuration based on workload.
+    
+    Returns:
+        Memory configuration recommendations
+    """
+    lambda_memory = int(os.environ.get('AWS_LAMBDA_FUNCTION_MEMORY_SIZE', '128'))
+    
+    # Memory to vCPU mapping (AWS Lambda)
+    # 1792 MB = 1 vCPU, every 1769 MB adds ~1 vCPU
+    vcpu_count = max(1, lambda_memory // 1769)
+    
+    return {
+        'memory_mb': lambda_memory,
+        'vcpu_count': vcpu_count,
+        'max_concurrent_threads': vcpu_count * 2  # Conservative threading
+    }
+
+# Configure based on available resources
+resource_config = get_optimal_memory_config()
+```
+
+### Dependency Optimization
+
+**Lambda Layer Strategy:**
+```python
+# Layer structure for optimal loading
+"""
+lambda-layer/
+├── python/
+│   ├── boto3/           # AWS SDK
+│   ├── requests/        # HTTP library
+│   ├── pydantic/        # Validation
+│   └── shared_utils/    # Custom utilities
+└── requirements.txt
+"""
+
+# requirements.txt for layer (production optimized)
+boto3==1.26.137
+requests==2.31.0
+pydantic==1.10.12
+python-dateutil==2.8.2
+
+# Function-specific requirements (minimal)
+# Only include function-specific dependencies
+aws-lambda-powertools==2.23.1
+```
+
+### Performance Monitoring
+
+```python
+import time
+from functools import wraps
+from aws_lambda_powertools import Metrics
+from aws_lambda_powertools.metrics import MetricUnit
+
+metrics = Metrics()
+
+def performance_monitor(func):
+    """Decorator to monitor function performance."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        
+        try:
+            result = func(*args, **kwargs)
+            
+            # Record success metrics
+            execution_time = (time.time() - start_time) * 1000
+            metrics.add_metric(
+                name="FunctionDuration",
+                unit=MetricUnit.Milliseconds,
+                value=execution_time
+            )
+            metrics.add_metric(
+                name="FunctionSuccess",
+                unit=MetricUnit.Count,
+                value=1
+            )
+            
+            return result
+            
+        except Exception as e:
+            # Record error metrics
+            metrics.add_metric(
+                name="FunctionError",
+                unit=MetricUnit.Count,
+                value=1
+            )
+            raise
+            
+    return wrapper
+
+@performance_monitor
+def process_customer_data(customer_data):
+    """Process customer data with performance monitoring."""
+    # Business logic here
+    pass
+```
+
+## Lambda Layers and Deployment
+
+### Lambda Layer Best Practices
+
+**Creating Optimized Layers:**
+```bash
+#!/bin/bash
+# build_layer.sh - Script to build Lambda layer
+
+set -e
+
+LAYER_NAME="python-dependencies"
+PYTHON_VERSION="3.11"
+
+# Create layer directory structure
+mkdir -p layer/python
+
+# Install dependencies with specific platform targeting
+pip install \
+  --platform manylinux2014_x86_64 \
+  --target=layer/python \
+  --implementation cp \
+  --python-version ${PYTHON_VERSION} \
+  --only-binary=:all: \
+  --upgrade \
+  -r requirements.txt
+
+# Remove unnecessary files to reduce size
+find layer/python -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+find layer/python -type f -name "*.pyc" -delete
+find layer/python -type f -name "*.pyo" -delete
+find layer/python -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+find layer/python -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+
+# Create deployment package
+cd layer
+zip -r ../python-layer.zip . -x "*.git*" "*.DS_Store*"
+cd ..
+
+echo "Layer package created: python-layer.zip"
+echo "Size: $(du -h python-layer.zip | cut -f1)"
+```
+
+**Layer Version Management:**
+```python
+# deploy_layer.py - Layer deployment script
+import boto3
+import json
+
+def deploy_lambda_layer(layer_name: str, zip_file_path: str, description: str):
+    """Deploy Lambda layer with versioning."""
+    lambda_client = boto3.client('lambda')
+    
+    with open(zip_file_path, 'rb') as zip_file:
+        response = lambda_client.publish_layer_version(
+            LayerName=layer_name,
+            Description=description,
+            Content={
+                'ZipFile': zip_file.read()
+            },
+            CompatibleRuntimes=['python3.9', 'python3.10', 'python3.11'],
+            CompatibleArchitectures=['x86_64']
+        )
+    
+    layer_arn = response['LayerVersionArn']
+    print(f"Layer deployed: {layer_arn}")
+    
+    # Update layer permissions for organization access
+    lambda_client.add_layer_version_permission(
+        LayerName=layer_name,
+        VersionNumber=response['Version'],
+        StatementId='organization-access',
+        Action='lambda:GetLayerVersion',
+        Principal='123456789012',  # Your AWS account ID
+    )
+    
+    return response
+```
+
+## Monitoring and Observability
+
+### Structured Logging for Production
+
+**Advanced Logging Configuration:**
+```python
+import json
+import logging
+import sys
+from datetime import datetime
+from typing import Any, Dict
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools.logging import correlation_paths
+
+class ProductionLogger:
+    """Production-ready logger with structured output."""
+    
+    def __init__(self, service_name: str, log_level: str = "INFO"):
+        self.logger = Logger(
+            service=service_name,
+            level=log_level,
+            stream=sys.stdout,
+            location="%(filename)s:%(lineno)d",
+            timestamp="%(asctime)s"
+        )
+        
+        # Add request correlation
+        self.logger.set_correlation_id("request_id")
+    
+    def log_request_start(self, event: Dict[str, Any], context: Any):
+        """Log request initiation."""
+        self.logger.info(
+            "Request started",
+            extra={
+                "event_type": event.get("Records", [{}])[0].get("eventSource", "unknown"),
+                "request_id": context.aws_request_id,
+                "memory_limit": context.memory_limit_in_mb,
+                "remaining_time": context.get_remaining_time_in_millis()
+            }
+        )
+    
+    def log_business_event(self, event_name: str, **kwargs):
+        """Log business-specific events."""
+        self.logger.info(
+            f"Business event: {event_name}",
+            extra={
+                "event_name": event_name,
+                "timestamp": datetime.utcnow().isoformat(),
+                **kwargs
+            }
+        )
+    
+    def log_performance_metric(self, operation: str, duration_ms: float, **kwargs):
+        """Log performance metrics."""
+        self.logger.info(
+            "Performance metric",
+            extra={
+                "metric_type": "performance",
+                "operation": operation,
+                "duration_ms": duration_ms,
+                "timestamp": datetime.utcnow().isoformat(),
+                **kwargs
+            }
+        )
+    
+    def log_error_with_context(self, error: Exception, context_data: Dict[str, Any]):
+        """Log errors with full context."""
+        self.logger.error(
+            "Error occurred",
+            extra={
+                "error_type": type(error).__name__,
+                "error_message": str(error),
+                "context": context_data,
+                "timestamp": datetime.utcnow().isoformat()
+            },
+            exc_info=True
+        )
+
+# Usage
+logger = ProductionLogger("customer-service")
+
+def lambda_handler(event, context):
+    logger.log_request_start(event, context)
+    
+    try:
+        # Business logic
+        result = process_customer(event)
+        logger.log_business_event("customer_processed", customer_id=result.get("id"))
+        return result
+    except Exception as e:
+        logger.log_error_with_context(e, {"event": event, "function": "lambda_handler"})
+        raise
+```
+
+
+### CloudWatch Dashboards Integration
+
+**Metrics Collection:**
+```python
+from aws_lambda_powertools import Metrics
+from aws_lambda_powertools.metrics import MetricUnit
+import time
+
+class BusinessMetrics:
+    """Business metrics collection for monitoring."""
+    
+    def __init__(self):
+        self.metrics = Metrics(namespace="CustomerService")
+    
+    def record_customer_operation(self, operation: str, success: bool, duration_ms: float):
+        """Record customer operation metrics."""
+        # Record operation count
+        self.metrics.add_metric(
+            name=f"Customer{operation}Count",
+            unit=MetricUnit.Count,
+            value=1
+        )
+        
+        # Record success/failure
+        status = "Success" if success else "Failure"
+        self.metrics.add_metric(
+            name=f"Customer{operation}{status}",
+            unit=MetricUnit.Count,
+            value=1
+        )
+        
+        # Record performance
+        self.metrics.add_metric(
+            name=f"Customer{operation}Duration",
+            unit=MetricUnit.Milliseconds,
+            value=duration_ms
+        )
+    
+    def record_external_api_call(self, api_name: str, status_code: int, response_time_ms: float):
+        """Record external API call metrics."""
+        self.metrics.add_metric(
+            name=f"ExternalAPI_{api_name}_Calls",
+            unit=MetricUnit.Count,
+            value=1
+        )
+        
+        self.metrics.add_metric(
+            name=f"ExternalAPI_{api_name}_ResponseTime",
+            unit=MetricUnit.Milliseconds,
+            value=response_time_ms
+        )
+        
+        # Record by status code category
+        status_category = f"{status_code // 100}xx"
+        self.metrics.add_metric(
+            name=f"ExternalAPI_{api_name}_{status_category}",
+            unit=MetricUnit.Count,
+            value=1
+        )
+
+# Usage in Lambda function
+business_metrics = BusinessMetrics()
+
+@business_metrics.metrics.log_metrics(capture_cold_start_metric=True)
+def lambda_handler(event, context):
+    start_time = time.time()
+    success = False
+    
+    try:
+        result = process_customer_data(event)
+        success = True
+        return result
+    finally:
+        duration = (time.time() - start_time) * 1000
+        business_metrics.record_customer_operation("Create", success, duration)
+```
+
+## Deployment and CI/CD Integration
+
+### Infrastructure as Code Templates
+
+**AWS SAM Template Example:**
+```yaml
+# template.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 30
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        POWERTOOLS_SERVICE_NAME: CustomerService
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+
+Resources:
+  # Lambda Layer for dependencies
+  DependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${Environment}-python-dependencies"
+      Description: Python dependencies layer
+      ContentUri: layers/dependencies/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Retain
+
+  # Customer Processing Function
+  CustomerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-customer-processor"
+      CodeUri: src/handlers/
+      Handler: customer_handler.lambda_handler
+      MemorySize: 512
+      Layers:
+        - !Ref DependenciesLayer
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          DYNAMODB_TABLE: !Ref CustomerTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /customers
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CustomerTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${Environment}/database/*"
+
+  # DynamoDB Table
+  CustomerTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Environment}-customers"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Export:
+      Name: !Sub "${Environment}-CustomerApi-Endpoint"
+```
+
+### GitHub Actions CI/CD Pipeline
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy Lambda Functions
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.11'
+  AWS_REGION: 'us-east-1'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements-dev.txt
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      run: |
+        flake8 src tests --max-line-length=100 --ignore=E203,W503
+    
+    - name: Format check with Black
+      run: |
+        black --check src tests --line-length=100
+    
+    - name: Type checking with mypy
+      run: |
+        mypy src --ignore-missing-imports
+    
+    - name: Security scan with bandit
+      run: |
+        bandit -r src -f json -o security-report.json
+    
+    - name: Run tests
+      run: |
+        pytest tests/ \
+          --cov=src \
+          --cov-report=xml \
+          --cov-report=term-missing \
+          --cov-fail-under=85 \
+          --junitxml=test-results.xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true
+
+  deploy-dev:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Set up SAM CLI
+      uses: aws-actions/setup-sam@v2
+    
+    - name: Build Lambda layer
+      run: |
+        chmod +x scripts/build_layer.sh
+        ./scripts/build_layer.sh
+    
+    - name: SAM build
+      run: sam build --use-container
+    
+    - name: SAM deploy to dev
+      run: |
+        sam deploy \
+          --stack-name customer-service-dev \
+          --parameter-overrides Environment=dev \
+          --capabilities CAPABILITY_IAM \
+          --region ${{ env.AWS_REGION }} \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset
+
+  deploy-prod:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Set up SAM CLI
+      uses: aws-actions/setup-sam@v2
+    
+    - name: Build and deploy to production
+      run: |
+        chmod +x scripts/build_layer.sh
+        ./scripts/build_layer.sh
+        sam build --use-container
+        sam deploy \
+          --stack-name customer-service-prod \
+          --parameter-overrides Environment=prod \
+          --capabilities CAPABILITY_IAM \
+          --region ${{ env.AWS_REGION }} \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset
+```
+
+## Conclusion and Quick Reference
+
+### Key Takeaways
+
+1. **Code Quality**: Use Black for formatting, flake8 for linting, and maintain >85% test coverage[1][5]
+2. **Architecture**: Separate business logic from Lambda handlers for better testability[15][16]
+3. **Performance**: Initialize resources outside handlers and use Lambda layers strategically[9][17]
+4. **Security**: Never hardcode secrets; use AWS Secrets Manager and proper input validation[12][11]
+5. **Monitoring**: Implement structured logging and comprehensive metrics collection[18][19]
+6. **Testing**: Use pytest with moto for AWS service mocking and maintain comprehensive test coverage[6][5]
+
+### Essential Development Checklist
+
+**Before Code Commit:**
+- [ ] Code formatted with Black (line length 100)
+- [ ] Linting passes with flake8
+- [ ] Type hints added where appropriate
+- [ ] Unit tests written and passing (>85% coverage)
+- [ ] Error handling implemented with proper logging
+- [ ] Input validation implemented
+- [ ] Environment variables used for configuration
+- [ ] Performance considerations addressed
+
+**Before Deployment:**
+- [ ] Lambda layers optimized for size
+- [ ] Memory allocation tuned based on profiling
+- [ ] CloudWatch alarms configured
+- [ ] Security scan completed
+- [ ] Load testing performed
+- [ ] Documentation updated
+
+This comprehensive guide represents the current industry best practices for Python development in AWS Lambda environments. Regular updates should be made to incorporate new AWS features and Python ecosystem developments[20][21].
+
+Citations:
+[1] Python Auto Formatter: Autopep8 vs. Black https://builtin.com/data-science/autopep8-vs-black
+[2] psf/black: The uncompromising Python code formatter https://github.com/psf/black
+[3] Best Practices in Structuring Python Projects https://dagster.io/blog/python-project-best-practices
+[4] The ultimate guide to structuring a Python package https://retailtechinnovationhub.com/home/2024/2/29/the-ultimate-guide-to-structuring-a-python-package
+[5] AWS Lambda Unit Testing Best Practices 2024 https://awsforengineers.com/blog/aws-lambda-unit-testing-best-practices-2024/
+[6] Unit Testing AWS Lambda with Python and Mock AWS ... https://seifrajhi.github.io/blog/unit-testing-aws-lambda-moto/
+[7] Working with Boto3 Lambda (AWS): 4 Easy Steps https://hevodata.com/learn/boto3-lambda/
+[8] Homepage - Powertools for AWS Lambda (Python) https://docs.powertools.aws.dev/lambda/python/latest/
+[9] AWS Lambda Performance Optimization: 12 Tips and ... https://lumigo.io/aws-lambda-performance-optimization/
+[10] How To Accelerate AWS Lambda Performance https://www.computer.org/publications/tech-news/trends/accelerate-aws-lambda-performance/
+[11] Python - Using Environment variables and secrets in Lambda https://www.cloudtechsimplified.com/environment-variables-and-secrets-api-keys-database-passwords-in-aws-lambda-python/
+[12] 14 AWS Lambda Security Best Practices to Secure Your ... https://aws.plainenglish.io/14-aws-lambda-security-best-practices-to-secure-your-serverless-applications-0816416bcfe8
+[13] PEP 8 – Style Guide for Python Code https://peps.python.org/pep-0008/
+[14] Lambda examples using SDK for Python (Boto3) https://docs.aws.amazon.com/code-library/latest/ug/python_3_lambda_code_examples.html
+[15] Define Lambda function handler in Python https://docs.aws.amazon.com/lambda/latest/dg/python-handler.html
+[16] Unit Testing AWS Lambda with Python and Mock ... https://aws.amazon.com/blogs/devops/unit-testing-aws-lambda-with-python-and-mock-aws-services/
+[17] AWS Lambda Layers Best Practices https://www.ranthebuilder.cloud/post/aws-lambda-layers-best-practices
+[18] Log and monitor Python Lambda functions https://docs.aws.amazon.com/lambda/latest/dg/python-logging.html
+[19] AWS Lambda Python Logging: A Quick Guide https://lumigo.io/serverless-monitoring-guide/aws-lambda-python-logging/
+[20] Best Practices for Writing Python Code for AWS Lambda ... https://www.cloudthat.com/resources/blog/best-practices-for-writing-python-code-for-aws-lambda-function
+[21] Best practices for working with AWS Lambda functions https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html
+[22] Using the Confluence API to Create Space Pages ... https://endgrate.com/blog/using-the-confluence-api-to-create-space-pages-(with-python-examples)
+[23] 3 Python style guides that will improve your coding standards https://blog.codacy.com/3-popular-python-style-guides
+[24] Running a python script on a confluence page https://community.atlassian.com/forums/Confluence-questions/Running-a-python-script-on-a-confluence-page/qaq-p/1275274
+[25] Effective Python Best Practices for AWS Lambda https://aws.plainenglish.io/best-practices-for-python-with-aws-lambda-an-essential-guide-a22b708f8006
+[26] Google Python Style Guide https://google.github.io/styleguide/pyguide.html
+[27] Confluence documentation guide: Best practices and tips https://www.refined.com/blog/confluence-documentation-best-practices
+[28] Style guide https://devguide.python.org/documentation/style-guide/
+[29] Code Block Macro | Confluence Data Center 10.0 https://confluence.atlassian.com/doc/code-block-macro-139390.html
+[30] Building Lambda functions with Python https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html
+[31] kenshoo/python-style-guide https://github.com/kenshoo/python-style-guide
+[32] Confluence Best Practices https://www.atlassian.com/software/confluence/resources/guides/get-started/best-practices
+[33] Top 10 AWS Lambda Best Practices https://lumigo.io/learn/top-10-aws-lambda-best-practices/
+[34] Python style guide (article) https://www.khanacademy.org/computing/intro-to-python-fundamentals/x5279a44ae0ab15d6:computational-thinking-with-variables/x5279a44ae0ab15d6:arithmetic-expressions/a/python-style-guide
+[35] 6 Coding Best Practices & Tips for Effective Programming https://zencoder.ai/blog/coding-best-practices
+[36] Why code documentation is key to success https://upsun.com/blog/code-documentation/
+[37] AWS Lambda function design best practices https://www.youtube.com/watch?v=o9tYim-n6Ow
+[38] Install Python Dependency and Libraries on AWS Lambda https://www.youtube.com/watch?v=YIrWs7MhHEA
+[39] Error Handling Patterns in Amazon API Gateway and AWS ... https://aws.amazon.com/blogs/compute/error-handling-patterns-in-amazon-api-gateway-and-aws-lambda/
+[40] aws/aws-lambda-builders: Python library to compile, build ... https://github.com/aws/aws-lambda-builders
+[41] Implementing AWS Lambda error handling patterns https://aws.amazon.com/blogs/compute/implementing-aws-lambda-error-handling-patterns/
+[42] Lambda Logging: 8 Critical Best Practices https://lumigo.io/debugging-aws-lambda-serverless-applications/lambda-logging-8-critical-best-practices/
+[43] The Missing Guide to AWS Lambda Logs https://betterstack.com/community/guides/logging/aws-lambda-logging/
+[44] How do I add python libraries to an AWS lambda function ... https://stackoverflow.com/questions/38877058/how-do-i-add-python-libraries-to-an-aws-lambda-function-for-alexa
+[45] Complexities and Best Practices for AWS Lambda Logging https://aws.amazon.com/blogs/apn/complexities-and-best-practices-for-aws-lambda-logging/
+[46] aws-samples/aws-lambda-error-handling-pattern https://github.com/aws-samples/aws-lambda-error-handling-pattern
+[47] AWS Lambda Best Logging Practices https://www.ranthebuilder.cloud/post/aws-lambda-cookbook-elevate-your-handler-s-code-part-1-logging
+[48] Working with .zip file archives for Python Lambda functions https://docs.aws.amazon.com/lambda/latest/dg/python-package.html
+[49] Python Error Handling in AWS Lambda https://dashbird.io/blog/python-aws-lambda-error-handling/
+[50] AWS Lambda Logging: Best Practices & Optimization Guide https://edgedelta.com/company/knowledge-center/lambda-logging
+[51] Lambda with Python libraries : r/aws https://www.reddit.com/r/aws/comments/10iym7s/lambda_with_python_libraries/
+[52] Patterns for handling errors in AWS Lambda / SLS https://www.reddit.com/r/serverless/comments/f6c1hf/patterns_for_handling_errors_in_aws_lambda_sls/
+[53] Lambda Threat – Best Practices for Lambda Security https://www.sysdig.com/blog/exploit-mitigate-aws-lambdas-mitre
+[54] What is the optimal structure for a Python project? https://www.reddit.com/r/Python/comments/18qkivr/what_is_the_optimal_structure_for_a_python_project/
+[55] Writing unit tests for Lambda functions in Python https://emshea.com/post/writing-python-unit-tests-lambda-functions
+[56] Security in AWS Lambda https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html
+[57] 20 Advanced Tips for AWS Lambda https://dev.to/aws-builders/simple-aws-20-advanced-tips-for-lambda-1oif
+[58] Structuring Your Project https://docs.python-guide.org/writing/structure/
+[59] What does the structure of a modern Python project look like? https://www.youtube.com/watch?v=Lr1koR-YkMw
+[60] correct way to test Lambda functions? : r/aws https://www.reddit.com/r/aws/comments/1ewgezp/correct_way_to_test_lambda_functions/
+[61] Python project structure https://discuss.python.org/t/python-project-structure/36119
+[62] Guide to AWS Serverless & Lambda Testing Best Practices https://www.ranthebuilder.cloud/post/guide-to-serverless-lambda-testing-best-practices-part-1
+[63] Governance in AWS lambda: Code scanning https://www.getorchestra.io/guides/governance-in-aws-lambda-code-scanning
+[64] Lambda Layers Best Practices : r/aws https://www.reddit.com/r/aws/comments/biwlaa/lambda_layers_best_practices/
+[65] autopep8 https://pypi.org/project/autopep8/
+[66] formatting - How do I autoformat some Python code to be ... https://stackoverflow.com/questions/2625294/how-do-i-autoformat-some-python-code-to-be-correctly-formatted
+[67] Performance Optimization - Powertools for AWS https://docs.powertools.aws.dev/lambda/python/latest/build_recipes/performance-optimization/
+[68] Why Use AWS Lambda Layers? Advantages and ... https://dzone.com/articles/aws-lambda-layers-advantages
+[69] Lambda cost and performance optimization https://docs.aws.amazon.com/wellarchitected/latest/serverless-applications-lens/cost-and-performance-optimization.html
+[70] The Best Way to Create AWS Lambda λ Layers for Python ... https://dev.to/rishabdugar/creating-aws-lambda-layers-for-python-runtime-a-complete-guide-3gi0
+[71] Python code formatters comparison: Black, autopep8 and YAPF https://blog.frank-mich.com/python-code-formatters-comparison-black-autopep8-and-yapf/
+[72] Performance optimisation For AWS LAMBDA : r/aws https://www.reddit.com/r/aws/comments/zrt9gk/performance_optimisation_for_aws_lambda/
+[73] Working with layers for Python Lambda functions https://docs.aws.amazon.com/lambda/latest/dg/python-layers.html
+[74] Black https://pypi.org/project/black/
+[75] AWS Lambda Layers: Best Practices & Use Cases https://www.linkedin.com/pulse/deep-dive-aws-lambda-layers-strivemindz-3q7sc
+[76] Formatting Python in VS Code https://code.visualstudio.com/docs/python/formatting
+[77] Improving startup performance with Lambda SnapStart https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html
+[78] Pytest AWS Lambda - introduction to Python Unit Testing. https://nearshore-it.eu/technologies/pytest-aws-lambda-introduction-to-python-unit-testing/
+[79] Working with Lambda environment variables https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html
+[80] How to access an AWS Lambda environment variable from ... https://stackoverflow.com/questions/40937512/how-to-access-an-aws-lambda-environment-variable-from-python
+[81] Getting AWS Lambda response when using boto3 invoke() https://stackoverflow.com/questions/58751026/getting-aws-lambda-response-when-using-boto3-invoke
+[82] How I Write Meaningful Tests for AWS Lambda Functions https://towardsdatascience.com/how-i-write-meaningful-tests-for-aws-lambda-functions-f009f0a9c587/
+[83] Working with Environment Variables in AWS Lambda ... https://www.youtube.com/watch?v=-pEe75tExd0
+[84] Advanced Unit Testing in AWS. Leveraging Moto and Pytest https://blog.newmathdata.com/advanced-unit-testing-in-aws-a666e787aa99
+[85] AWS Lambda Environment Variables - Best Practices and ... https://awsfundamentals.com/blog/aws-lambda-environment-variables-best-practices-and-common-use-cases
+[86] Logger - Powertools for AWS Lambda (Python) https://docs.powertools.aws.dev/lambda/python/latest/core/logger/
+[87] How to test your AWS code using Moto and Pytest - Learn AWS https://www.learnaws.org/2020/12/01/test-aws-code/
+[88] AWS Lambda CloudWatch Logs Structured as JSON with ... https://www.reddit.com/r/aws/comments/irt7tu/how_to_aws_lambda_cloudwatch_logs_structured_as/
+[89] Python Test Samples Starter Project https://serverlessland.com/content/testing/python-starter/3-local-testing
